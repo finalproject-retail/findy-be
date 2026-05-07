@@ -2,5 +2,6 @@ package com.princesses7.findy.shopping.shoppinglist.type;
 
 public enum EntryType {
 	CART,
-	DIRECT
+	DURING_SHOPPING,
+	BARCODE_SCAN
 }

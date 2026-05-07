@@ -72,7 +72,10 @@ public class ShoppingListItem {
 		this.entryType = entryType;
 	}
 
-	public static ShoppingListItem createFromCartItem(ShoppingList shoppingList, CartItem cartItem) {
+	public static ShoppingListItem createFromCartItem(
+		ShoppingList shoppingList,
+		CartItem cartItem
+	) {
 		return new ShoppingListItem(
 			shoppingList,
 			cartItem.getProductId(),
@@ -83,14 +86,33 @@ public class ShoppingListItem {
 		);
 	}
 
-	public static ShoppingListItem createDirectItem(ShoppingList shoppingList, Long productId, int quantity) {
+	public static ShoppingListItem createDuringShoppingItem(
+		ShoppingList shoppingList,
+		Long productId,
+		int quantity
+	) {
+		return new ShoppingListItem(
+			shoppingList,
+			productId,
+			null,
+			quantity,
+			ScanStatus.NOT_SCANNED,
+			EntryType.DURING_SHOPPING
+		);
+	}
+
+	public static ShoppingListItem createBarcodeScannedItem(
+		ShoppingList shoppingList,
+		Long productId,
+		int quantity
+	) {
 		return new ShoppingListItem(
 			shoppingList,
 			productId,
 			null,
 			quantity,
 			ScanStatus.SCANNED,
-			EntryType.DIRECT
+			EntryType.BARCODE_SCAN
 		);
 	}
 
@@ -105,13 +127,17 @@ public class ShoppingListItem {
 	public boolean isScanned() {
 		return this.scanStatus == ScanStatus.SCANNED;
 	}
-
+	
 	public boolean isFromCart() {
 		return this.entryType == EntryType.CART;
 	}
 
-	public boolean isDirect() {
-		return this.entryType == EntryType.DIRECT;
+	public boolean isAddedDuringShopping() {
+		return this.entryType == EntryType.DURING_SHOPPING;
+	}
+
+	public boolean isAddedByBarcodeScan() {
+		return this.entryType == EntryType.BARCODE_SCAN;
 	}
 
 	public void completeScan() {
