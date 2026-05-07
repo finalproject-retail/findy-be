@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.cart.entity;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import com.princesses7.findy.shopping.cart.exception.CartException;
+import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +22,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "cart_items")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class CartItem {
+public class CartItem extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)

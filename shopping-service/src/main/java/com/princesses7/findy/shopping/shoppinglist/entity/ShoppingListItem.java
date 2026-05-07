@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.shoppinglist.entity;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import com.princesses7.findy.shopping.cart.entity.CartItem;
+import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 import com.princesses7.findy.shopping.shoppinglist.type.EntryType;
 import com.princesses7.findy.shopping.shoppinglist.type.ScanStatus;
@@ -26,7 +27,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "shopping_list_items")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ShoppingListItem {
+public class ShoppingListItem extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -127,7 +128,7 @@ public class ShoppingListItem {
 	public boolean isScanned() {
 		return this.scanStatus == ScanStatus.SCANNED;
 	}
-	
+
 	public boolean isFromCart() {
 		return this.entryType == EntryType.CART;
 	}
