@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.princesses7.findy.shopping.cart.exception.CartException;
+import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 
@@ -28,7 +29,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "carts")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class Cart {
+public class Cart extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
