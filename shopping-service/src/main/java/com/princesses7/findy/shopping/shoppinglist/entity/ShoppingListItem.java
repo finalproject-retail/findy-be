@@ -2,11 +2,12 @@ package com.princesses7.findy.shopping.shoppinglist.entity;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.time.LocalDateTime;
+
 import com.princesses7.findy.shopping.cart.entity.CartItem;
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 import com.princesses7.findy.shopping.shoppinglist.type.EntryType;
-import com.princesses7.findy.shopping.shoppinglist.type.ScanStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,9 +49,8 @@ public class ShoppingListItem extends BaseTimeEntity {
 	@Column(name = "quantity", nullable = false)
 	private int quantity;
 
-	@Enumerated(EnumType.STRING)
-	@Column(name = "scan_status", nullable = false)
-	private ScanStatus scanStatus;
+	@Column(name = "scanned_at")
+	private LocalDateTime scannedAt;
 
 	@Enumerated(EnumType.STRING)
 	@Column(name = "entry_type", nullable = false)
@@ -61,7 +61,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 		Long productId,
 		CartItem cartItem,
 		int quantity,
-		ScanStatus scanStatus,
+		LocalDateTime scannedAt,
 		EntryType entryType
 	) {
 		validateQuantity(quantity);
@@ -69,7 +69,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 		this.productId = productId;
 		this.cartItem = cartItem;
 		this.quantity = quantity;
-		this.scanStatus = scanStatus;
+		this.scannedAt = scannedAt;
 		this.entryType = entryType;
 	}
 
@@ -82,7 +82,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 			cartItem.getProductId(),
 			cartItem,
 			cartItem.getQuantity(),
-			ScanStatus.NOT_SCANNED,
+			null,
 			EntryType.CART
 		);
 	}
@@ -97,7 +97,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 			productId,
 			null,
 			quantity,
-			ScanStatus.NOT_SCANNED,
+			null,
 			EntryType.DURING_SHOPPING
 		);
 	}
@@ -112,7 +112,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 			productId,
 			null,
 			quantity,
-			ScanStatus.SCANNED,
+			LocalDateTime.now(),
 			EntryType.BARCODE_SCAN
 		);
 	}
@@ -126,7 +126,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 	}
 
 	public boolean isScanned() {
-		return this.scanStatus == ScanStatus.SCANNED;
+		return this.scannedAt != null;
 	}
 
 	public boolean isFromCart() {
@@ -146,7 +146,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 			throw new ShoppingListException(ALREADY_SCANNED_ITEM);
 		}
 
-		this.scanStatus = ScanStatus.SCANNED;
+		this.scannedAt = LocalDateTime.now();
 	}
 
 	public void increaseQuantity(int quantity) {
