@@ -18,8 +18,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -36,31 +36,38 @@ public class ShoppingList {
 	@Column(name = "shopping_list_id")
 	private Long shoppingListId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "cart_id", nullable = false)
+	@OneToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "cart_id", nullable = false, unique = true)
 	private Cart cart;
 
 	@OneToMany(mappedBy = "shoppingList", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ShoppingListItem> shoppingListItems = new ArrayList<>();
 
-	private ShoppingList(Cart cart) {
+	private ShoppingList(Long userId, Cart cart) {
+		this.userId = userId;
 		this.cart = cart;
 	}
 
 	public static ShoppingList create(Cart cart) {
+		if (cart.hasShoppingList()) {
+			throw new ShoppingListException(SHOPPING_LIST_ALREADY_EXISTS);
+		}
+
 		List<CartItem> checkedItems = cart.getCheckedItems();
 
 		if (checkedItems.isEmpty()) {
 			throw new ShoppingListException(EMPTY_SHOPPING_LIST);
 		}
 
-		ShoppingList shoppingList = new ShoppingList(cart);
+		ShoppingList shoppingList = new ShoppingList(cart.getUserId(), cart);
 
 		checkedItems.forEach(cartItem ->
 			shoppingList.shoppingListItems.add(
 				ShoppingListItem.createFromCartItem(shoppingList, cartItem)
 			)
 		);
+
+		cart.assignShoppingList(shoppingList);
 
 		return shoppingList;
 	}
@@ -85,6 +92,10 @@ public class ShoppingList {
 	public void removeItem(Long shoppingListItemId) {
 		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
 		shoppingListItems.remove(item);
+	}
+
+	public boolean isOwnedBy(Long userId) {
+		return this.userId.equals(userId);
 	}
 
 	public int getTotalItemCount() {

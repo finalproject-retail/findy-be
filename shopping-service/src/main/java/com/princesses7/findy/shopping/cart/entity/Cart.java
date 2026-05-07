@@ -7,14 +7,18 @@ import java.util.List;
 import java.util.Optional;
 
 import com.princesses7.findy.shopping.cart.exception.CartException;
+import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
+import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -36,6 +40,9 @@ public class Cart {
 
 	@OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<CartItem> cartItems = new ArrayList<>();
+
+	@OneToOne(mappedBy = "cart", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+	private ShoppingList shoppingList;
 
 	private Cart(Long userId) {
 		this.userId = userId;
@@ -70,6 +77,18 @@ public class Cart {
 	public void changeItemChecked(Long cartItemId, boolean checked) {
 		CartItem cartItem = getCartItem(cartItemId);
 		cartItem.changeChecked(checked);
+	}
+
+	public void assignShoppingList(ShoppingList shoppingList) {
+		if (this.shoppingList != null) {
+			throw new ShoppingListException(SHOPPING_LIST_ALREADY_EXISTS);
+		}
+
+		this.shoppingList = shoppingList;
+	}
+
+	public boolean hasShoppingList() {
+		return this.shoppingList != null;
 	}
 
 	public List<CartItem> getCheckedItems() {
