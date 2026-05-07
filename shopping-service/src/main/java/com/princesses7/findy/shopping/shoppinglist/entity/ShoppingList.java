@@ -75,14 +75,26 @@ public class ShoppingList {
 		return shoppingList;
 	}
 
-	public void addDirectItem(Long productId, int quantity) {
+	public void addItemDuringShopping(Long productId, int quantity) {
 		validateQuantity(quantity);
 
 		findItemByProductId(productId)
 			.ifPresentOrElse(
 				item -> item.increaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createDirectItem(this, productId, quantity)
+					ShoppingListItem.createDuringShoppingItem(this, productId, quantity)
+				)
+			);
+	}
+
+	public void addScannedItem(Long productId, int quantity) {
+		validateQuantity(quantity);
+
+		findItemByProductId(productId)
+			.ifPresentOrElse(
+				ShoppingListItem::completeScan,
+				() -> shoppingListItems.add(
+					ShoppingListItem.createBarcodeScannedItem(this, productId, quantity)
 				)
 			);
 	}
