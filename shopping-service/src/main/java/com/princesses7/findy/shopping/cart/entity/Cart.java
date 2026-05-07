@@ -14,7 +14,6 @@ import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListExcepti
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,7 +41,7 @@ public class Cart extends BaseTimeEntity {
 	@OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<CartItem> cartItems = new ArrayList<>();
 
-	@OneToOne(mappedBy = "cart", fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+	@OneToOne(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
 	private ShoppingList shoppingList;
 
 	private Cart(Long userId) {
