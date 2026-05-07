@@ -13,7 +13,7 @@ public record ApiResponse<T>(
 	private static final String SUCCESS_CODE = "SUCCESS";
 	private static final String SUCCESS_MESSAGE = "요청이 성공적으로 처리되었습니다.";
 
-	public static <T> ApiResponse<T> success(T data) {
+	public static <T> ApiResponse<T> ok(T data) {
 		return new ApiResponse<>(
 			true,
 			SUCCESS_CODE,
@@ -22,7 +22,7 @@ public record ApiResponse<T>(
 		);
 	}
 
-	public static ApiResponse<Void> success() {
+	public static ApiResponse<Void> ok() {
 		return new ApiResponse<>(
 			true,
 			SUCCESS_CODE,
@@ -31,7 +31,7 @@ public record ApiResponse<T>(
 		);
 	}
 
-	public static <T> ApiResponse<T> success(String message, T data) {
+	public static <T> ApiResponse<T> ok(String message, T data) {
 		return new ApiResponse<>(
 			true,
 			SUCCESS_CODE,
@@ -40,7 +40,7 @@ public record ApiResponse<T>(
 		);
 	}
 
-	public static ApiResponse<Void> success(String message) {
+	public static ApiResponse<Void> ok(String message) {
 		return new ApiResponse<>(
 			true,
 			SUCCESS_CODE,
