@@ -109,10 +109,6 @@ public class ShoppingList {
 		shoppingListItems.remove(item);
 	}
 
-	public boolean isOwnedBy(Long userId) {
-		return this.userId.equals(userId);
-	}
-
 	public int getTotalItemCount() {
 		return shoppingListItems.size();
 	}
