@@ -21,10 +21,16 @@ public class SecurityConfig {
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+
+                // TO-BE (수정: 일단 다 열어줌)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/auth/**").permitAll()
-                        .anyRequest().authenticated());
+                    .anyRequest().permitAll() // 모든 요청(GET, POST, OPTIONS 등)을 로그인 없이 허용
+                );
+
+                // .authorizeHttpRequests(auth -> auth
+                //         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                //         .requestMatchers("/auth/**").permitAll()
+                //         .anyRequest().authenticated());
 
         return http.build();
     }
