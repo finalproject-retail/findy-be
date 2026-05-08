@@ -8,12 +8,12 @@ import java.util.Optional;
 
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.entity.CartItem;
+import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,7 +29,7 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(name = "shopping_lists")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class ShoppingList {
+public class ShoppingList extends BaseTimeEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,7 +39,7 @@ public class ShoppingList {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
-	@OneToOne(fetch = FetchType.LAZY)
+	@OneToOne
 	@JoinColumn(name = "cart_id", nullable = false, unique = true)
 	private Cart cart;
 
@@ -75,14 +75,14 @@ public class ShoppingList {
 		return shoppingList;
 	}
 
-	public void addItemDuringShopping(Long productId, int quantity) {
+	public void addUnscannedItem(Long productId, int quantity) {
 		validateQuantity(quantity);
 
 		findItemByProductId(productId)
 			.ifPresentOrElse(
 				item -> item.increaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createDuringShoppingItem(this, productId, quantity)
+					ShoppingListItem.createUnscannedItem(this, productId, quantity)
 				)
 			);
 	}
@@ -94,7 +94,7 @@ public class ShoppingList {
 			.ifPresentOrElse(
 				ShoppingListItem::completeScan,
 				() -> shoppingListItems.add(
-					ShoppingListItem.createBarcodeScannedItem(this, productId, quantity)
+					ShoppingListItem.createScannedItem(this, productId, quantity)
 				)
 			);
 	}
