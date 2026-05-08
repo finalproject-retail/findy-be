@@ -20,57 +20,57 @@ import com.princesses7.findy.product.global.entity.BaseTimeEntity;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Product extends BaseTimeEntity {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "product_id")
-    private Long productId;
+	@Id
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "product_id")
+	private Long productId;
 
-    @Column(name = "category_id", nullable = false)
-    private Long categoryId;
+	@Column(name = "category_id", nullable = false)
+	private Long categoryId;
 
-    @Column(name = "brand_name", length = 100)
-    private String brandName;
+	@Column(name = "brand_name", length = 100)
+	private String brandName;
 
-    @Column(name = "product_name", nullable = false, length = 255)
-    private String productName;
+	@Column(name = "product_name", nullable = false, length = 255)
+	private String productName;
 
-    @Column(name = "barcode", nullable = false, length = 100)
-    private String barcode;
+	@Column(name = "barcode", nullable = false, length = 100)
+	private String barcode;
 
-    @Column(name = "original_price", nullable = false)
-    private Integer originalPrice;
+	@Column(name = "original_price", nullable = false)
+	private Integer originalPrice;
 
-    @Column(name = "sale_price", nullable = false)
-    private Integer salePrice;
+	@Column(name = "sale_price", nullable = false)
+	private Integer salePrice;
 
-    @Column(name = "discount_rate", nullable = false, precision = 5, scale = 2)
-    private BigDecimal discountRate;
+	@Column(name = "discount_rate", nullable = false, precision = 5, scale = 2)
+	private BigDecimal discountRate;
 
-    @Column(name = "description", columnDefinition = "TEXT")
-    private String description;
+	@Column(name = "description", columnDefinition = "TEXT")
+	private String description;
 
-    @Column(name = "image_url", length = 500)
-    private String imageUrl;
+	@Column(name = "image_url", length = 500)
+	private String imageUrl;
 
-    @Column(name = "packaging_type", length = 100)
-    private String packagingType;
+	@Column(name = "packaging_type", length = 100)
+	private String packagingType;
 
-    @Column(name = "sales_unit", length = 100)
-    private String salesUnit;
+	@Column(name = "sales_unit", length = 100)
+	private String salesUnit;
 
-    @Column(name = "volume", length = 100)
-    private String volume;
+	@Column(name = "volume", length = 100)
+	private String volume;
 
-    @Column(name = "allergy_info", columnDefinition = "TEXT")
-    private String allergyInfo;
+	@Column(name = "allergy_info", columnDefinition = "TEXT")
+	private String allergyInfo;
 
-    @Column(name = "badge_text", length = 100)
-    private String badgeText;
+	@Column(name = "badge_text", length = 100)
+	private String badgeText;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "sale_status", nullable = false, length = 30)
-    private SaleStatus saleStatus;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "sale_status", nullable = false, length = 30)
+	private SaleStatus saleStatus;
 
-    @Column(name = "is_deleted", nullable = false)
-    private Boolean isDeleted = false;
+	@Column(name = "is_deleted", nullable = false)
+	private Boolean isDeleted = false;
 }
