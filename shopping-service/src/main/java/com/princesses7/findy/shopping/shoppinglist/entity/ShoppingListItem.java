@@ -7,12 +7,9 @@ import java.time.LocalDateTime;
 import com.princesses7.findy.shopping.cart.entity.CartItem;
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
-import com.princesses7.findy.shopping.shoppinglist.type.EntryType;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -52,17 +49,12 @@ public class ShoppingListItem extends BaseTimeEntity {
 	@Column(name = "scanned_at")
 	private LocalDateTime scannedAt;
 
-	@Enumerated(EnumType.STRING)
-	@Column(name = "entry_type", nullable = false)
-	private EntryType entryType;
-
 	private ShoppingListItem(
 		ShoppingList shoppingList,
 		Long productId,
 		CartItem cartItem,
 		int quantity,
-		LocalDateTime scannedAt,
-		EntryType entryType
+		LocalDateTime scannedAt
 	) {
 		validateQuantity(quantity);
 		this.shoppingList = shoppingList;
@@ -70,7 +62,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 		this.cartItem = cartItem;
 		this.quantity = quantity;
 		this.scannedAt = scannedAt;
-		this.entryType = entryType;
 	}
 
 	public static ShoppingListItem createFromCartItem(
@@ -82,12 +73,11 @@ public class ShoppingListItem extends BaseTimeEntity {
 			cartItem.getProductId(),
 			cartItem,
 			cartItem.getQuantity(),
-			null,
-			EntryType.CART
+			null
 		);
 	}
 
-	public static ShoppingListItem createDuringShoppingItem(
+	public static ShoppingListItem createUnscannedItem(
 		ShoppingList shoppingList,
 		Long productId,
 		int quantity
@@ -97,12 +87,11 @@ public class ShoppingListItem extends BaseTimeEntity {
 			productId,
 			null,
 			quantity,
-			null,
-			EntryType.DURING_SHOPPING
+			null
 		);
 	}
 
-	public static ShoppingListItem createBarcodeScannedItem(
+	public static ShoppingListItem createScannedItem(
 		ShoppingList shoppingList,
 		Long productId,
 		int quantity
@@ -112,13 +101,13 @@ public class ShoppingListItem extends BaseTimeEntity {
 			productId,
 			null,
 			quantity,
-			LocalDateTime.now(),
-			EntryType.BARCODE_SCAN
+			LocalDateTime.now()
 		);
 	}
 
 	public boolean hasSameId(Long shoppingListItemId) {
-		return this.shoppingListItemId != null && this.shoppingListItemId.equals(shoppingListItemId);
+		return this.shoppingListItemId != null
+			&& this.shoppingListItemId.equals(shoppingListItemId);
 	}
 
 	public boolean hasSameProduct(Long productId) {
@@ -127,18 +116,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 
 	public boolean isScanned() {
 		return this.scannedAt != null;
-	}
-
-	public boolean isFromCart() {
-		return this.entryType == EntryType.CART;
-	}
-
-	public boolean isAddedDuringShopping() {
-		return this.entryType == EntryType.DURING_SHOPPING;
-	}
-
-	public boolean isAddedByBarcodeScan() {
-		return this.entryType == EntryType.BARCODE_SCAN;
 	}
 
 	public void completeScan() {
@@ -152,11 +129,13 @@ public class ShoppingListItem extends BaseTimeEntity {
 	public void increaseQuantity(int quantity) {
 		validateQuantity(quantity);
 		this.quantity += quantity;
+		this.scannedAt = null;
 	}
 
 	public void changeQuantity(int quantity) {
 		validateQuantity(quantity);
 		this.quantity = quantity;
+		this.scannedAt = null;
 	}
 
 	private void validateQuantity(int quantity) {
