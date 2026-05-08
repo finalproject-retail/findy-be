@@ -7,16 +7,18 @@ public record ApiResponse<T>(
         boolean success,
         String code,
         String message,
-        T data) {
+        T data
+) {
     private static final String SUCCESS_CODE = "SUCCESS";
-    private static final String SUCCESS_MESSAGE = "?붿껌???깃났?곸쑝濡?泥섎━?섏뿀?듬땲??";
+    private static final String SUCCESS_MESSAGE = "요청이 성공적으로 처리되었습니다.";
 
     public static <T> ApiResponse<T> ok(T data) {
         return new ApiResponse<>(
                 true,
                 SUCCESS_CODE,
                 SUCCESS_MESSAGE,
-                data);
+                data
+        );
     }
 
     public static ApiResponse<Void> ok() {
@@ -24,7 +26,8 @@ public record ApiResponse<T>(
                 true,
                 SUCCESS_CODE,
                 SUCCESS_MESSAGE,
-                null);
+                null
+        );
     }
 
     public static <T> ApiResponse<T> ok(String message, T data) {
@@ -32,7 +35,8 @@ public record ApiResponse<T>(
                 true,
                 SUCCESS_CODE,
                 message,
-                data);
+                data
+        );
     }
 
     public static ApiResponse<Void> ok(String message) {
@@ -40,7 +44,8 @@ public record ApiResponse<T>(
                 true,
                 SUCCESS_CODE,
                 message,
-                null);
+                null
+        );
     }
 
     public static ApiResponse<Void> fail(String code, String message) {
@@ -48,6 +53,7 @@ public record ApiResponse<T>(
                 false,
                 code,
                 message,
-                null);
+                null
+        );
     }
 }
