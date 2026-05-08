@@ -1,13 +1,16 @@
 package com.princesses7.findy.product.domain.product.service;
 
 import java.util.Set;
+
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import com.princesses7.findy.product.domain.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.product.domain.product.dto.response.ProductResponse;
 import com.princesses7.findy.product.domain.product.entity.Product;
@@ -19,67 +22,71 @@ import com.princesses7.findy.product.global.exception.ErrorCode;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class ProductService {
-    private static final int MAX_PAGE_SIZE = 100;
 
-    private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
-            "productId",
-            "productName",
-            "originalPrice",
-            "salePrice",
-            "discountRate",
-            "createdAt");
+	private static final int MAX_PAGE_SIZE = 100;
 
-    private final ProductRepository productRepository;
+	private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
+			"productId",
+			"productName",
+			"originalPrice",
+			"salePrice",
+			"discountRate",
+			"createdAt"
+	);
 
-    public ProductPageResponse getProducts(
-            Long categoryId,
-            int page,
-            int size,
-            String sortBy,
-            String direction) {
-        validatePageRequest(page, size);
+	private final ProductRepository productRepository;
 
-        Sort sort = createSort(sortBy, direction);
-        Pageable pageable = PageRequest.of(page, size, sort);
+	public ProductPageResponse getProducts(
+			Long categoryId,
+			int page,
+			int size,
+			String sortBy,
+			String direction
+	) {
+		validatePageRequest(page, size);
 
-        Page<Product> products = categoryId == null
-                ? productRepository.findByIsDeletedFalse(pageable)
-                : productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
+		Sort sort = createSort(sortBy, direction);
+		Pageable pageable = PageRequest.of(page, size, sort);
 
-        Page<ProductResponse> responsePage = products.map(ProductResponse::from);
+		Page<Product> products = categoryId == null
+				? productRepository.findByIsDeletedFalse(pageable)
+				: productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
 
-        return ProductPageResponse.from(responsePage);
-    }
+		Page<ProductResponse> responsePage = products.map(ProductResponse::from);
 
-    private void validatePageRequest(int page, int size) {
-        if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
-            throw new BaseException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-    }
+		return ProductPageResponse.from(responsePage);
+	}
 
-    private Sort createSort(String sortBy, String direction) {
-        String sortProperty = sortBy == null || sortBy.isBlank()
-                ? "productId"
-                : sortBy;
+	private void validatePageRequest(int page, int size) {
+		if (page < 0 || size < 1 || size > MAX_PAGE_SIZE) {
+			throw new BaseException(ErrorCode.INVALID_INPUT_VALUE);
+		}
+	}
 
-        if (!ALLOWED_SORT_PROPERTIES.contains(sortProperty)) {
-            throw new BaseException(ErrorCode.INVALID_SORT_TYPE);
-        }
+	private Sort createSort(String sortBy, String direction) {
+		// 인기순 정렬은 Redis 랭킹 데이터 연동 시 별도 구현 예정
+		String sortProperty = sortBy == null || sortBy.isBlank()
+				? "createdAt"
+				: sortBy;
 
-        Sort.Direction sortDirection = parseDirection(direction);
+		if (!ALLOWED_SORT_PROPERTIES.contains(sortProperty)) {
+			throw new BaseException(ErrorCode.INVALID_SORT_TYPE);
+		}
 
-        return Sort.by(sortDirection, sortProperty);
-    }
+		Sort.Direction sortDirection = parseDirection(direction);
 
-    private Sort.Direction parseDirection(String direction) {
-        if (direction == null || direction.isBlank() || "asc".equalsIgnoreCase(direction)) {
-            return Sort.Direction.ASC;
-        }
+		return Sort.by(sortDirection, sortProperty);
+	}
 
-        if ("desc".equalsIgnoreCase(direction)) {
-            return Sort.Direction.DESC;
-        }
+	private Sort.Direction parseDirection(String direction) {
+		if (direction == null || direction.isBlank() || "asc".equalsIgnoreCase(direction)) {
+			return Sort.Direction.ASC;
+		}
 
-        throw new BaseException(ErrorCode.INVALID_SORT_TYPE);
-    }
+		if ("desc".equalsIgnoreCase(direction)) {
+			return Sort.Direction.DESC;
+		}
+
+		throw new BaseException(ErrorCode.INVALID_SORT_TYPE);
+	}
 }
