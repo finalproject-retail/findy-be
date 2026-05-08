@@ -18,7 +18,9 @@ bin/
 !**/src/test/**/bin/
 
 ### IntelliJ IDEA ###
-.idea
+.idea/*
+!.idea/codeStyles/
+!.idea/codeStyles/*.xml
 *.iws
 *.iml
 *.ipr
@@ -35,3 +37,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Environment ###
+.env
