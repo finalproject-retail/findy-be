@@ -19,7 +19,9 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 public class JwtProvider {
     private final Key key;
@@ -52,6 +54,11 @@ public class JwtProvider {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
         } catch (Exception e) {
+            log.debug(
+                    "JWT validation failed: type={}, message={}",
+                    e.getClass().getSimpleName(),
+                    e.getMessage()
+            );
             return false;
         }
     }
