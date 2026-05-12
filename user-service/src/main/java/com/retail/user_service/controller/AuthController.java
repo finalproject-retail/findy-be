@@ -1,5 +1,6 @@
 package com.retail.user_service.controller;
 
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -19,7 +20,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ApiResponse<TokenResponseDTO> login(@RequestBody LoginRequestDTO request) {
+    public ApiResponse<TokenResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
         TokenResponseDTO response = authService.login(request);
         return ApiResponse.ok(response);
     }
