@@ -14,6 +14,7 @@ import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListExcepti
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -39,7 +40,7 @@ public class ShoppingList extends BaseTimeEntity {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "cart_id", nullable = false, unique = true)
 	private Cart cart;
 
