@@ -8,6 +8,8 @@ import com.retail.user_service.entity.Grade;
 import com.retail.user_service.entity.Role;
 import com.retail.user_service.entity.UserEntity;
 import com.retail.user_service.entity.UserGradeEntity;
+import com.retail.user_service.global.exception.BaseException;
+import com.retail.user_service.global.exception.ErrorCode;
 import com.retail.user_service.repository.UserGradeRepository;
 import com.retail.user_service.repository.UserRepository;
 
@@ -25,12 +27,14 @@ public class UserService {
     public void signup(SignupRequestDTO request) {
         // 1. 중복 체크
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
-            throw new RuntimeException("이미 존재하는 이메일입니다.");
+            throw new BaseException(ErrorCode.INVALID_REQUEST, "이미 존재하는 이메일입니다.");
         }
 
         // 2. 기본 등급(BRONZE) 엔티티 조회
         UserGradeEntity defaultGrade = userGradeRepository.findByGradeName(Grade.BRONZE)
-                .orElseThrow(() -> new RuntimeException("기본 등급 데이터를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BaseException(
+                        ErrorCode.INTERNAL_SERVER_ERROR,
+                        "기본 등급 데이터를 찾을 수 없습니다."));
 
         // 3. 회원 저장
         UserEntity user = UserEntity.builder()
