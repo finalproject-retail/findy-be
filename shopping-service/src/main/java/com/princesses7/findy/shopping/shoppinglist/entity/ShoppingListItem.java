@@ -120,7 +120,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 
 	public void completeScan() {
 		if (isScanned()) {
-			throw new ShoppingListException(ALREADY_SCANNED_ITEM);
+			return;
 		}
 
 		this.scannedAt = LocalDateTime.now();
@@ -142,5 +142,16 @@ public class ShoppingListItem extends BaseTimeEntity {
 		if (quantity < 1) {
 			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
 		}
+	}
+
+	public void scanOrIncreaseQuantity(int quantity) {
+		validateQuantity(quantity);
+
+		if (isScanned()) {
+			this.quantity += quantity;
+			return;
+		}
+
+		this.scannedAt = LocalDateTime.now();
 	}
 }

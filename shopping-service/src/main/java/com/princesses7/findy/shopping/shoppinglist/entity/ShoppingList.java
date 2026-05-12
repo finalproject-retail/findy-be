@@ -92,7 +92,7 @@ public class ShoppingList extends BaseTimeEntity {
 
 		findItemByProductId(productId)
 			.ifPresentOrElse(
-				ShoppingListItem::completeScan,
+				item -> item.scanOrIncreaseQuantity(quantity),
 				() -> shoppingListItems.add(
 					ShoppingListItem.createScannedItem(this, productId, quantity)
 				)
