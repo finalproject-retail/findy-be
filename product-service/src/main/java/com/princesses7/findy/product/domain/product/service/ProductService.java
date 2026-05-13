@@ -17,6 +17,7 @@ import com.princesses7.findy.product.domain.product.entity.Product;
 import com.princesses7.findy.product.domain.product.repository.ProductRepository;
 import com.princesses7.findy.product.global.exception.BaseException;
 import com.princesses7.findy.product.global.exception.ErrorCode;
+import com.princesses7.findy.product.domain.product.dto.response.ProductDetailResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -64,7 +65,7 @@ public class ProductService {
 	}
 
 	private Sort createSort(String sortBy, String direction) {
-		// 인기순 정렬은 Redis 랭킹 데이터 연동 시 별도 구현 예정
+		// ?멸린???뺣젹? Redis ??궧 ?곗씠???곕룞 ??蹂꾨룄 援ы쁽 ?덉젙
 		String sortProperty = sortBy == null || sortBy.isBlank()
 				? "createdAt"
 				: sortBy;
@@ -89,4 +90,11 @@ public class ProductService {
 
 		throw new BaseException(ErrorCode.INVALID_SORT_TYPE);
 	}
-}
+
+    public ProductDetailResponse getProductDetail(Long productId) {
+        Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new BaseException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        return ProductDetailResponse.from(product);
+    }}
+
