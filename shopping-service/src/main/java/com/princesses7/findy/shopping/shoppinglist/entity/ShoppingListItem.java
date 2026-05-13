@@ -86,7 +86,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 		);
 	}
 
-	public static ShoppingListItem createUnscannedItem(
+	public static ShoppingListItem createFromSearch(
 		ShoppingList shoppingList,
 		Long productId,
 		int quantity
@@ -101,7 +101,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 		);
 	}
 
-	public static ShoppingListItem createScannedItem(
+	public static ShoppingListItem createFromScan(
 		ShoppingList shoppingList,
 		Long productId,
 		int quantity
