@@ -40,10 +40,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 	@Column(name = "product_id", nullable = false)
 	private Long productId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "cart_item_id")
-	private CartItem cartItem;
-
 	@Column(name = "quantity", nullable = false)
 	private int quantity;
 
@@ -56,7 +52,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 	private ShoppingListItem(
 		ShoppingList shoppingList,
 		Long productId,
-		CartItem cartItem,
 		int quantity,
 		int scannedQuantity,
 		LocalDateTime scannedAt
@@ -66,7 +61,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 
 		this.shoppingList = shoppingList;
 		this.productId = productId;
-		this.cartItem = cartItem;
 		this.quantity = quantity;
 		this.scannedQuantity = scannedQuantity;
 		this.scannedAt = scannedAt;
@@ -79,7 +73,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return new ShoppingListItem(
 			shoppingList,
 			cartItem.getProductId(),
-			cartItem,
 			cartItem.getQuantity(),
 			0,
 			null
@@ -94,7 +87,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return new ShoppingListItem(
 			shoppingList,
 			productId,
-			null,
 			quantity,
 			0,
 			null
@@ -109,7 +101,6 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return new ShoppingListItem(
 			shoppingList,
 			productId,
-			null,
 			quantity,
 			quantity,
 			LocalDateTime.now()
@@ -144,20 +135,13 @@ public class ShoppingListItem extends BaseTimeEntity {
 	public void completeScan() {
 		if (scannedQuantity < quantity) {
 			this.scannedQuantity++;
-
-			if (scannedQuantity == quantity) {
-				this.scannedAt = LocalDateTime.now();
-			}
-
+			updateScannedAt();
 			return;
 		}
 
 		this.quantity++;
 		this.scannedQuantity++;
-
-		if (this.scannedAt == null) {
-			this.scannedAt = LocalDateTime.now();
-		}
+		updateScannedAt();
 	}
 
 	public void scanOrIncreaseQuantity(int quantity) {
@@ -170,10 +154,9 @@ public class ShoppingListItem extends BaseTimeEntity {
 
 	public void increaseQuantity(int quantity) {
 		validateQuantity(quantity);
+
 		this.quantity += quantity;
-		if (scannedQuantity < this.quantity) {
-			this.scannedAt = null;
-		}
+		updateScannedAt();
 	}
 
 	public void changeQuantity(int quantity) {
