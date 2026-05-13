@@ -1,7 +1,5 @@
 package com.princesses7.findy.shopping.shoppinglist.controller;
 
-import java.util.List;
-
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,7 +17,6 @@ import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListIt
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ScanShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListResponse;
-import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListSummaryResponse;
 import com.princesses7.findy.shopping.shoppinglist.service.ShoppingListService;
 
 import jakarta.validation.Valid;
@@ -44,53 +41,40 @@ public class ShoppingListController {
 	}
 
 	@GetMapping
-	public ApiResponse<List<ShoppingListSummaryResponse>> getShoppingLists(
+	public ApiResponse<ShoppingListResponse> getShoppingList(
 		@RequestHeader("X-User-Id") Long userId
 	) {
 		return ApiResponse.ok(
-			shoppingListService.getShoppingLists(userId)
+			shoppingListService.getShoppingList(userId)
 		);
 	}
 
-	@GetMapping("/{shoppingListId}")
-	public ApiResponse<ShoppingListResponse> getShoppingList(
-		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long shoppingListId
-	) {
-		return ApiResponse.ok(
-			shoppingListService.getShoppingList(userId, shoppingListId)
-		);
-	}
-
-	@PostMapping("/{shoppingListId}/items")
+	@PostMapping("/items")
 	@ResponseStatus(HttpStatus.CREATED)
 	public ApiResponse<ShoppingListResponse> addShoppingListItem(
 		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long shoppingListId,
 		@Valid @RequestBody AddShoppingListItemRequest request
 	) {
 		return ApiResponse.ok(
 			"쇼핑리스트에 상품이 추가되었습니다.",
-			shoppingListService.addShoppingListItem(userId, shoppingListId, request)
+			shoppingListService.addShoppingListItem(userId, request)
 		);
 	}
 
-	@PostMapping("/{shoppingListId}/scan")
+	@PostMapping("/scan")
 	public ApiResponse<ShoppingListResponse> scanShoppingListItem(
 		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long shoppingListId,
 		@Valid @RequestBody ScanShoppingListItemRequest request
 	) {
 		return ApiResponse.ok(
 			"상품 스캔이 반영되었습니다.",
-			shoppingListService.scanShoppingListItem(userId, shoppingListId, request)
+			shoppingListService.scanShoppingListItem(userId, request)
 		);
 	}
 
-	@PatchMapping("/{shoppingListId}/items/{shoppingListItemId}/quantity")
+	@PatchMapping("/items/{shoppingListItemId}/quantity")
 	public ApiResponse<ShoppingListResponse> changeShoppingListItemQuantity(
 		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long shoppingListId,
 		@PathVariable Long shoppingListItemId,
 		@Valid @RequestBody ChangeShoppingListItemQuantityRequest request
 	) {
@@ -98,22 +82,20 @@ public class ShoppingListController {
 			"쇼핑리스트 상품 수량이 변경되었습니다.",
 			shoppingListService.changeShoppingListItemQuantity(
 				userId,
-				shoppingListId,
 				shoppingListItemId,
 				request
 			)
 		);
 	}
 
-	@DeleteMapping("/{shoppingListId}/items/{shoppingListItemId}")
+	@DeleteMapping("/items/{shoppingListItemId}")
 	public ApiResponse<ShoppingListResponse> removeShoppingListItem(
 		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long shoppingListId,
 		@PathVariable Long shoppingListItemId
 	) {
 		return ApiResponse.ok(
 			"쇼핑리스트 상품이 삭제되었습니다.",
-			shoppingListService.removeShoppingListItem(userId, shoppingListId, shoppingListItemId)
+			shoppingListService.removeShoppingListItem(userId, shoppingListItemId)
 		);
 	}
 }

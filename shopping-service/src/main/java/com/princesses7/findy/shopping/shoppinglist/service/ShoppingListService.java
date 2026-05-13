@@ -2,8 +2,6 @@ package com.princesses7.findy.shopping.shoppinglist.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
-import java.util.List;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +12,6 @@ import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListIt
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ScanShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListResponse;
-import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListSummaryResponse;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 import com.princesses7.findy.shopping.shoppinglist.repository.ShoppingListRepository;
@@ -39,14 +36,8 @@ public class ShoppingListService {
 		return ShoppingListResponse.from(savedShoppingList);
 	}
 
-	public List<ShoppingListSummaryResponse> getShoppingLists(Long userId) {
-		return shoppingListRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
-			.map(ShoppingListSummaryResponse::from)
-			.toList();
-	}
-
-	public ShoppingListResponse getShoppingList(Long userId, Long shoppingListId) {
-		ShoppingList shoppingList = getShoppingListByIdAndUserId(userId, shoppingListId);
+	public ShoppingListResponse getShoppingList(Long userId) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		return ShoppingListResponse.from(shoppingList);
 	}
@@ -54,10 +45,9 @@ public class ShoppingListService {
 	@Transactional
 	public ShoppingListResponse addShoppingListItem(
 		Long userId,
-		Long shoppingListId,
 		AddShoppingListItemRequest request
 	) {
-		ShoppingList shoppingList = getShoppingListByIdAndUserId(userId, shoppingListId);
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		// TODO: Product Service 연동 후 상품 존재 여부, 품절 여부 검증 추가
 		shoppingList.addUnscannedItem(
@@ -71,14 +61,16 @@ public class ShoppingListService {
 	@Transactional
 	public ShoppingListResponse scanShoppingListItem(
 		Long userId,
-		Long shoppingListId,
 		ScanShoppingListItemRequest request
 	) {
-		ShoppingList shoppingList = getShoppingListByIdAndUserId(userId, shoppingListId);
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		// TODO: Product Service 연동 후 barcode -> productId 매칭으로 변경
 		// 현재는 productId 기준으로 먼저 구현
-		shoppingList.addScannedItem(request.productId(), request.quantityOrDefault());
+		shoppingList.addScannedItem(
+			request.productId(),
+			request.quantityOrDefault()
+		);
 
 		return ShoppingListResponse.from(shoppingList);
 	}
@@ -86,11 +78,10 @@ public class ShoppingListService {
 	@Transactional
 	public ShoppingListResponse changeShoppingListItemQuantity(
 		Long userId,
-		Long shoppingListId,
 		Long shoppingListItemId,
 		ChangeShoppingListItemQuantityRequest request
 	) {
-		ShoppingList shoppingList = getShoppingListByIdAndUserId(userId, shoppingListId);
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		shoppingList.getShoppingListItems().stream()
 			.filter(item -> item.hasSameId(shoppingListItemId))
@@ -104,10 +95,9 @@ public class ShoppingListService {
 	@Transactional
 	public ShoppingListResponse removeShoppingListItem(
 		Long userId,
-		Long shoppingListId,
 		Long shoppingListItemId
 	) {
-		ShoppingList shoppingList = getShoppingListByIdAndUserId(userId, shoppingListId);
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		shoppingList.removeItem(shoppingListItemId);
 
@@ -119,8 +109,8 @@ public class ShoppingListService {
 			.orElseThrow(() -> new CartException(CART_NOT_FOUND));
 	}
 
-	private ShoppingList getShoppingListByIdAndUserId(Long userId, Long shoppingListId) {
-		return shoppingListRepository.findByShoppingListIdAndUserId(shoppingListId, userId)
+	private ShoppingList getShoppingListByUserId(Long userId) {
+		return shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
 	}
 }
