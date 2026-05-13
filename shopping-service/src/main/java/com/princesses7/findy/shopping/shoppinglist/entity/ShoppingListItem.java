@@ -103,6 +103,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 			productId,
 			quantity,
 			quantity,
+			quantity,
 			LocalDateTime.now()
 		);
 	}
