@@ -98,11 +98,10 @@ public class ShoppingListService {
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
-		shoppingList.getShoppingListItems().stream()
-			.filter(item -> item.hasSameId(shoppingListItemId))
-			.findFirst()
-			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_ITEM_NOT_FOUND))
-			.changeQuantity(request.quantity());
+		shoppingList.changeItemQuantity(
+			shoppingListItemId,
+			request.quantity()
+		);
 
 		return ShoppingListResponse.from(shoppingList);
 	}

@@ -116,6 +116,10 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return this.productId.equals(productId);
 	}
 
+	public boolean hasQuantity(int quantity) {
+		return this.quantity == quantity;
+	}
+
 	public boolean isScanned() {
 		return getScanStatus() == ScanStatus.SCANNED;
 	}

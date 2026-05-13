@@ -105,6 +105,12 @@ public class ShoppingList extends BaseTimeEntity {
 		item.completeScan();
 	}
 
+	public void changeItemQuantity(Long shoppingListItemId, int quantity) {
+		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
+
+		item.changeQuantity(quantity);
+	}
+
 	public void decreaseQuantityByScan(Long productId, int quantity) {
 		validateQuantity(quantity);
 
