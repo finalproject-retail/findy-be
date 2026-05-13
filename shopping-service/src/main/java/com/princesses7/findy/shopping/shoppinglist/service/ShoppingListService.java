@@ -113,4 +113,19 @@ public class ShoppingListService {
 		return shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
 	}
+
+	@Transactional
+	public ShoppingListResponse cancelScanShoppingListItem(
+		Long userId,
+		ScanShoppingListItemRequest request
+	) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		shoppingList.cancelScan(
+			request.productId(),
+			request.quantityOrDefault()
+		);
+
+		return ShoppingListResponse.from(shoppingList);
+	}
 }

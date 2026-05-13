@@ -98,4 +98,15 @@ public class ShoppingListController {
 			shoppingListService.removeShoppingListItem(userId, shoppingListItemId)
 		);
 	}
+
+	@PostMapping("/scan-cancel")
+	public ApiResponse<ShoppingListResponse> cancelScanShoppingListItem(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody ScanShoppingListItemRequest request
+	) {
+		return ApiResponse.ok(
+			"상품 스캔이 취소되었습니다.",
+			shoppingListService.cancelScanShoppingListItem(userId, request)
+		);
+	}
 }
