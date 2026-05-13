@@ -50,7 +50,7 @@ public class ShoppingListService {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		// TODO: Product Service 연동 후 상품 존재 여부, 품절 여부 검증 추가
-		shoppingList.addUnscannedItem(
+		shoppingList.addSearchedItem(
 			request.productId(),
 			request.quantityOrDefault()
 		);

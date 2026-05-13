@@ -76,14 +76,14 @@ public class ShoppingList extends BaseTimeEntity {
 		return shoppingList;
 	}
 
-	public void addUnscannedItem(Long productId, int quantity) {
+	public void addSearchedItem(Long productId, int quantity) {
 		validateQuantity(quantity);
 
 		findItemByProductId(productId)
 			.ifPresentOrElse(
 				item -> item.increaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createUnscannedItem(this, productId, quantity)
+					ShoppingListItem.createFromSearch(this, productId, quantity)
 				)
 			);
 	}
@@ -95,7 +95,7 @@ public class ShoppingList extends BaseTimeEntity {
 			.ifPresentOrElse(
 				item -> item.scanOrIncreaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createScannedItem(this, productId, quantity)
+					ShoppingListItem.createFromScan(this, productId, quantity)
 				)
 			);
 	}
@@ -111,18 +111,15 @@ public class ShoppingList extends BaseTimeEntity {
 	}
 
 	public int getTotalItemCount() {
-		return shoppingListItems.size();
+		return shoppingListItems.stream()
+			.mapToInt(ShoppingListItem::getQuantity)
+			.sum();
 	}
 
 	public long getScannedItemCount() {
 		return shoppingListItems.stream()
-			.filter(ShoppingListItem::isScanned)
-			.count();
-	}
-
-	public boolean hasScannedItem() {
-		return shoppingListItems.stream()
-			.anyMatch(ShoppingListItem::isScanned);
+			.mapToInt(ShoppingListItem::getScannedQuantity)
+			.sum();
 	}
 
 	private Optional<ShoppingListItem> findItemByProductId(Long productId) {
