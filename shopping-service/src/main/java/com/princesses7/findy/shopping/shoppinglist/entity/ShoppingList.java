@@ -105,6 +105,19 @@ public class ShoppingList extends BaseTimeEntity {
 		item.completeScan();
 	}
 
+	public void decreaseQuantityByScan(Long productId, int quantity) {
+		validateQuantity(quantity);
+
+		ShoppingListItem item = getItemByProductId(productId);
+
+		if (item.hasQuantity(quantity)) {
+			shoppingListItems.remove(item);
+			return;
+		}
+
+		item.decreaseQuantityByScan(quantity);
+	}
+
 	public void removeItem(Long shoppingListItemId) {
 		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
 		shoppingListItems.remove(item);
@@ -144,12 +157,5 @@ public class ShoppingList extends BaseTimeEntity {
 		if (quantity < 1) {
 			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
 		}
-	}
-
-	public void cancelScan(Long productId, int quantity) {
-		validateQuantity(quantity);
-
-		ShoppingListItem item = getItemByProductId(productId);
-		item.cancelScan(quantity);
 	}
 }

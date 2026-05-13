@@ -72,6 +72,17 @@ public class ShoppingListController {
 		);
 	}
 
+	@PostMapping("/scan/decrease")
+	public ApiResponse<ShoppingListResponse> decreaseShoppingListItemQuantityByScan(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody ScanShoppingListItemRequest request
+	) {
+		return ApiResponse.ok(
+			"스캔 상품 수량이 감소되었습니다.",
+			shoppingListService.decreaseShoppingListItemQuantityByScan(userId, request)
+		);
+	}
+
 	@PatchMapping("/items/{shoppingListItemId}/quantity")
 	public ApiResponse<ShoppingListResponse> changeShoppingListItemQuantity(
 		@RequestHeader("X-User-Id") Long userId,
@@ -96,17 +107,6 @@ public class ShoppingListController {
 		return ApiResponse.ok(
 			"쇼핑리스트 상품이 삭제되었습니다.",
 			shoppingListService.removeShoppingListItem(userId, shoppingListItemId)
-		);
-	}
-
-	@PostMapping("/scan-cancel")
-	public ApiResponse<ShoppingListResponse> cancelScanShoppingListItem(
-		@RequestHeader("X-User-Id") Long userId,
-		@Valid @RequestBody ScanShoppingListItemRequest request
-	) {
-		return ApiResponse.ok(
-			"상품 스캔이 취소되었습니다.",
-			shoppingListService.cancelScanShoppingListItem(userId, request)
 		);
 	}
 }

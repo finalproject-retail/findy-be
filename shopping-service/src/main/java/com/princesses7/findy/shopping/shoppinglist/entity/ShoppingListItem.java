@@ -170,7 +170,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 		updateScannedAt();
 	}
 
-	public void cancelScan(int quantity) {
+	public void decreaseQuantityByScan(int quantity) {
 		validateQuantity(quantity);
 
 		if (quantity > this.scannedQuantity) {
