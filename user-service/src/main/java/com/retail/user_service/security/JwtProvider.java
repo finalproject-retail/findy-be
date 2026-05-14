@@ -16,6 +16,7 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
@@ -50,10 +51,15 @@ public class JwtProvider {
 
     // 2. 토큰 유효성 검사 (Gateway 또는 내부 서비스 필터에서 사용)
     public boolean validateToken(String token) {
+        if (token == null || token.isBlank()) {
+            log.debug("JWT validation failed");
+            return false;
+        }
+
         try {
             Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token);
             return true;
-        } catch (Exception e) {
+        } catch (JwtException | IllegalArgumentException e) {
             log.debug(
                     "JWT validation failed: type={}, message={}",
                     e.getClass().getSimpleName(),
