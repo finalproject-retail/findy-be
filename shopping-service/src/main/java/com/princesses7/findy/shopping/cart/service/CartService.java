@@ -27,11 +27,9 @@ public class CartService {
 		Cart cart = getOrCreateCart(userId);
 
 		// TODO: Product Service 연동 후 상품 존재 여부, 품절 여부, 재고 수량 검증 추가
-		cart.addItem(request.productId(), request.quantity());
+		cart.addItem(request.productId(), request.quantityOrDefault());
 
-		Cart savedCart = cartRepository.saveAndFlush(cart);
-
-		return CartResponse.from(savedCart);
+		return CartResponse.from(cart);
 	}
 
 	public CartResponse getCart(Long userId) {
@@ -46,9 +44,7 @@ public class CartService {
 
 		cart.removeItem(cartItemId);
 
-		Cart savedCart = cartRepository.saveAndFlush(cart);
-
-		return CartResponse.from(savedCart);
+		return CartResponse.from(cart);
 	}
 
 	@Transactional
@@ -62,9 +58,7 @@ public class CartService {
 		// TODO: Product Service 연동 후 재고 수량 초과 여부 검증 추가
 		cart.changeItemQuantity(cartItemId, request.quantity());
 
-		Cart savedCart = cartRepository.saveAndFlush(cart);
-
-		return CartResponse.from(savedCart);
+		return CartResponse.from(cart);
 	}
 
 	@Transactional
@@ -77,9 +71,7 @@ public class CartService {
 
 		cart.changeItemChecked(cartItemId, request.checked());
 
-		Cart savedCart = cartRepository.saveAndFlush(cart);
-
-		return CartResponse.from(savedCart);
+		return CartResponse.from(cart);
 	}
 
 	private Cart getOrCreateCart(Long userId) {
