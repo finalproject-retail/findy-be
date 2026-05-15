@@ -9,9 +9,9 @@ import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
 
 public interface ShoppingListRepository extends JpaRepository<ShoppingList, Long> {
 
-	Optional<ShoppingList> findByCartCartId(Long cartId);
+	Optional<ShoppingList> findByUserId(Long userId);
 
-	Optional<ShoppingList> findByCartUserId(Long userId);
+	Optional<ShoppingList> findByCartCartId(Long cartId);
 
 	Optional<ShoppingList> findByShoppingListIdAndUserId(Long shoppingListId, Long userId);
 
