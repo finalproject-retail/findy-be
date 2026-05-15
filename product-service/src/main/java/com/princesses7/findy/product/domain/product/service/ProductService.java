@@ -65,7 +65,7 @@ public class ProductService {
 	}
 
 	private Sort createSort(String sortBy, String direction) {
-		// ?멸린???뺣젹? Redis ??궧 ?곗씠???곕룞 ??蹂꾨룄 援ы쁽 ?덉젙
+		// 인기순 정렬은 Redis 랭킹 데이터 연동 시 별도 구현 예정
 		String sortProperty = sortBy == null || sortBy.isBlank()
 				? "createdAt"
 				: sortBy;
