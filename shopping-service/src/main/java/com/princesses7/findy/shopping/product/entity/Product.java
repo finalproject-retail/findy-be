@@ -40,10 +40,10 @@ public class Product extends BaseTimeEntity {
 	private String barcode;
 
 	@Column(name = "external_source", length = 50)
-	private String externalSource;
+	private String externalSource; // MFDS, NAVER
 
 	@Column(name = "external_product_id", length = 100)
-	private String externalProductId;
+	private String externalProductId; // 품목보고번호 또는 네이버 productId
 
 	@Column(name = "original_price", nullable = false)
 	private Integer originalPrice;
