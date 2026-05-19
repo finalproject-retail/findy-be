@@ -193,4 +193,12 @@ public class Coupon extends BaseTimeEntity {
 			throw new CouponException(INVALID_COUPON_DISCOUNT_VALUE);
 		}
 	}
+
+	public LocalDateTime calculateExpiresAt(LocalDateTime downloadedAt) {
+		if (periodType == PeriodType.RELATIVE) {
+			return downloadedAt.plusDays(daysLimit);
+		}
+
+		return endAt;
+	}
 }

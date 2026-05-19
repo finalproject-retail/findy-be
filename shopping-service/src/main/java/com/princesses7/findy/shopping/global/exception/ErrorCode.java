@@ -64,7 +64,12 @@ public enum ErrorCode {
 	COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_001", "쿠폰을 찾을 수 없습니다."),
 	INVALID_COUPON_PERIOD(HttpStatus.BAD_REQUEST, "COUPON_002", "쿠폰 기간 설정이 올바르지 않습니다."),
 	INVALID_COUPON_DISCOUNT_VALUE(HttpStatus.BAD_REQUEST, "COUPON_003", "쿠폰 할인 값이 올바르지 않습니다."),
-	COUPON_ALREADY_INACTIVE(HttpStatus.BAD_REQUEST, "COUPON_004", "이미 비활성화된 쿠폰입니다.");
+	COUPON_ALREADY_INACTIVE(HttpStatus.BAD_REQUEST, "COUPON_004", "이미 비활성화된 쿠폰입니다."),
+	COUPON_NOT_AVAILABLE(HttpStatus.BAD_REQUEST, "COUPON_005", "현재 사용할 수 없는 쿠폰입니다."),
+	COUPON_ALREADY_DOWNLOADED(HttpStatus.BAD_REQUEST, "COUPON_006", "이미 다운로드한 쿠폰입니다."),
+	USER_COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_007", "보유 쿠폰을 찾을 수 없습니다."),
+	COUPON_ALREADY_USED(HttpStatus.BAD_REQUEST, "COUPON_008", "이미 사용한 쿠폰입니다."),
+	COUPON_EXPIRED(HttpStatus.BAD_REQUEST, "COUPON_009", "만료된 쿠폰입니다.");
 
 	private final HttpStatus status;
 	private final String code;
