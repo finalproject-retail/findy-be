@@ -2,9 +2,8 @@ package com.princesses7.findy.shopping.product.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.util.List;
 import java.util.Set;
-
-import lombok.RequiredArgsConstructor;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -13,12 +12,19 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.external.mfds.MfdsBarcodeClient;
+import com.princesses7.findy.shopping.external.mfds.MfdsProductMapper;
+import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsBarcodeItemResponse;
+import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsBarcodeResponse;
+import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
+
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -36,6 +42,8 @@ public class ProductService {
 		"createdAt"
 	);
 
+	private final MfdsBarcodeClient mfdsBarcodeClient;
+	private final MfdsProductMapper mfdsProductMapper;
 	private final ProductRepository productRepository;
 
 	public ProductPageResponse getProducts(
@@ -97,5 +105,24 @@ public class ProductService {
 		}
 
 		throw new ProductException(INVALID_SORT_TYPE);
+	}
+
+	@Transactional
+	public Long importByBarcode(String barcode) {
+		if (productRepository.existsByBarcodeAndIsDeletedFalse(barcode)) {
+			throw new ProductException(DUPLICATE_BARCODE);
+		}
+
+		MfdsBarcodeResponse response = mfdsBarcodeClient.searchByBarcode(barcode);
+		List<MfdsBarcodeItemResponse> items = response.getItems();
+
+		if (items.isEmpty()) {
+			throw new ProductException(BARCODE_PRODUCT_NOT_FOUND);
+		}
+
+		ProductImportCommand command = mfdsProductMapper.toCommand(items.get(0));
+		Product product = Product.create(command);
+
+		return productRepository.save(product).getProductId();
 	}
 }
