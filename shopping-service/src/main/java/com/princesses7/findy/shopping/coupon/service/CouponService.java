@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
+import com.princesses7.findy.shopping.coupon.dto.request.UpdateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
 import com.princesses7.findy.shopping.coupon.entity.Coupon;
@@ -86,5 +87,32 @@ public class CouponService {
 		}
 
 		return keyword.trim();
+	}
+
+	@Transactional
+	public CouponResponse updateCoupon(Long couponId, UpdateCouponRequest request) {
+		Coupon coupon = getCoupon(couponId);
+
+		coupon.update(
+			request.couponName(),
+			request.couponType(),
+			request.discountType(),
+			request.discountValue(),
+			request.stackableOrDefault(),
+			request.minOrderAmountOrDefault(),
+			request.startAt(),
+			request.endAt(),
+			request.periodType(),
+			request.daysLimit()
+		);
+
+		return CouponResponse.from(coupon);
+	}
+
+	@Transactional
+	public void deactivateCoupon(Long couponId) {
+		Coupon coupon = getCoupon(couponId);
+
+		coupon.deactivate();
 	}
 }
