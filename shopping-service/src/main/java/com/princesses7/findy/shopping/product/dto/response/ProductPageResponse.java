@@ -1,4 +1,4 @@
-package com.princesses7.findy.product.domain.product.dto.response;
+package com.princesses7.findy.shopping.product.dto.response;
 
 import java.util.List;
 import org.springframework.data.domain.Page;

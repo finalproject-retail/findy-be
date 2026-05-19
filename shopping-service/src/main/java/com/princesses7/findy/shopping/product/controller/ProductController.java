@@ -1,4 +1,4 @@
-package com.princesses7.findy.product.domain.product.controller;
+package com.princesses7.findy.shopping.product.controller;
 
 import lombok.RequiredArgsConstructor;
 
@@ -8,10 +8,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.princesses7.findy.product.domain.product.dto.response.ProductDetailResponse;
-import com.princesses7.findy.product.domain.product.dto.response.ProductPageResponse;
-import com.princesses7.findy.product.domain.product.service.ProductService;
-import com.princesses7.findy.product.global.response.ApiResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
+import com.princesses7.findy.shopping.product.service.ProductService;
+import com.princesses7.findy.shopping.global.response.ApiResponse;
 
 @RestController
 @RequiredArgsConstructor

@@ -1,4 +1,4 @@
-package com.princesses7.findy.product.domain.product.service;
+package com.princesses7.findy.shopping.product.service;
 
 import java.util.Set;
 
@@ -11,13 +11,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.princesses7.findy.product.domain.product.dto.response.ProductPageResponse;
-import com.princesses7.findy.product.domain.product.dto.response.ProductResponse;
-import com.princesses7.findy.product.domain.product.entity.Product;
-import com.princesses7.findy.product.domain.product.repository.ProductRepository;
-import com.princesses7.findy.product.global.exception.BaseException;
-import com.princesses7.findy.product.global.exception.ErrorCode;
-import com.princesses7.findy.product.domain.product.dto.response.ProductDetailResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
+import com.princesses7.findy.shopping.product.entity.Product;
+import com.princesses7.findy.shopping.product.repository.ProductRepository;
+import com.princesses7.findy.shopping.global.exception.BaseException;
+import com.princesses7.findy.shopping.global.exception.ErrorCode;
+import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
 
 @Service
 @RequiredArgsConstructor

@@ -1,8 +1,8 @@
-package com.princesses7.findy.product.domain.product.dto.response;
+package com.princesses7.findy.shopping.product.dto.response;
 
 import java.math.BigDecimal;
-import com.princesses7.findy.product.domain.product.entity.Product;
-import com.princesses7.findy.product.domain.product.entity.SaleStatus;
+import com.princesses7.findy.shopping.product.entity.Product;
+import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public record ProductResponse(
 		Long productId,

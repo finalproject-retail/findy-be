@@ -1,4 +1,4 @@
-package com.princesses7.findy.product.domain.product.entity;
+package com.princesses7.findy.shopping.product.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import com.princesses7.findy.product.global.entity.BaseTimeEntity;
+import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 
 @Getter
 @Entity

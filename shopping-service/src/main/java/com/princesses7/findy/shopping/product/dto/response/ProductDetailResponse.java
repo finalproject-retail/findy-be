@@ -1,9 +1,9 @@
-package com.princesses7.findy.product.domain.product.dto.response;
+package com.princesses7.findy.shopping.product.dto.response;
 
 import java.math.BigDecimal;
 
-import com.princesses7.findy.product.domain.product.entity.Product;
-import com.princesses7.findy.product.domain.product.entity.SaleStatus;
+import com.princesses7.findy.shopping.product.entity.Product;
+import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public record ProductDetailResponse(
         Long productId,
@@ -20,10 +20,10 @@ public record ProductDetailResponse(
         String salesUnit,
         String volume,
         String allergyInfo,
-        SaleStatus saleStatus
+        com.princesses7.findy.shopping.product.entity.SaleStatus saleStatus
 ) {
 
-    public static ProductDetailResponse from(Product product) {
+    public static ProductDetailResponse from(com.princesses7.findy.shopping.product.entity.Product product) {
         return new ProductDetailResponse(
                 product.getProductId(),
                 product.getCategoryId(),
