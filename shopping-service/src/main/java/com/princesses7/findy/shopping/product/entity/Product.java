@@ -1,5 +1,9 @@
 package com.princesses7.findy.shopping.product.entity;
 
+import java.math.BigDecimal;
+
+import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -8,11 +12,9 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 
 @Getter
 @Entity
@@ -36,6 +38,12 @@ public class Product extends BaseTimeEntity {
 
 	@Column(name = "barcode", nullable = false, length = 100)
 	private String barcode;
+
+	@Column(name = "external_source", length = 50)
+	private String externalSource;
+
+	@Column(name = "external_product_id", length = 100)
+	private String externalProductId;
 
 	@Column(name = "original_price", nullable = false)
 	private Integer originalPrice;
