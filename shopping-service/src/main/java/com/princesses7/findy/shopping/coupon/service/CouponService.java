@@ -14,8 +14,12 @@ import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.request.UpdateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
+import com.princesses7.findy.shopping.coupon.dto.response.UserCouponResponse;
 import com.princesses7.findy.shopping.coupon.entity.Coupon;
+import com.princesses7.findy.shopping.coupon.entity.UserCoupon;
+import com.princesses7.findy.shopping.coupon.exception.CouponException;
 import com.princesses7.findy.shopping.coupon.repository.CouponRepository;
+import com.princesses7.findy.shopping.coupon.repository.UserCouponRepository;
 import com.princesses7.findy.shopping.global.exception.BaseException;
 
 import lombok.RequiredArgsConstructor;
@@ -26,6 +30,7 @@ import lombok.RequiredArgsConstructor;
 public class CouponService {
 
 	private final CouponRepository couponRepository;
+	private final UserCouponRepository userCouponRepository;
 
 	@Transactional
 	public CouponResponse createCoupon(CreateCouponRequest request) {
@@ -141,5 +146,26 @@ public class CouponService {
 		}
 
 		return CouponResponse.from(coupon);
+	}
+
+	@Transactional
+	public UserCouponResponse downloadCoupon(Long userId, Long couponId) {
+		LocalDateTime now = LocalDateTime.now();
+
+		Coupon coupon = couponRepository.findByCouponIdAndActiveTrue(couponId)
+			.orElseThrow(() -> new CouponException(COUPON_NOT_FOUND));
+
+		if (!coupon.isAvailable(now)) {
+			throw new CouponException(COUPON_NOT_AVAILABLE);
+		}
+
+		if (userCouponRepository.existsByUserIdAndCoupon_CouponId(userId, couponId)) {
+			throw new CouponException(COUPON_ALREADY_DOWNLOADED);
+		}
+
+		UserCoupon userCoupon = UserCoupon.create(userId, coupon, now);
+		UserCoupon savedUserCoupon = userCouponRepository.save(userCoupon);
+
+		return UserCouponResponse.from(savedUserCoupon, now);
 	}
 }
