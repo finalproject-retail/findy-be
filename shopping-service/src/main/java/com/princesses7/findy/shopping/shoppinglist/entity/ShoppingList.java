@@ -14,6 +14,7 @@ import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListExcepti
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -39,7 +40,7 @@ public class ShoppingList extends BaseTimeEntity {
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
-	@OneToOne
+	@OneToOne(fetch = FetchType.LAZY)
 	@JoinColumn(name = "cart_id", nullable = false, unique = true)
 	private Cart cart;
 
@@ -75,14 +76,14 @@ public class ShoppingList extends BaseTimeEntity {
 		return shoppingList;
 	}
 
-	public void addUnscannedItem(Long productId, int quantity) {
+	public void addSearchedItem(Long productId, int quantity) {
 		validateQuantity(quantity);
 
 		findItemByProductId(productId)
 			.ifPresentOrElse(
 				item -> item.increaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createUnscannedItem(this, productId, quantity)
+					ShoppingListItem.createFromSearch(this, productId, quantity)
 				)
 			);
 	}
@@ -92,9 +93,9 @@ public class ShoppingList extends BaseTimeEntity {
 
 		findItemByProductId(productId)
 			.ifPresentOrElse(
-				ShoppingListItem::completeScan,
+				item -> item.scanOrIncreaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createScannedItem(this, productId, quantity)
+					ShoppingListItem.createFromScan(this, productId, quantity)
 				)
 			);
 	}
@@ -104,24 +105,40 @@ public class ShoppingList extends BaseTimeEntity {
 		item.completeScan();
 	}
 
+	public void changeItemQuantity(Long shoppingListItemId, int quantity) {
+		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
+
+		item.changeQuantity(quantity);
+	}
+
+	public void decreaseQuantityByScan(Long productId, int quantity) {
+		validateQuantity(quantity);
+
+		ShoppingListItem item = getItemByProductId(productId);
+
+		if (item.hasQuantity(quantity)) {
+			shoppingListItems.remove(item);
+			return;
+		}
+
+		item.decreaseQuantityByScan(quantity);
+	}
+
 	public void removeItem(Long shoppingListItemId) {
 		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
 		shoppingListItems.remove(item);
 	}
 
 	public int getTotalItemCount() {
-		return shoppingListItems.size();
+		return shoppingListItems.stream()
+			.mapToInt(ShoppingListItem::getQuantity)
+			.sum();
 	}
 
 	public long getScannedItemCount() {
 		return shoppingListItems.stream()
-			.filter(ShoppingListItem::isScanned)
-			.count();
-	}
-
-	public boolean hasScannedItem() {
-		return shoppingListItems.stream()
-			.anyMatch(ShoppingListItem::isScanned);
+			.mapToInt(ShoppingListItem::getScannedQuantity)
+			.sum();
 	}
 
 	private Optional<ShoppingListItem> findItemByProductId(Long productId) {

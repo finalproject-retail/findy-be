@@ -33,7 +33,6 @@ public enum ErrorCode {
 	SHOPPING_LIST_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "SHOPPING_LIST_006", "이미 완료된 쇼핑리스트입니다."),
 	SHOPPING_LIST_ALREADY_CANCELED(HttpStatus.BAD_REQUEST, "SHOPPING_LIST_007", "이미 취소된 쇼핑리스트입니다."),
 	INVALID_SHOPPING_LIST_STATUS(HttpStatus.BAD_REQUEST, "SHOPPING_LIST_008", "쇼핑리스트 상태가 올바르지 않습니다."),
-	DUPLICATE_SHOPPING_LIST_ITEM(HttpStatus.CONFLICT, "SHOPPING_LIST_009", "이미 쇼핑리스트에 담긴 상품입니다."),
 	SHOPPING_LIST_ALREADY_EXISTS(HttpStatus.CONFLICT, "SHOPPING_LIST_010", "이미 생성된 쇼핑리스트가 있습니다."),
 
 	// Scan

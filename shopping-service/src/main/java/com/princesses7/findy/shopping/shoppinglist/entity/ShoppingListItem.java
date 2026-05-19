@@ -7,6 +7,7 @@ import java.time.LocalDateTime;
 import com.princesses7.findy.shopping.cart.entity.CartItem;
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
+import com.princesses7.findy.shopping.shoppinglist.type.ScanStatus;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,12 +40,11 @@ public class ShoppingListItem extends BaseTimeEntity {
 	@Column(name = "product_id", nullable = false)
 	private Long productId;
 
-	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "cart_item_id")
-	private CartItem cartItem;
-
 	@Column(name = "quantity", nullable = false)
 	private int quantity;
+
+	@Column(name = "scanned_quantity", nullable = false)
+	private int scannedQuantity;
 
 	@Column(name = "scanned_at")
 	private LocalDateTime scannedAt;
@@ -52,15 +52,17 @@ public class ShoppingListItem extends BaseTimeEntity {
 	private ShoppingListItem(
 		ShoppingList shoppingList,
 		Long productId,
-		CartItem cartItem,
 		int quantity,
+		int scannedQuantity,
 		LocalDateTime scannedAt
 	) {
 		validateQuantity(quantity);
+		validateScannedQuantity(quantity, scannedQuantity);
+
 		this.shoppingList = shoppingList;
 		this.productId = productId;
-		this.cartItem = cartItem;
 		this.quantity = quantity;
+		this.scannedQuantity = scannedQuantity;
 		this.scannedAt = scannedAt;
 	}
 
@@ -71,13 +73,13 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return new ShoppingListItem(
 			shoppingList,
 			cartItem.getProductId(),
-			cartItem,
 			cartItem.getQuantity(),
+			0,
 			null
 		);
 	}
 
-	public static ShoppingListItem createUnscannedItem(
+	public static ShoppingListItem createFromSearch(
 		ShoppingList shoppingList,
 		Long productId,
 		int quantity
@@ -85,13 +87,13 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return new ShoppingListItem(
 			shoppingList,
 			productId,
-			null,
 			quantity,
+			0,
 			null
 		);
 	}
 
-	public static ShoppingListItem createScannedItem(
+	public static ShoppingListItem createFromScan(
 		ShoppingList shoppingList,
 		Long productId,
 		int quantity
@@ -99,7 +101,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return new ShoppingListItem(
 			shoppingList,
 			productId,
-			null,
+			quantity,
 			quantity,
 			LocalDateTime.now()
 		);
@@ -114,32 +116,98 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return this.productId.equals(productId);
 	}
 
+	public boolean hasQuantity(int quantity) {
+		return this.quantity == quantity;
+	}
+
 	public boolean isScanned() {
-		return this.scannedAt != null;
+		return getScanStatus() == ScanStatus.SCANNED;
+	}
+
+	public ScanStatus getScanStatus() {
+		if (scannedQuantity == 0) {
+			return ScanStatus.NOT_SCANNED;
+		}
+
+		if (scannedQuantity < quantity) {
+			return ScanStatus.PARTIALLY_SCANNED;
+		}
+
+		return ScanStatus.SCANNED;
 	}
 
 	public void completeScan() {
-		if (isScanned()) {
-			throw new ShoppingListException(ALREADY_SCANNED_ITEM);
+		if (scannedQuantity < quantity) {
+			this.scannedQuantity++;
+			updateScannedAt();
+			return;
 		}
 
-		this.scannedAt = LocalDateTime.now();
+		this.quantity++;
+		this.scannedQuantity++;
+		updateScannedAt();
+	}
+
+	public void scanOrIncreaseQuantity(int quantity) {
+		validateQuantity(quantity);
+
+		for (int i = 0; i < quantity; i++) {
+			completeScan();
+		}
 	}
 
 	public void increaseQuantity(int quantity) {
 		validateQuantity(quantity);
+
 		this.quantity += quantity;
-		this.scannedAt = null;
+		updateScannedAt();
 	}
 
 	public void changeQuantity(int quantity) {
 		validateQuantity(quantity);
+
+		if (quantity < this.scannedQuantity) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
+		}
+
 		this.quantity = quantity;
+		updateScannedAt();
+	}
+
+	public void decreaseQuantityByScan(int quantity) {
+		validateQuantity(quantity);
+
+		if (quantity > this.scannedQuantity) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
+		}
+
+		if (this.quantity - quantity < 1) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
+		}
+
+		this.quantity -= quantity;
+		this.scannedQuantity -= quantity;
+
+		updateScannedAt();
+	}
+
+	private void updateScannedAt() {
+		if (this.scannedQuantity == this.quantity) {
+			this.scannedAt = LocalDateTime.now();
+			return;
+		}
+
 		this.scannedAt = null;
 	}
 
 	private void validateQuantity(int quantity) {
 		if (quantity < 1) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
+		}
+	}
+
+	private void validateScannedQuantity(int quantity, int scannedQuantity) {
+		if (scannedQuantity < 0 || scannedQuantity > quantity) {
 			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
 		}
 	}
