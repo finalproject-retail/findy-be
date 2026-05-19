@@ -71,4 +71,14 @@ public class CouponController {
 
 		return ApiResponse.ok(response);
 	}
+
+	@GetMapping("/my/{userCouponId}")
+	public ApiResponse<UserCouponResponse> getMyCoupon(
+		@RequestHeader("X-USER-ID") Long userId,
+		@PathVariable Long userCouponId
+	) {
+		UserCouponResponse response = couponService.getMyCoupon(userId, userCouponId);
+
+		return ApiResponse.ok(response);
+	}
 }

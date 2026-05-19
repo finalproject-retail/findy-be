@@ -192,4 +192,18 @@ public class CouponService {
 
 		return UserCouponPageResponse.from(coupons);
 	}
+
+	public UserCouponResponse getMyCoupon(
+		Long userId,
+		Long userCouponId
+	) {
+		LocalDateTime now = LocalDateTime.now();
+
+		UserCoupon userCoupon = userCouponRepository.findByUserCouponIdAndUserId(
+			userCouponId,
+			userId
+		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
+
+		return UserCouponResponse.from(userCoupon, now);
+	}
 }
