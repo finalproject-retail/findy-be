@@ -13,4 +13,11 @@ public class RestClientConfig {
 			.baseUrl(properties.baseUrl())
 			.build();
 	}
+
+	@Bean
+	public RestClient mfdsBarcodeRestClient(MfdsBarcodeProperties properties) {
+		return RestClient.builder()
+			.baseUrl(properties.baseUrl())
+			.build();
+	}
 }
