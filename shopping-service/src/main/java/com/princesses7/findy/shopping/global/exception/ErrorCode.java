@@ -58,7 +58,13 @@ public enum ErrorCode {
 	OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "PRODUCT_003", "품절 상품은 추가할 수 없습니다."),
 	EXCEED_STOCK_QUANTITY(HttpStatus.BAD_REQUEST, "PRODUCT_004", "재고 수량을 초과할 수 없습니다."),
 	PRODUCT_PRICE_NOT_FOUND(HttpStatus.BAD_REQUEST, "PRODUCT_005", "상품 가격 정보를 찾을 수 없습니다."),
-	INVALID_PRODUCT_STATUS(HttpStatus.BAD_REQUEST, "PRODUCT_006", "판매 가능한 상품이 아닙니다.");
+	INVALID_PRODUCT_STATUS(HttpStatus.BAD_REQUEST, "PRODUCT_006", "판매 가능한 상품이 아닙니다."),
+
+	// Coupon
+	COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_001", "쿠폰을 찾을 수 없습니다."),
+	INVALID_COUPON_PERIOD(HttpStatus.BAD_REQUEST, "COUPON_002", "쿠폰 기간 설정이 올바르지 않습니다."),
+	INVALID_COUPON_DISCOUNT_VALUE(HttpStatus.BAD_REQUEST, "COUPON_003", "쿠폰 할인 값이 올바르지 않습니다."),
+	COUPON_ALREADY_INACTIVE(HttpStatus.BAD_REQUEST, "COUPON_004", "이미 비활성화된 쿠폰입니다.");
 
 	private final HttpStatus status;
 	private final String code;
