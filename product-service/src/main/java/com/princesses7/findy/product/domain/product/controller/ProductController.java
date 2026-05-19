@@ -1,11 +1,14 @@
 package com.princesses7.findy.product.domain.product.controller;
 
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.princesses7.findy.product.domain.product.dto.response.ProductDetailResponse;
 import com.princesses7.findy.product.domain.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.product.domain.product.service.ProductService;
 import com.princesses7.findy.product.global.response.ApiResponse;
@@ -35,5 +38,14 @@ public class ProductController {
 		);
 
 		return ApiResponse.ok(response);
+	}
+
+	@GetMapping("/{productId}")
+	public ApiResponse<ProductDetailResponse> getProductDetail(
+			@PathVariable Long productId
+	) {
+		ProductDetailResponse response = productService.getProductDetail(productId);
+
+		return ApiResponse.ok("상품 상세 조회에 성공했습니다.", response);
 	}
 }

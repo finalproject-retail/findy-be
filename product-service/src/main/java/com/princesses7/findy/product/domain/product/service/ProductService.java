@@ -17,6 +17,7 @@ import com.princesses7.findy.product.domain.product.entity.Product;
 import com.princesses7.findy.product.domain.product.repository.ProductRepository;
 import com.princesses7.findy.product.global.exception.BaseException;
 import com.princesses7.findy.product.global.exception.ErrorCode;
+import com.princesses7.findy.product.domain.product.dto.response.ProductDetailResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -89,4 +90,11 @@ public class ProductService {
 
 		throw new BaseException(ErrorCode.INVALID_SORT_TYPE);
 	}
-}
+
+    public ProductDetailResponse getProductDetail(Long productId) {
+        Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
+                .orElseThrow(() -> new BaseException(ErrorCode.PRODUCT_NOT_FOUND));
+
+        return ProductDetailResponse.from(product);
+    }}
+
