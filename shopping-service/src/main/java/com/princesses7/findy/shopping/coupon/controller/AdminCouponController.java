@@ -1,11 +1,15 @@
 package com.princesses7.findy.shopping.coupon.controller;
 
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
+import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
 import com.princesses7.findy.shopping.coupon.service.CouponService;
 import com.princesses7.findy.shopping.global.response.ApiResponse;
@@ -27,5 +31,31 @@ public class AdminCouponController {
 		CouponResponse response = couponService.createCoupon(request);
 
 		return ApiResponse.ok("쿠폰 등록에 성공했습니다.", response);
+	}
+
+	@GetMapping
+	public ApiResponse<CouponPageResponse> getAdminCoupons(
+		@RequestParam(required = false) String keyword,
+		@RequestParam(required = false) Boolean active,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "20") int size
+	) {
+		CouponPageResponse response = couponService.getAdminCoupons(
+			keyword,
+			active,
+			page,
+			size
+		);
+
+		return ApiResponse.ok(response);
+	}
+
+	@GetMapping("/{couponId}")
+	public ApiResponse<CouponResponse> getAdminCoupon(
+		@PathVariable Long couponId
+	) {
+		CouponResponse response = couponService.getAdminCoupon(couponId);
+
+		return ApiResponse.ok(response);
 	}
 }
