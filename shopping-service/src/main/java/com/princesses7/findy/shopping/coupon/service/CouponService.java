@@ -14,6 +14,7 @@ import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.request.UpdateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
+import com.princesses7.findy.shopping.coupon.dto.response.UserCouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponResponse;
 import com.princesses7.findy.shopping.coupon.entity.Coupon;
 import com.princesses7.findy.shopping.coupon.entity.UserCoupon;
@@ -167,5 +168,28 @@ public class CouponService {
 		UserCoupon savedUserCoupon = userCouponRepository.save(userCoupon);
 
 		return UserCouponResponse.from(savedUserCoupon, now);
+	}
+
+	public UserCouponPageResponse getMyCoupons(
+		Long userId,
+		Boolean used,
+		Boolean expired,
+		int page,
+		int size
+	) {
+		validatePageRequest(page, size);
+
+		LocalDateTime now = LocalDateTime.now();
+		Pageable pageable = PageRequest.of(page, size);
+
+		Page<UserCouponResponse> coupons = userCouponRepository.findMyCoupons(
+			userId,
+			used,
+			expired,
+			now,
+			pageable
+		).map(userCoupon -> UserCouponResponse.from(userCoupon, now));
+
+		return UserCouponPageResponse.from(coupons);
 	}
 }

@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
+import com.princesses7.findy.shopping.coupon.dto.response.UserCouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponResponse;
 import com.princesses7.findy.shopping.coupon.service.CouponService;
 import com.princesses7.findy.shopping.global.response.ApiResponse;
@@ -50,5 +51,24 @@ public class CouponController {
 		UserCouponResponse response = couponService.downloadCoupon(userId, couponId);
 
 		return ApiResponse.ok("쿠폰 다운로드에 성공했습니다.", response);
+	}
+
+	@GetMapping("/my")
+	public ApiResponse<UserCouponPageResponse> getMyCoupons(
+		@RequestHeader("X-USER-ID") Long userId,
+		@RequestParam(required = false) Boolean used,
+		@RequestParam(required = false) Boolean expired,
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(defaultValue = "20") int size
+	) {
+		UserCouponPageResponse response = couponService.getMyCoupons(
+			userId,
+			used,
+			expired,
+			page,
+			size
+		);
+
+		return ApiResponse.ok(response);
 	}
 }
