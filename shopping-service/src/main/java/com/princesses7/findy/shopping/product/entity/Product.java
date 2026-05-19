@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.product.entity;
 import java.math.BigDecimal;
 
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
+import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -81,4 +82,27 @@ public class Product extends BaseTimeEntity {
 
 	@Column(name = "is_deleted", nullable = false)
 	private Boolean isDeleted = false;
+
+	public static Product create(ProductImportCommand command) {
+		Product product = new Product();
+		product.categoryId = command.categoryId();
+		product.brandName = command.brandName();
+		product.productName = command.productName();
+		product.barcode = command.barcode();
+		product.externalSource = command.externalSource();
+		product.externalProductId = command.externalProductId();
+		product.originalPrice = command.originalPrice();
+		product.salePrice = command.salePrice();
+		product.discountRate = command.discountRate();
+		product.description = command.description();
+		product.imageUrl = command.imageUrl();
+		product.packagingType = command.packagingType();
+		product.salesUnit = command.salesUnit();
+		product.volume = command.volume();
+		product.allergyInfo = command.allergyInfo();
+		product.badgeText = command.badgeText();
+		product.saleStatus = command.saleStatus();
+		product.isDeleted = false;
+		return product;
+	}
 }
