@@ -2,6 +2,8 @@ package com.princesses7.findy.shopping.coupon.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.time.LocalDateTime;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -114,5 +116,30 @@ public class CouponService {
 		Coupon coupon = getCoupon(couponId);
 
 		coupon.deactivate();
+	}
+
+	public CouponPageResponse getAvailableCoupons(int page, int size) {
+		validatePageRequest(page, size);
+
+		Pageable pageable = PageRequest.of(page, size);
+		LocalDateTime now = LocalDateTime.now();
+
+		Page<CouponResponse> coupons = couponRepository.findAvailableCoupons(
+			now,
+			pageable
+		).map(CouponResponse::from);
+
+		return CouponPageResponse.from(coupons);
+	}
+
+	public CouponResponse getAvailableCoupon(Long couponId) {
+		Coupon coupon = couponRepository.findByCouponIdAndActiveTrue(couponId)
+			.orElseThrow(() -> new BaseException(COUPON_NOT_FOUND));
+
+		if (!coupon.isAvailable(LocalDateTime.now())) {
+			throw new BaseException(COUPON_NOT_FOUND);
+		}
+
+		return CouponResponse.from(coupon);
 	}
 }
