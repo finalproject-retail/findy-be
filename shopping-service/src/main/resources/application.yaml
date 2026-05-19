@@ -25,3 +25,16 @@ logging:
   level:
     org.hibernate.SQL: debug
     org.hibernate.orm.jdbc.bind: trace
+
+naver:
+  shopping:
+    base-url: https://openapi.naver.com
+    client-id: ${NAVER_CLIENT_ID}
+    client-secret: ${NAVER_CLIENT_SECRET}
+
+mfds:
+  barcode:
+    base-url: https://openapi.foodsafetykorea.go.kr/api
+    key-id: ${MFDS_API_KEY}
+    service-id: C005
+    data-type: json

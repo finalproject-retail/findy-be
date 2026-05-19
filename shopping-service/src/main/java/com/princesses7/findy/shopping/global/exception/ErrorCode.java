@@ -15,6 +15,18 @@ public enum ErrorCode {
 	METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_005", "지원하지 않는 HTTP 메서드입니다."),
 	INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 내부 오류가 발생했습니다."),
 
+	// Product
+	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_001", "상품을 찾을 수 없습니다."),
+	INVALID_PRODUCT_STATUS(HttpStatus.BAD_REQUEST, "PRODUCT_002", "상품 상태가 올바르지 않습니다."),
+	PRODUCT_LOCATION_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_003", "상품 위치 정보가 없습니다."),
+	PRODUCT_STOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_004", "상품 재고 정보를 찾을 수 없습니다."),
+	INVALID_SEARCH_KEYWORD(HttpStatus.BAD_REQUEST, "PRODUCT_005", "검색어가 올바르지 않습니다."),
+	CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_006", "카테고리를 찾을 수 없습니다."),
+	INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "PRODUCT_007", "지원하지 않는 정렬 기준입니다."),
+	DUPLICATE_BARCODE(HttpStatus.CONFLICT, "PRODUCT_008", "이미 등록된 바코드입니다."),
+	BARCODE_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_009", "등록되지 않은 바코드입니다."),
+	SEARCH_LOG_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "PRODUCT_010", "검색 로그 저장에 실패했습니다."),
+
 	// Cart
 	CART_NOT_FOUND(HttpStatus.NOT_FOUND, "CART_001", "장바구니를 찾을 수 없습니다."),
 	CART_ITEM_NOT_FOUND(HttpStatus.NOT_FOUND, "CART_002", "장바구니 상품을 찾을 수 없습니다."),
@@ -50,14 +62,6 @@ public enum ErrorCode {
 	NO_SCANNED_ITEM(HttpStatus.BAD_REQUEST, "PURCHASE_002", "스캔 완료된 상품이 없습니다."),
 	UNSCANNED_ITEM_EXISTS(HttpStatus.BAD_REQUEST, "PURCHASE_003", "스캔되지 않은 상품이 남아 있습니다."),
 	INVALID_PURCHASE_TARGET(HttpStatus.BAD_REQUEST, "PURCHASE_004", "구매 대상 상품 정보가 올바르지 않습니다."),
-
-	// Product Client
-	PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_001", "상품을 찾을 수 없습니다."),
-	PRODUCT_SERVICE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "PRODUCT_002", "상품 서비스와 통신할 수 없습니다."),
-	OUT_OF_STOCK(HttpStatus.BAD_REQUEST, "PRODUCT_003", "품절 상품은 추가할 수 없습니다."),
-	EXCEED_STOCK_QUANTITY(HttpStatus.BAD_REQUEST, "PRODUCT_004", "재고 수량을 초과할 수 없습니다."),
-	PRODUCT_PRICE_NOT_FOUND(HttpStatus.BAD_REQUEST, "PRODUCT_005", "상품 가격 정보를 찾을 수 없습니다."),
-	INVALID_PRODUCT_STATUS(HttpStatus.BAD_REQUEST, "PRODUCT_006", "판매 가능한 상품이 아닙니다."),
 
 	// Coupon
 	COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_001", "쿠폰을 찾을 수 없습니다."),
