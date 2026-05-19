@@ -67,14 +67,46 @@ public class CouponService {
 		validatePageRequest(page, size);
 
 		Pageable pageable = PageRequest.of(page, size);
+		String normalizedKeyword = normalizeKeyword(keyword);
 
-		Page<CouponResponse> coupons = couponRepository.searchAdminCoupons(
-			normalizeKeyword(keyword),
+		Page<Coupon> coupons = findAdminCoupons(
+			normalizedKeyword,
 			active,
 			pageable
-		).map(CouponResponse::from);
+		);
 
-		return CouponPageResponse.from(coupons);
+		Page<CouponResponse> responsePage = coupons.map(CouponResponse::from);
+
+		return CouponPageResponse.from(responsePage);
+	}
+
+	private Page<Coupon> findAdminCoupons(
+		String keyword,
+		Boolean active,
+		Pageable pageable
+	) {
+		boolean hasKeyword = keyword != null;
+
+		if (hasKeyword && active != null) {
+			return couponRepository.findByCouponNameContainingIgnoreCaseAndActive(
+				keyword,
+				active,
+				pageable
+			);
+		}
+
+		if (hasKeyword) {
+			return couponRepository.findByCouponNameContainingIgnoreCase(
+				keyword,
+				pageable
+			);
+		}
+
+		if (active != null) {
+			return couponRepository.findByActive(active, pageable);
+		}
+
+		return couponRepository.findAll(pageable);
 	}
 
 	public CouponResponse getAdminCoupon(Long couponId) {

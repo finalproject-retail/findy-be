@@ -17,15 +17,13 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
 	Optional<Coupon> findByCouponIdAndActiveTrue(Long couponId);
 
-	@Query("""
-		SELECT c
-		FROM Coupon c
-		WHERE (:keyword IS NULL OR c.couponName LIKE CONCAT('%', :keyword, '%'))
-		AND (:active IS NULL OR c.active = :active)
-		""")
-	Page<Coupon> searchAdminCoupons(
-		@Param("keyword") String keyword,
-		@Param("active") Boolean active,
+	Page<Coupon> findByActive(boolean active, Pageable pageable);
+
+	Page<Coupon> findByCouponNameContainingIgnoreCase(String keyword, Pageable pageable);
+
+	Page<Coupon> findByCouponNameContainingIgnoreCaseAndActive(
+		String keyword,
+		boolean active,
 		Pageable pageable
 	);
 
