@@ -31,3 +31,10 @@ naver:
     base-url: https://openapi.naver.com
     client-id: ${NAVER_CLIENT_ID}
     client-secret: ${NAVER_CLIENT_SECRET}
+
+mfds:
+  barcode:
+    base-url: https://openapi.foodsafetykorea.go.kr/api
+    key-id: ${MFDS_API_KEY}
+    service-id: C005
+    data-type: json
