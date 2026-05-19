@@ -36,7 +36,7 @@ public class Product extends BaseTimeEntity {
 	@Column(name = "product_name", nullable = false, length = 255)
 	private String productName;
 
-	@Column(name = "barcode", nullable = false, length = 100)
+	@Column(name = "barcode", length = 100, unique = true)
 	private String barcode;
 
 	@Column(name = "external_source", length = 50)
