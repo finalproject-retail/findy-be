@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.order.service;
 
+import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
+
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -8,10 +10,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.shopping.cart.service.CartCleanupService;
 import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
+import com.princesses7.findy.shopping.order.dto.response.OrderDetailResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderItemResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderSummaryResponse;
 import com.princesses7.findy.shopping.order.entity.Order;
 import com.princesses7.findy.shopping.order.entity.OrderItem;
+import com.princesses7.findy.shopping.order.exception.OrderException;
 import com.princesses7.findy.shopping.order.repository.OrderRepository;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountItemResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
@@ -99,5 +103,15 @@ public class OrderService {
 		return orderRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
 			.map(OrderSummaryResponse::from)
 			.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public OrderDetailResponse getOrder(Long userId, Long orderId) {
+		Order order = orderRepository.findById(orderId)
+			.orElseThrow(() -> new OrderException(ORDER_NOT_FOUND));
+
+		order.validateOwner(userId);
+
+		return OrderDetailResponse.from(order);
 	}
 }
