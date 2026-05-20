@@ -1,8 +1,8 @@
 package com.princesses7.findy.shopping.purchase.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.global.response.ApiResponse;
@@ -20,13 +20,9 @@ public class PurchaseTargetTestController {
 
 	@GetMapping
 	public ApiResponse<PurchaseTargetResponse> getPurchaseTargets(
-		@RequestParam Long userId,
-		@RequestParam Long shoppingListId
+		@RequestHeader("X-User-Id") Long userId
 	) {
-		PurchaseTargetResponse response = purchaseTargetService.getPurchaseTargets(
-			userId,
-			shoppingListId
-		);
+		PurchaseTargetResponse response = purchaseTargetService.getPurchaseTargets(userId);
 
 		return ApiResponse.ok("구매 대상 상품 검증에 성공했습니다.", response);
 	}

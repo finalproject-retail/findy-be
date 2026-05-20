@@ -28,9 +28,8 @@ public class PurchaseTargetService {
 	private final ShoppingListRepository shoppingListRepository;
 	private final InventoryRepository inventoryRepository;
 
-	public PurchaseTargetResponse getPurchaseTargets(Long userId, Long shoppingListId) {
-		ShoppingList shoppingList = shoppingListRepository
-			.findByShoppingListIdAndUserId(shoppingListId, userId)
+	public PurchaseTargetResponse getPurchaseTargets(Long userId) {
+		ShoppingList shoppingList = shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new PurchaseException(SHOPPING_LIST_NOT_FOUND));
 
 		List<PurchaseTargetItemResponse> items = shoppingList.getShoppingListItems().stream()
