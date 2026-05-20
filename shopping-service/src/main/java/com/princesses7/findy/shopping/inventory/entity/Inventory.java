@@ -1,6 +1,9 @@
 package com.princesses7.findy.shopping.inventory.entity;
 
+import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
+
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
+import com.princesses7.findy.shopping.inventory.exception.InventoryException;
 import com.princesses7.findy.shopping.product.entity.Product;
 
 import jakarta.persistence.Column;
@@ -68,5 +71,26 @@ public class Inventory extends BaseTimeEntity {
 		}
 
 		return StockStatus.IN_STOCK;
+	}
+
+	public Long getProductId() {
+		return product.getProductId();
+	}
+
+	public void decreaseStock(int quantity) {
+		validateDecreaseQuantity(quantity);
+
+		if (stockQuantity == null || stockQuantity < quantity) {
+			throw new InventoryException(INVENTORY_INSUFFICIENT_STOCK);
+		}
+
+		stockQuantity -= quantity;
+		stockStatus = resolveStockStatus(stockQuantity);
+	}
+
+	private void validateDecreaseQuantity(int quantity) {
+		if (quantity < 1) {
+			throw new InventoryException(INVALID_STOCK_QUANTITY);
+		}
 	}
 }

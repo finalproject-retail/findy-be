@@ -81,4 +81,26 @@ public class CartItem extends BaseTimeEntity {
 			throw new CartException(INVALID_CART_QUANTITY);
 		}
 	}
+
+	public boolean isFullyPurchased(int purchasedQuantity) {
+		validatePurchasedQuantity(purchasedQuantity);
+		return purchasedQuantity >= quantity;
+	}
+
+	public void decreaseQuantityAfterPurchase(int purchasedQuantity) {
+		validatePurchasedQuantity(purchasedQuantity);
+
+		if (purchasedQuantity >= quantity) {
+			throw new CartException(INVALID_CART_QUANTITY);
+		}
+
+		quantity -= purchasedQuantity;
+		checked = false;
+	}
+
+	private void validatePurchasedQuantity(int purchasedQuantity) {
+		if (purchasedQuantity < 1) {
+			throw new CartException(INVALID_CART_QUANTITY);
+		}
+	}
 }

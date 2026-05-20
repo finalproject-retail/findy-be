@@ -81,4 +81,9 @@ public class Order extends BaseTimeEntity {
 		orderItems.add(orderItem);
 		orderItem.assignOrder(this);
 	}
+
+	// TODO: 취소된 주문은 완료 처리 불가 정책까지 추가 시 확장
+	public void complete() {
+		this.orderStatus = OrderStatus.COMPLETED;
+	}
 }
