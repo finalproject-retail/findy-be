@@ -58,7 +58,13 @@ public class ProductService {
 			? productRepository.findByIsDeletedFalse(pageable)
 			: productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
 
-		Page<ProductResponse> responsePage = products.map(ProductResponse::from);
+		Page<ProductResponse> responsePage = products.map(product -> {
+			Inventory inventory = inventoryRepository
+				.findByProductProductIdAndStoreId(product.getProductId(), 1L)
+				.orElse(null);
+
+			return ProductResponse.from(product, inventory);
+		});
 
 		return ProductPageResponse.from(responsePage);
 	}
