@@ -1,9 +1,12 @@
 package com.princesses7.findy.shopping.order.entity;
 
+import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
+import com.princesses7.findy.shopping.order.exception.OrderException;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -85,5 +88,15 @@ public class Order extends BaseTimeEntity {
 	// TODO: 취소된 주문은 완료 처리 불가 정책까지 추가 시 확장
 	public void complete() {
 		this.orderStatus = OrderStatus.COMPLETED;
+	}
+
+	public boolean isOwnedBy(Long userId) {
+		return this.userId.equals(userId);
+	}
+
+	public void validateOwner(Long userId) {
+		if (!isOwnedBy(userId)) {
+			throw new OrderException(ORDER_ACCESS_DENIED);
+		}
 	}
 }
