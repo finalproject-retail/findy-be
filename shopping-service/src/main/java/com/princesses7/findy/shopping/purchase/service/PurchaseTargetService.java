@@ -78,7 +78,7 @@ public class PurchaseTargetService {
 
 	private void validateStock(ShoppingListItem item, Inventory inventory) {
 		if (inventory.getStockQuantity() < item.getScannedQuantity()) {
-			throw new PurchaseException(INSUFFICIENT_STOCK);
+			throw new PurchaseException(PURCHASE_INSUFFICIENT_STOCK);
 		}
 	}
 }
