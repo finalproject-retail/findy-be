@@ -81,4 +81,8 @@ public class Order extends BaseTimeEntity {
 		orderItems.add(orderItem);
 		orderItem.assignOrder(this);
 	}
+
+	public void complete() {
+		this.orderStatus = OrderStatus.COMPLETED;
+	}
 }
