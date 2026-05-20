@@ -9,6 +9,7 @@ import com.princesses7.findy.shopping.external.naver.NaverProductMapper;
 import com.princesses7.findy.shopping.external.naver.NaverShoppingClient;
 import com.princesses7.findy.shopping.external.naver.dto.response.NaverShoppingItemResponse;
 import com.princesses7.findy.shopping.external.naver.dto.response.NaverShoppingResponse;
+import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductImportResultResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
@@ -25,6 +26,7 @@ public class NaverProductImportService {
 	private final NaverShoppingClient naverShoppingClient;
 	private final NaverProductMapper naverProductMapper;
 	private final ProductRepository productRepository;
+	private final InventoryService inventoryService;
 
 	@Transactional
 	public ProductImportResultResponse importByKeyword(String keyword, int display) {
@@ -41,8 +43,8 @@ public class NaverProductImportService {
 			}
 
 			ProductImportCommand command = naverProductMapper.toCommand(item);
-			Product product = Product.create(command);
-			productRepository.save(product);
+			Product product = productRepository.save(Product.create(command));
+			inventoryService.createDefaultInventory(product);
 
 			importedCount++;
 		}

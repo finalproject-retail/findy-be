@@ -11,6 +11,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.inventory.entity.Inventory;
+import com.princesses7.findy.shopping.inventory.repository.InventoryRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
@@ -37,6 +39,7 @@ public class ProductService {
 	);
 
 	private final ProductRepository productRepository;
+	private final InventoryRepository inventoryRepository;
 
 	public ProductPageResponse getProducts(
 		Long categoryId,
@@ -55,7 +58,13 @@ public class ProductService {
 			? productRepository.findByIsDeletedFalse(pageable)
 			: productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
 
-		Page<ProductResponse> responsePage = products.map(ProductResponse::from);
+		Page<ProductResponse> responsePage = products.map(product -> {
+			Inventory inventory = inventoryRepository
+				.findByProductProductIdAndStoreId(product.getProductId(), 1L)
+				.orElse(null);
+
+			return ProductResponse.from(product, inventory);
+		});
 
 		return ProductPageResponse.from(responsePage);
 	}
@@ -64,7 +73,10 @@ public class ProductService {
 		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
-		return ProductDetailResponse.from(product);
+		Inventory inventory = inventoryRepository.findByProductProductIdAndStoreId(productId, 1L)
+			.orElse(null);
+
+		return ProductDetailResponse.from(product, inventory);
 	}
 
 	private void validatePageRequest(int page, int size) {
