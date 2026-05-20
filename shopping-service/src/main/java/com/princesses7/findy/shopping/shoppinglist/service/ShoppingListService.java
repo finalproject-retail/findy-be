@@ -118,6 +118,14 @@ public class ShoppingListService {
 		return ShoppingListResponse.from(shoppingList);
 	}
 
+	@Transactional
+	public void cancelShopping(Long userId) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		shoppingList.cancel();
+		shoppingListRepository.delete(shoppingList);
+	}
+
 	private Cart getCartByUserId(Long userId) {
 		return cartRepository.findByUserId(userId)
 			.orElseThrow(() -> new CartException(CART_NOT_FOUND));

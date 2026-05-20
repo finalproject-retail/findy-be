@@ -87,6 +87,14 @@ public class Cart extends BaseTimeEntity {
 		this.shoppingList = shoppingList;
 	}
 
+	public void clearShoppingList() {
+		this.shoppingList = null;
+	}
+
+	public void uncheckAllItems() {
+		cartItems.forEach(cartItem -> cartItem.changeChecked(false));
+	}
+
 	public boolean hasShoppingList() {
 		return this.shoppingList != null;
 	}
