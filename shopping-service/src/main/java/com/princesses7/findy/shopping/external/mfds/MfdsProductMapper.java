@@ -33,7 +33,11 @@ public class MfdsProductMapper {
 			null,
 			null,
 			null,
-			SaleStatus.ON_SALE
+			SaleStatus.ON_SALE,
+
+			BigDecimal.ZERO,
+			"DEFAULT",
+			true
 		);
 	}
 

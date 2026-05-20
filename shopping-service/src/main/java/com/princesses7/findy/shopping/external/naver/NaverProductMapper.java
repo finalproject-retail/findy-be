@@ -53,7 +53,11 @@ public class NaverProductMapper {
 			null,
 			null,
 			null,
-			SaleStatus.ON_SALE
+			SaleStatus.ON_SALE,
+
+			classification.confidence(),
+			"AI",
+			classification.reviewRequired()
 		);
 	}
 
