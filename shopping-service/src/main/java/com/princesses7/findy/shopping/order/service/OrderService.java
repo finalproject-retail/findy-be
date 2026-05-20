@@ -5,6 +5,8 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.cart.service.CartCleanupService;
+import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderItemResponse;
 import com.princesses7.findy.shopping.order.entity.Order;
@@ -20,11 +22,20 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OrderService {
 
+	private static final Long DEFAULT_STORE_ID = 1L;
+
 	private final PurchaseAmountService purchaseAmountService;
 	private final OrderRepository orderRepository;
+	private final InventoryStockService inventoryStockService;
+	private final CartCleanupService cartCleanupService;
 
 	@Transactional
 	public OrderCreateResponse createOrder(Long userId) {
+		return createOrder(userId, DEFAULT_STORE_ID);
+	}
+
+	@Transactional
+	public OrderCreateResponse createOrder(Long userId, Long storeId) {
 		PurchaseAmountResponse amountResponse = purchaseAmountService.calculate(userId);
 
 		Order order = Order.create(
@@ -40,6 +51,10 @@ public class OrderService {
 		);
 
 		Order savedOrder = orderRepository.save(order);
+
+		inventoryStockService.decreaseStocks(storeId, savedOrder.getOrderItems());
+		cartCleanupService.cleanupPurchasedCartItems(userId, savedOrder.getOrderItems());
+		savedOrder.complete();
 
 		return toResponse(savedOrder);
 	}
