@@ -24,4 +24,10 @@ public class AuthController {
         TokenResponseDTO response = authService.login(request);
         return ApiResponse.ok(response);
     }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout() {
+        authService.logout();
+        return ApiResponse.ok();
+    }
 }
