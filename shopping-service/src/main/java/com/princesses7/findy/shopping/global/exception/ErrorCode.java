@@ -62,6 +62,8 @@ public enum ErrorCode {
 	NO_SCANNED_ITEM(HttpStatus.BAD_REQUEST, "PURCHASE_002", "스캔 완료된 상품이 없습니다."),
 	UNSCANNED_ITEM_EXISTS(HttpStatus.BAD_REQUEST, "PURCHASE_003", "스캔되지 않은 상품이 남아 있습니다."),
 	INVALID_PURCHASE_TARGET(HttpStatus.BAD_REQUEST, "PURCHASE_004", "구매 대상 상품 정보가 올바르지 않습니다."),
+	INSUFFICIENT_STOCK(HttpStatus.BAD_REQUEST, "PURCHASE_005", "상품 재고가 부족합니다."),
+	PURCHASE_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PURCHASE_006", "본인의 구매 요청만 처리할 수 있습니다."),
 
 	// Coupon
 	COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_001", "쿠폰을 찾을 수 없습니다."),
