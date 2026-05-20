@@ -76,6 +76,15 @@ public class Product extends BaseTimeEntity {
 	@Column(name = "badge_text", length = 100)
 	private String badgeText;
 
+	@Column(name = "category_confidence", precision = 5, scale = 2)
+	private BigDecimal categoryConfidence;
+
+	@Column(name = "category_classified_by", length = 30)
+	private String categoryClassifiedBy;
+
+	@Column(name = "category_review_required", nullable = false)
+	private Boolean categoryReviewRequired = false;
+
 	@Enumerated(EnumType.STRING)
 	@Column(name = "sale_status", nullable = false, length = 30)
 	private SaleStatus saleStatus;
@@ -102,6 +111,11 @@ public class Product extends BaseTimeEntity {
 		product.allergyInfo = command.allergyInfo();
 		product.badgeText = command.badgeText();
 		product.saleStatus = command.saleStatus();
+
+		product.categoryConfidence = command.categoryConfidence();
+		product.categoryClassifiedBy = command.categoryClassifiedBy();
+		product.categoryReviewRequired = command.categoryReviewRequired();
+		
 		product.isDeleted = false;
 		return product;
 	}

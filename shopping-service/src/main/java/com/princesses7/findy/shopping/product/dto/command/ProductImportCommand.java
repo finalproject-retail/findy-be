@@ -21,6 +21,10 @@ public record ProductImportCommand(
 	String volume,
 	String allergyInfo,
 	String badgeText,
-	SaleStatus saleStatus
+	SaleStatus saleStatus,
+
+	BigDecimal categoryConfidence,
+	String categoryClassifiedBy,
+	Boolean categoryReviewRequired
 ) {
 }

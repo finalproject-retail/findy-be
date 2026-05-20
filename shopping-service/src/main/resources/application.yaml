@@ -38,3 +38,7 @@ mfds:
     key-id: ${MFDS_API_KEY}
     service-id: C005
     data-type: json
+
+openai:
+  api-key: ${OPENAI_API_KEY}
+  model: gpt-4o-mini
