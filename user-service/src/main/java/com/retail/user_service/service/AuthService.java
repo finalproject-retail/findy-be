@@ -1,5 +1,8 @@
 package com.retail.user_service.service;
 
+import org.springframework.security.authentication.AnonymousAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -35,5 +38,19 @@ public class AuthService {
         );
 
         return new TokenResponseDTO(token);
+    }
+
+    public void logout() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication instanceof AnonymousAuthenticationToken) {
+            throw new BaseException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+        Object credentials = authentication.getCredentials();
+        if (!(credentials instanceof String rawToken) || rawToken.isBlank()) {
+            throw new BaseException(ErrorCode.UNAUTHORIZED, "인증이 필요합니다.");
+        }
+        jwtProvider.invalidateToken(rawToken);
     }
 }
