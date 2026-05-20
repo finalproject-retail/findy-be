@@ -1,0 +1,7 @@
+# Docker Compose secrets (commit .env.example only)
+.env
+
+# IDE
+.idea/
+*.iml
+.vscode/
