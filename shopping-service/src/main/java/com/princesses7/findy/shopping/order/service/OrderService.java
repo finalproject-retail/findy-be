@@ -9,6 +9,7 @@ import com.princesses7.findy.shopping.cart.service.CartCleanupService;
 import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderItemResponse;
+import com.princesses7.findy.shopping.order.dto.response.OrderSummaryResponse;
 import com.princesses7.findy.shopping.order.entity.Order;
 import com.princesses7.findy.shopping.order.entity.OrderItem;
 import com.princesses7.findy.shopping.order.repository.OrderRepository;
@@ -91,5 +92,12 @@ public class OrderService {
 			order.getOrderStatus().name(),
 			items
 		);
+	}
+
+	@Transactional(readOnly = true)
+	public List<OrderSummaryResponse> getOrders(Long userId) {
+		return orderRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+			.map(OrderSummaryResponse::from)
+			.toList();
 	}
 }
