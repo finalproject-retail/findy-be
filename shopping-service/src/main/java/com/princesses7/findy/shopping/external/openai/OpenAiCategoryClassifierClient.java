@@ -7,13 +7,13 @@ import java.util.Map;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.princesses7.findy.shopping.global.config.OpenAiProperties;
 import com.princesses7.findy.shopping.product.category.ProductCategoryCatalog;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 
 import lombok.RequiredArgsConstructor;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
@@ -44,12 +44,23 @@ public class OpenAiCategoryClassifierClient {
 				.retrieve()
 				.body(JsonNode.class);
 
-			String content = response
+			System.out.println(response.toPrettyString());
+
+			JsonNode contentNode = response
 				.path("choices")
 				.get(0)
 				.path("message")
-				.path("content")
-				.asText();
+				.path("content");
+
+			String content;
+
+			if (contentNode.isArray()) {
+				content = contentNode.get(0)
+					.path("text")
+					.asText();
+			} else {
+				content = contentNode.asText();
+			}
 
 			JsonNode result = objectMapper.readTree(content);
 
@@ -66,6 +77,8 @@ public class OpenAiCategoryClassifierClient {
 				reason
 			);
 		} catch (Exception e) {
+			e.printStackTrace();
+
 			return new ProductCategoryClassificationResponse(
 				null,
 				null,
