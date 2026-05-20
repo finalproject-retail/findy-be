@@ -40,6 +40,7 @@ public class ProductService {
 
 	public ProductPageResponse getProducts(
 		Long categoryId,
+		String keyword,
 		int page,
 		int size,
 		String sortBy,
