@@ -109,4 +109,13 @@ public class ShoppingListController {
 			shoppingListService.removeShoppingListItem(userId, shoppingListItemId)
 		);
 	}
+
+	@DeleteMapping
+	public ApiResponse<Void> cancelShopping(
+		@RequestHeader("X-User-Id") Long userId
+	) {
+		shoppingListService.cancelShopping(userId);
+
+		return ApiResponse.ok("쇼핑이 취소되었습니다.", null);
+	}
 }
