@@ -75,7 +75,7 @@ services:
     container_name: findy-user-service
     restart: unless-stopped
     ports:
-      - "${USER_SERVICE_PORT:-8889}:8080"
+      - "${USER_SERVICE_PORT:-8889}:8889"
     environment:
       <<: [*database-env, *redis-env]
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
@@ -90,6 +90,8 @@ services:
       context: ./shopping-service
     container_name: findy-shopping-service
     restart: unless-stopped
+    ports:
+      - "${SHOPPING_SERVICE_PORT:-8887}:8887"
     environment:
       <<: *database-env
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
