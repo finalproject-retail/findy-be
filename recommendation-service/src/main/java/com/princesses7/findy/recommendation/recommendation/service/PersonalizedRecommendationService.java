@@ -53,13 +53,14 @@ public class PersonalizedRecommendationService {
 		int normalizedSize = normalizeSize(size);
 
 		UserPreferenceResponse userPreference = userPreferenceQueryService.getUserPreference(userId);
+		RecommendationBaseType baseType = resolveBaseType(userPreference);
 
-		if (!userPreferenceQueryService.hasPreference(userPreference)) {
+		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
 			return fallback(
 				userId,
 				normalizedSize,
 				userPreference,
-				RecommendationBaseType.NO_PREFERENCE_FALLBACK
+				RecommendationBaseType.POPULAR_FALLBACK
 			);
 		}
 
@@ -115,17 +116,44 @@ public class PersonalizedRecommendationService {
 				userId,
 				normalizedSize,
 				userPreference,
-				RecommendationBaseType.EMPTY_RECOMMENDATION_FALLBACK
+				RecommendationBaseType.POPULAR_FALLBACK
 			);
 		}
 
 		return new PersonalizedRecommendationResponse(
 			userId,
-			RecommendationBaseType.PREFERENCE_EMBEDDING,
+			baseType,
 			userPreference.preferredCategories(),
 			userPreference.shoppingStyles(),
 			recommendations
 		);
+	}
+
+	private RecommendationBaseType resolveBaseType(UserPreferenceResponse userPreference) {
+		boolean hasPreference = userPreferenceQueryService.hasPreference(userPreference);
+
+		/*
+		 * 현재 작업 범위는 선호 정보 기반 개인 맞춤 추천입니다.
+		 * 구매 기록 조회 로직은 아직 연결하지 않았기 때문에 false로 둡니다.
+		 *
+		 * 이후 구매 기록 기능을 붙이면
+		 * hasPurchaseHistory 값을 실제 구매 기록 존재 여부로 교체하면 됩니다.
+		 */
+		boolean hasPurchaseHistory = false;
+
+		if (hasPreference && hasPurchaseHistory) {
+			return RecommendationBaseType.PREFERENCE_WITH_PURCHASE_HISTORY;
+		}
+
+		if (hasPreference) {
+			return RecommendationBaseType.PREFERENCE_ONLY;
+		}
+
+		if (hasPurchaseHistory) {
+			return RecommendationBaseType.PURCHASE_HISTORY_ONLY;
+		}
+
+		return RecommendationBaseType.POPULAR_FALLBACK;
 	}
 
 	private ProductRecommendationResponse toRecommendationResponse(
@@ -184,7 +212,7 @@ public class PersonalizedRecommendationService {
 				product,
 				scorer.fallbackScore(product),
 				RecommendationType.PERSONALIZED,
-				"추천 데이터가 부족하여 구매 가능한 상품을 기준으로 추천합니다."
+				createFallbackReason(baseType)
 			))
 			.toList();
 
@@ -195,6 +223,14 @@ public class PersonalizedRecommendationService {
 			userPreference.shoppingStyles(),
 			recommendations
 		);
+	}
+
+	private String createFallbackReason(RecommendationBaseType baseType) {
+		if (baseType == RecommendationBaseType.NO_PRODUCT_EMBEDDING_FALLBACK) {
+			return "상품 임베딩 데이터가 부족하여 구매 가능한 상품을 기준으로 추천합니다.";
+		}
+
+		return "개인화 데이터가 부족하여 구매 가능한 상품을 기준으로 추천합니다.";
 	}
 
 	private Map<Long, ProductSnapshot> findRecommendableProductMap(List<Long> productIds) {
