@@ -12,6 +12,7 @@ import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
+import com.princesses7.findy.shopping.product.service.ProductBarcodeReader;
 import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
@@ -32,6 +33,7 @@ public class ShoppingListService {
 	private final CartRepository cartRepository;
 	private final ShoppingListRepository shoppingListRepository;
 	private final ProductSummaryReader productSummaryReader;
+	private final ProductBarcodeReader productBarcodeReader;
 
 	@Transactional
 	public ShoppingListResponse createShoppingList(Long userId) {
@@ -76,10 +78,18 @@ public class ShoppingListService {
 		ScanShoppingListItemRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		Long productId = productBarcodeReader.getProductIdByBarcode(request.barcode());
+		int quantity = request.quantityOrDefault();
+		int targetQuantity = calculateScannedTargetQuantity(
+			shoppingList,
+			productId,
+			quantity
+		);
 
+		productSummaryReader.validatePurchasable(productId, targetQuantity);
 		shoppingList.addScannedItem(
-			request.productId(),
-			request.quantityOrDefault()
+			productId,
+			quantity
 		);
 
 		return toResponse(shoppingList);
@@ -91,9 +101,10 @@ public class ShoppingListService {
 		ScanShoppingListItemRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		Long productId = productBarcodeReader.getProductIdByBarcode(request.barcode());
 
 		shoppingList.decreaseQuantityByScan(
-			request.productId(),
+			productId,
 			request.quantityOrDefault()
 		);
 
@@ -173,6 +184,21 @@ public class ShoppingListService {
 			.mapToInt(ShoppingListItem::getQuantity)
 			.findFirst()
 			.orElse(0);
+	}
+
+	private int calculateScannedTargetQuantity(
+		ShoppingList shoppingList,
+		Long productId,
+		int scanQuantity
+	) {
+		return shoppingList.getShoppingListItems().stream()
+			.filter(item -> item.hasSameProduct(productId))
+			.findFirst()
+			.map(item -> Math.max(
+				item.getQuantity(),
+				item.getScannedQuantity() + scanQuantity
+			))
+			.orElse(scanQuantity);
 	}
 
 	private ShoppingListResponse toResponse(ShoppingList shoppingList) {
