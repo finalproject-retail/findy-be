@@ -2,17 +2,23 @@ package com.princesses7.findy.shopping.shoppinglist.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
+import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
+import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ScanShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListResponse;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
+import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingListItem;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 import com.princesses7.findy.shopping.shoppinglist.repository.ShoppingListRepository;
 
@@ -25,6 +31,7 @@ public class ShoppingListService {
 
 	private final CartRepository cartRepository;
 	private final ShoppingListRepository shoppingListRepository;
+	private final ProductSummaryReader productSummaryReader;
 
 	@Transactional
 	public ShoppingListResponse createShoppingList(Long userId) {
@@ -33,13 +40,13 @@ public class ShoppingListService {
 		ShoppingList shoppingList = ShoppingList.create(cart);
 		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
 
-		return ShoppingListResponse.from(savedShoppingList);
+		return toResponse(savedShoppingList);
 	}
 
 	public ShoppingListResponse getShoppingList(Long userId) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -49,13 +56,12 @@ public class ShoppingListService {
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
-		// TODO: Product Service 연동 후 상품 존재 여부, 품절 여부 검증 추가
 		shoppingList.addSearchedItem(
 			request.productId(),
 			request.quantityOrDefault()
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -65,14 +71,12 @@ public class ShoppingListService {
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
-		// TODO: Product Service 연동 후 barcode -> productId 매칭으로 변경
-		// 현재는 productId 기준으로 먼저 구현
 		shoppingList.addScannedItem(
 			request.productId(),
 			request.quantityOrDefault()
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -87,7 +91,7 @@ public class ShoppingListService {
 			request.quantityOrDefault()
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -103,7 +107,7 @@ public class ShoppingListService {
 			request.quantity()
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -115,7 +119,7 @@ public class ShoppingListService {
 
 		shoppingList.removeItem(shoppingListItemId);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -134,5 +138,16 @@ public class ShoppingListService {
 	private ShoppingList getShoppingListByUserId(Long userId) {
 		return shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
+	}
+
+	private ShoppingListResponse toResponse(ShoppingList shoppingList) {
+		List<Long> productIds = shoppingList.getShoppingListItems().stream()
+			.map(ShoppingListItem::getProductId)
+			.toList();
+
+		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
+			.getProductSummaryMap(productIds);
+
+		return ShoppingListResponse.from(shoppingList, productMap);
 	}
 }
