@@ -1,6 +1,7 @@
 package com.princesses7.findy.recommendation.recommendation.controller;
 
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -12,11 +13,12 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/recommendations")
 public class RecommendationController {
 
 	private final PersonalizedRecommendationService personalizedRecommendationService;
 
-	@GetMapping("/api/v1/recommendations/personalized")
+	@GetMapping("/personalized")
 	public ApiResponse<PersonalizedRecommendationResponse> getPersonalizedRecommendations(
 		@RequestParam Long userId,
 		@RequestParam(defaultValue = "10") int size

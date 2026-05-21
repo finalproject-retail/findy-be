@@ -45,15 +45,16 @@ public class UserPreferenceQueryService {
 
 		return new UserPreferenceResponse(
 			userId,
+			categoryIds,
 			categoryNames,
+			shoppingStyleIds,
 			styleNames,
 			createPreferenceText(categoryNames, styleNames)
 		);
 	}
 
 	public boolean hasPreference(UserPreferenceResponse response) {
-		return !response.preferredCategories().isEmpty()
-			|| !response.shoppingStyles().isEmpty();
+		return response.hasPreference();
 	}
 
 	private List<String> findCategoryNames(List<Long> categoryIds) {
