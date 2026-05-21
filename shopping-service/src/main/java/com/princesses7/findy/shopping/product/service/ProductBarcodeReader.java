@@ -44,7 +44,7 @@ public class ProductBarcodeReader {
 
 		// 식약처에는 존재하지만, 우리 매장 DB에는 아직 상품/가격/재고가 등록되지 않은 상태
 		// 장바구니/쇼핑리스트 처리는 내부 Product + Inventory 기준으로만 진행한다.
-		throw new ProductException(PRODUCT_NOT_FOUND);
+		throw new ProductException(PRODUCT_NOT_REGISTERED);
 	}
 
 	private void validateBarcode(String barcode) {
