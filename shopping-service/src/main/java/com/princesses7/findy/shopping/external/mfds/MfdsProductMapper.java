@@ -14,15 +14,16 @@ public class MfdsProductMapper {
 	private static final String EXTERNAL_SOURCE = "MFDS";
 	private static final Long DEFAULT_CATEGORY_ID = 1L;
 	private static final int DEFAULT_PRICE = 0;
+	private static final String DEFAULT_CATEGORY_CLASSIFIED_BY = "MFDS";
 
 	public ProductImportCommand toCommand(MfdsBarcodeItemResponse item) {
 		return new ProductImportCommand(
 			DEFAULT_CATEGORY_ID,
-			item.BSSH_NM(),
-			item.PRDLST_NM(),
-			item.BAR_CD(),
+			item.companyName(),
+			item.productName(),
+			item.barcode(),
 			EXTERNAL_SOURCE,
-			item.PRDLST_REPORT_NO(),
+			item.reportNo(),
 			DEFAULT_PRICE,
 			DEFAULT_PRICE,
 			BigDecimal.ZERO,
@@ -34,24 +35,34 @@ public class MfdsProductMapper {
 			null,
 			null,
 			SaleStatus.ON_SALE,
-
 			BigDecimal.ZERO,
-			"DEFAULT",
+			DEFAULT_CATEGORY_CLASSIFIED_BY,
 			true
 		);
 	}
 
 	private String createDescription(MfdsBarcodeItemResponse item) {
 		return """
-			식품 유형: %s
-			업종: %s
-			소비기한: %s
-			제조사 주소: %s
+			식약처 유통바코드 연동 상품
+			대분류: %s
+			중분류: %s
+			소분류: %s
+			품목보고번호: %s
+			최종수정일시: %s
 			""".formatted(
-			item.PRDLST_DCNM(),
-			item.INDUTY_NM(),
-			item.POG_DAYCNT(),
-			item.SITE_ADDR()
+			defaultText(item.categoryLarge()),
+			defaultText(item.categoryMiddle()),
+			defaultText(item.categorySmall()),
+			defaultText(item.reportNo()),
+			defaultText(item.lastUpdatedAt())
 		).trim();
+	}
+
+	private String defaultText(String value) {
+		if (value == null || value.isBlank()) {
+			return "정보 없음";
+		}
+
+		return value;
 	}
 }

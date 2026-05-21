@@ -5,6 +5,7 @@ import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.UnknownContentTypeException;
 
 import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsBarcodeResponse;
 import com.princesses7.findy.shopping.global.config.MfdsBarcodeProperties;
@@ -23,17 +24,19 @@ public class MfdsBarcodeClient {
 		try {
 			return mfdsBarcodeRestClient.get()
 				.uri(uriBuilder -> uriBuilder
-					.path("/{keyId}/{serviceId}/{dataType}/{startIdx}/{endIdx}")
-					.queryParam("BAR_CD", barcode)
+					.path("/{keyId}/{serviceId}/{dataType}/{startIdx}/{endIdx}/BRCD_NO={barcode}")
 					.build(
 						properties.keyId(),
 						properties.serviceId(),
 						properties.dataType(),
 						1,
-						10
+						10,
+						barcode
 					))
 				.retrieve()
 				.body(MfdsBarcodeResponse.class);
+		} catch (UnknownContentTypeException exception) {
+			throw new ProductException(BARCODE_PRODUCT_NOT_FOUND);
 		} catch (RestClientException exception) {
 			throw new ProductException(BARCODE_PRODUCT_NOT_FOUND);
 		}
