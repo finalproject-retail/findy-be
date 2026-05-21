@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
@@ -102,7 +103,7 @@ public class PersonalizedRecommendationService {
 				categoryNameMap,
 				userPreferenceEmbedding
 			))
-			.filter(response -> response != null)
+			.filter(Objects::nonNull)
 			.sorted(
 				Comparator.comparing(ProductRecommendationResponse::score)
 					.reversed()
