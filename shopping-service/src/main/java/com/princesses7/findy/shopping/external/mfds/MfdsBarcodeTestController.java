@@ -15,9 +15,25 @@ import lombok.RequiredArgsConstructor;
 public class MfdsBarcodeTestController {
 
 	private final MfdsBarcodeClient mfdsBarcodeClient;
+	private final MfdsLinkedProductClient mfdsLinkedProductClient;
 
 	@GetMapping
 	public MfdsBarcodeResponse searchByBarcode(@RequestParam String barcode) {
 		return mfdsBarcodeClient.searchByBarcode(barcode);
+	}
+
+	@GetMapping("/raw")
+	public String searchRawByBarcode(@RequestParam String barcode) {
+		return mfdsBarcodeClient.searchRawByBarcode(barcode);
+	}
+
+	@GetMapping("/linked")
+	public Object searchLinkedProductByBarcode(@RequestParam String barcode) {
+		return mfdsLinkedProductClient.searchFirstByBarcode(barcode);
+	}
+
+	@GetMapping("/linked/raw")
+	public String searchLinkedProductRawByBarcode(@RequestParam String barcode) {
+		return mfdsLinkedProductClient.searchRawByBarcode(barcode);
 	}
 }
