@@ -32,7 +32,9 @@ public class ProductImportService {
 		}
 
 		MfdsBarcodeResponse response = mfdsBarcodeClient.searchByBarcode(barcode);
-		List<MfdsBarcodeItemResponse> items = response.getItems();
+		List<MfdsBarcodeItemResponse> items = response == null
+			? List.of()
+			: response.getItems();
 
 		if (items.isEmpty()) {
 			throw new ProductException(ErrorCode.BARCODE_PRODUCT_NOT_FOUND);
