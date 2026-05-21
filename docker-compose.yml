@@ -1,0 +1,118 @@
+name: findy-be
+
+x-database-env: &database-env
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  DB_NAME: ${DB_NAME:-findy}
+  DB_USERNAME: ${DB_USERNAME:-postgres}
+  DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+
+x-redis-env: &redis-env
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: findy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-findy}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USERNAME:-postgres} -d ${DB_NAME:-findy}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: findy-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  apigateway:
+    build:
+      context: ./apigateway
+    container_name: findy-apigateway
+    restart: unless-stopped
+    ports:
+      - "${APIGATEWAY_PORT:-8080}:8080"
+    environment:
+      <<: [*database-env, *redis-env]
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+      shopping-service:
+        condition: service_started
+      map-service:
+        condition: service_started
+
+  user-service:
+    build:
+      context: ./user-service
+    container_name: findy-user-service
+    restart: unless-stopped
+    ports:
+      - "${USER_SERVICE_PORT:-8889}:8889"
+    environment:
+      <<: [*database-env, *redis-env]
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?Set JWT_SECRET_KEY in .env}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  shopping-service:
+    build:
+      context: ./shopping-service
+    container_name: findy-shopping-service
+    restart: unless-stopped
+    ports:
+      - "${SHOPPING_SERVICE_PORT:-8887}:8887"
+    environment:
+      <<: *database-env
+      NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
+      NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
+      MFDS_API_KEY: ${MFDS_API_KEY:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  map-service:
+    build:
+      context: ./map-service
+    container_name: findy-map-service
+    restart: unless-stopped
+    ports:
+      - "${MAP_SERVICE_PORT:-8888}:8888"
+    environment:
+      <<: *database-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
