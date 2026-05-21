@@ -37,6 +37,8 @@ public class ShoppingListService {
 	public ShoppingListResponse createShoppingList(Long userId) {
 		Cart cart = getCartByUserId(userId);
 
+		validateCheckedItemsPurchasable(cart);
+
 		ShoppingList shoppingList = ShoppingList.create(cart);
 		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
 
@@ -55,10 +57,14 @@ public class ShoppingListService {
 		AddShoppingListItemRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		int quantity = request.quantityOrDefault();
+		int targetQuantity = getShoppingListItemQuantity(shoppingList, request.productId())
+			+ quantity;
 
+		productSummaryReader.validatePurchasable(request.productId(), targetQuantity);
 		shoppingList.addSearchedItem(
 			request.productId(),
-			request.quantityOrDefault()
+			quantity
 		);
 
 		return toResponse(shoppingList);
@@ -101,7 +107,9 @@ public class ShoppingListService {
 		ChangeShoppingListItemQuantityRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		ShoppingListItem item = getShoppingListItem(shoppingList, shoppingListItemId);
 
+		productSummaryReader.validatePurchasable(item.getProductId(), request.quantity());
 		shoppingList.changeItemQuantity(
 			shoppingListItemId,
 			request.quantity()
@@ -138,6 +146,33 @@ public class ShoppingListService {
 	private ShoppingList getShoppingListByUserId(Long userId) {
 		return shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
+	}
+
+	private void validateCheckedItemsPurchasable(Cart cart) {
+		cart.getCheckedItems().forEach(cartItem ->
+			productSummaryReader.validatePurchasable(
+				cartItem.getProductId(),
+				cartItem.getQuantity()
+			)
+		);
+	}
+
+	private ShoppingListItem getShoppingListItem(
+		ShoppingList shoppingList,
+		Long shoppingListItemId
+	) {
+		return shoppingList.getShoppingListItems().stream()
+			.filter(item -> item.hasSameId(shoppingListItemId))
+			.findFirst()
+			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_ITEM_NOT_FOUND));
+	}
+
+	private int getShoppingListItemQuantity(ShoppingList shoppingList, Long productId) {
+		return shoppingList.getShoppingListItems().stream()
+			.filter(item -> item.hasSameProduct(productId))
+			.mapToInt(ShoppingListItem::getQuantity)
+			.findFirst()
+			.orElse(0);
 	}
 
 	private ShoppingListResponse toResponse(ShoppingList shoppingList) {
