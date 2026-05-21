@@ -40,18 +40,22 @@ public class ProductImportService {
 			? List.of()
 			: barcodeResponse.getItems();
 
-		if (barcodeItems.isEmpty()) {
+		Optional<MfdsBarcodeItemResponse> barcodeItem = barcodeItems.stream()
+			.findFirst();
+
+		Optional<MfdsLinkedProductItemResponse> linkedItem =
+			mfdsLinkedProductClient.searchFirstByBarcode(barcode);
+
+		if (barcodeItem.isEmpty() && linkedItem.isEmpty()) {
 			throw new ProductException(ErrorCode.BARCODE_PRODUCT_NOT_FOUND);
 		}
 
-		MfdsBarcodeItemResponse barcodeItem = barcodeItems.get(0);
-		Optional<MfdsLinkedProductItemResponse> linkedItem =
-			mfdsLinkedProductClient.searchFirstByBarcode(barcodeItem.barcode());
-
 		ProductImportCommand command = mfdsProductMapper.toCommand(
+			barcode,
 			barcodeItem,
 			linkedItem
 		);
+
 		Product product = Product.create(command);
 
 		return productRepository.save(product).getProductId();

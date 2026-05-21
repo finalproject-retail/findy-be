@@ -19,16 +19,17 @@ public class MfdsProductMapper {
 	private static final String CATEGORY_CLASSIFIED_BY = "MFDS";
 
 	public ProductImportCommand toCommand(
-		MfdsBarcodeItemResponse barcodeItem,
+		String barcode,
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
 		Optional<MfdsLinkedProductItemResponse> linkedItem
 	) {
 		return new ProductImportCommand(
 			DEFAULT_CATEGORY_ID,
-			barcodeItem.companyName(),
-			barcodeItem.productName(),
-			barcodeItem.barcode(),
+			getCompanyName(barcodeItem, linkedItem),
+			getProductName(barcodeItem, linkedItem),
+			getBarcode(barcode, barcodeItem, linkedItem),
 			EXTERNAL_SOURCE,
-			barcodeItem.reportNo(),
+			getReportNo(barcodeItem, linkedItem),
 			DEFAULT_PRICE,
 			DEFAULT_PRICE,
 			BigDecimal.ZERO,
@@ -38,7 +39,7 @@ public class MfdsProductMapper {
 			null,
 			null,
 			null,
-			createBadgeText(barcodeItem),
+			createBadgeText(barcodeItem, linkedItem),
 			SaleStatus.ON_SALE,
 			BigDecimal.ZERO,
 			CATEGORY_CLASSIFIED_BY,
@@ -46,13 +47,66 @@ public class MfdsProductMapper {
 		);
 	}
 
+	private String getCompanyName(
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
+		Optional<MfdsLinkedProductItemResponse> linkedItem
+	) {
+		return barcodeItem
+			.map(MfdsBarcodeItemResponse::companyName)
+			.filter(this::hasText)
+			.orElseGet(() -> linkedItem
+				.map(MfdsLinkedProductItemResponse::companyName)
+				.filter(this::hasText)
+				.orElse("정보 없음"));
+	}
+
+	private String getProductName(
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
+		Optional<MfdsLinkedProductItemResponse> linkedItem
+	) {
+		return barcodeItem
+			.map(MfdsBarcodeItemResponse::productName)
+			.filter(this::hasText)
+			.orElseGet(() -> linkedItem
+				.map(MfdsLinkedProductItemResponse::productName)
+				.filter(this::hasText)
+				.orElse("식약처 연동 상품"));
+	}
+
+	private String getBarcode(
+		String barcode,
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
+		Optional<MfdsLinkedProductItemResponse> linkedItem
+	) {
+		return barcodeItem
+			.map(MfdsBarcodeItemResponse::barcode)
+			.filter(this::hasText)
+			.orElseGet(() -> linkedItem
+				.map(MfdsLinkedProductItemResponse::barcode)
+				.filter(this::hasText)
+				.orElse(barcode));
+	}
+
+	private String getReportNo(
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
+		Optional<MfdsLinkedProductItemResponse> linkedItem
+	) {
+		return barcodeItem
+			.map(MfdsBarcodeItemResponse::reportNo)
+			.filter(this::hasText)
+			.orElseGet(() -> linkedItem
+				.map(MfdsLinkedProductItemResponse::reportNo)
+				.filter(this::hasText)
+				.orElse(null));
+	}
+
 	private String createDescription(
-		MfdsBarcodeItemResponse barcodeItem,
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
 		Optional<MfdsLinkedProductItemResponse> linkedItem
 	) {
 		StringBuilder description = new StringBuilder();
 
-		description.append("""
+		barcodeItem.ifPresent(item -> description.append("""
 			식약처 유통바코드 연동 상품
 			대분류: %s
 			중분류: %s
@@ -60,16 +114,24 @@ public class MfdsProductMapper {
 			품목보고번호: %s
 			최종수정일시: %s
 			""".formatted(
-			defaultText(barcodeItem.categoryLarge()),
-			defaultText(barcodeItem.categoryMiddle()),
-			defaultText(barcodeItem.categorySmall()),
-			defaultText(barcodeItem.reportNo()),
-			defaultText(barcodeItem.lastUpdatedAt())
-		).trim());
+			defaultText(item.categoryLarge()),
+			defaultText(item.categoryMiddle()),
+			defaultText(item.categorySmall()),
+			defaultText(item.reportNo()),
+			defaultText(item.lastUpdatedAt())
+		).trim()));
 
-		linkedItem.ifPresent(item -> description.append("\n\n")
-			.append("""
+		linkedItem.ifPresent(item -> {
+			if (!description.isEmpty()) {
+				description.append("\n\n");
+			}
+
+			description.append("""
 				[바코드연계제품정보]
+				상품명: %s
+				제조사: %s
+				바코드: %s
+				품목보고번호: %s
 				식품유형: %s
 				업종: %s
 				소비기한: %s
@@ -77,30 +139,48 @@ public class MfdsProductMapper {
 				품목허가일자: %s
 				영업종료일자: %s
 				""".formatted(
+				defaultText(item.productName()),
+				defaultText(item.companyName()),
+				defaultText(item.barcode()),
+				defaultText(item.reportNo()),
 				defaultText(item.foodType()),
 				defaultText(item.businessType()),
 				defaultText(item.expirationPeriod()),
 				defaultText(item.siteAddress()),
 				defaultText(item.permissionDate()),
 				defaultText(item.endDate())
-			).trim()));
+			).trim());
+		});
+
+		if (description.isEmpty()) {
+			return "식약처 연동 상품";
+		}
 
 		return description.toString();
 	}
 
-	private String createBadgeText(MfdsBarcodeItemResponse barcodeItem) {
-		if (barcodeItem.categorySmall() == null || barcodeItem.categorySmall().isBlank()) {
-			return "식약처 연동";
-		}
-
-		return barcodeItem.categorySmall();
+	private String createBadgeText(
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
+		Optional<MfdsLinkedProductItemResponse> linkedItem
+	) {
+		return barcodeItem
+			.map(MfdsBarcodeItemResponse::categorySmall)
+			.filter(this::hasText)
+			.orElseGet(() -> linkedItem
+				.map(MfdsLinkedProductItemResponse::foodType)
+				.filter(this::hasText)
+				.orElse("식약처 연동"));
 	}
 
 	private String defaultText(String value) {
-		if (value == null || value.isBlank()) {
+		if (!hasText(value)) {
 			return "정보 없음";
 		}
 
 		return value;
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
 	}
 }
