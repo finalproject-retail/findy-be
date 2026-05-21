@@ -1,16 +1,8 @@
-package com.princesses7.findy.recommendation.external.openai.dto.response;
+package com.princesses7.findy.recommendation.external.openai.dto;
 
 import java.util.List;
 
-public record OpenAiEmbeddingResponse(
-	List<OpenAiEmbeddingData> data
+public record OpenAiEmbeddingData(
+	List<Double> embedding
 ) {
-
-	public List<Double> firstEmbedding() {
-		if (data == null || data.isEmpty()) {
-			return List.of();
-		}
-
-		return data.get(0).embedding();
-	}
 }
