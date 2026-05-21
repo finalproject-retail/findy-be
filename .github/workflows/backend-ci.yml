@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - main
+      - dev
   pull_request:
     branches:
       - main
+      - dev
 
 permissions:
   contents: read
@@ -24,8 +26,6 @@ jobs:
             path: apigateway
           - service: user-service
             path: user-service
-          - service: product-service
-            path: product-service
           - service: shopping-service
             path: shopping-service
 
