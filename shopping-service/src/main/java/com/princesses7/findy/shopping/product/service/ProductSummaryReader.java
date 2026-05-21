@@ -11,9 +11,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.inventory.entity.Inventory;
+import com.princesses7.findy.shopping.inventory.entity.StockStatus;
 import com.princesses7.findy.shopping.inventory.repository.InventoryRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
+import com.princesses7.findy.shopping.product.entity.SaleStatus;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
 
@@ -59,6 +61,24 @@ public class ProductSummaryReader {
 					inventoryByProductId.get(productId)
 				)
 			));
+	}
+
+	public void validatePurchasable(Long productId, int quantity) {
+		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
+			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
+
+		if (product.getSaleStatus() != SaleStatus.ON_SALE) {
+			throw new ProductException(INVALID_PRODUCT_STATUS);
+		}
+
+		Inventory inventory = inventoryRepository
+			.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)
+			.orElseThrow(() -> new ProductException(PRODUCT_STOCK_NOT_FOUND));
+
+		if (inventory.getStockStatus() == StockStatus.OUT_OF_STOCK
+			|| inventory.getStockQuantity() < quantity) {
+			throw new ProductException(INVENTORY_INSUFFICIENT_STOCK);
+		}
 	}
 
 	private Product getProduct(Map<Long, Product> productById, Long productId) {
