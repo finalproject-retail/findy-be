@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.product.repository;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -9,6 +11,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import com.princesses7.findy.shopping.product.entity.Product;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
+
+	List<Product> findAllByProductIdInAndIsDeletedFalse(Collection<Long> productIds);
+
 	Page<Product> findByIsDeletedFalse(Pageable pageable);
 
 	Page<Product> findByCategoryIdAndIsDeletedFalse(Long categoryId, Pageable pageable);

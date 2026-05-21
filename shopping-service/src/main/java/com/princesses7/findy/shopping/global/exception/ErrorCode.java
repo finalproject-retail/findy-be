@@ -24,8 +24,9 @@ public enum ErrorCode {
 	CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_006", "카테고리를 찾을 수 없습니다."),
 	INVALID_SORT_TYPE(HttpStatus.BAD_REQUEST, "PRODUCT_007", "지원하지 않는 정렬 기준입니다."),
 	DUPLICATE_BARCODE(HttpStatus.CONFLICT, "PRODUCT_008", "이미 등록된 바코드입니다."),
-	BARCODE_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_009", "등록되지 않은 바코드입니다."),
+	BARCODE_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_009", "바코드에 해당하는 상품을 찾을 수 없습니다."),
 	SEARCH_LOG_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "PRODUCT_010", "검색 로그 저장에 실패했습니다."),
+	PRODUCT_NOT_REGISTERED(HttpStatus.NOT_FOUND, "PRODUCT_011", "매장에 등록되지 않은 상품입니다."),
 
 	// Inventory
 	INVENTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "INVENTORY_001", "재고 정보를 찾을 수 없습니다."),
@@ -53,7 +54,7 @@ public enum ErrorCode {
 	SHOPPING_LIST_ALREADY_EXISTS(HttpStatus.CONFLICT, "SHOPPING_LIST_010", "이미 생성된 쇼핑리스트가 있습니다."),
 
 	// Scan
-	INVALID_BARCODE(HttpStatus.BAD_REQUEST, "SCAN_001", "등록되지 않은 바코드입니다."),
+	INVALID_BARCODE(HttpStatus.BAD_REQUEST, "SCAN_001", "올바르지 않은 바코드입니다."),
 	BARCODE_SCAN_FAILED(HttpStatus.BAD_REQUEST, "SCAN_002", "바코드 인식에 실패했습니다."),
 	ALREADY_SCANNED_ITEM(HttpStatus.BAD_REQUEST, "SCAN_003", "이미 스캔 완료된 상품입니다."),
 	NOT_SCANNED_ITEM(HttpStatus.BAD_REQUEST, "SCAN_004", "스캔되지 않은 상품입니다."),

@@ -1,9 +1,11 @@
 package com.princesses7.findy.shopping.cart.dto.response;
 
 import java.util.List;
+import java.util.Map;
 
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.entity.CartItem;
+import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 
 public record CartResponse(
 	Long cartId,
@@ -11,13 +13,21 @@ public record CartResponse(
 	List<CartItemResponse> items,
 	int totalItemCount,
 	int checkedItemCount,
-	int totalQuantity
+	int totalQuantity,
+	int totalAmount,
+	int checkedTotalAmount
 ) {
 
-	public static CartResponse from(Cart cart) {
+	public static CartResponse from(
+		Cart cart,
+		Map<Long, ProductSummaryResponse> productMap
+	) {
 		List<CartItemResponse> items = cart.getCartItems()
 			.stream()
-			.map(CartItemResponse::from)
+			.map(cartItem -> CartItemResponse.from(
+				cartItem,
+				productMap.get(cartItem.getProductId())
+			))
 			.toList();
 
 		int checkedItemCount = (int)cart.getCartItems()
@@ -30,13 +40,24 @@ public record CartResponse(
 			.mapToInt(CartItem::getQuantity)
 			.sum();
 
+		int totalAmount = items.stream()
+			.mapToInt(CartItemResponse::itemTotalAmount)
+			.sum();
+
+		int checkedTotalAmount = items.stream()
+			.filter(CartItemResponse::checked)
+			.mapToInt(CartItemResponse::itemTotalAmount)
+			.sum();
+
 		return new CartResponse(
 			cart.getCartId(),
 			cart.getUserId(),
 			items,
 			items.size(),
 			checkedItemCount,
-			totalQuantity
+			totalQuantity,
+			totalAmount,
+			checkedTotalAmount
 		);
 	}
 
@@ -45,6 +66,8 @@ public record CartResponse(
 			null,
 			userId,
 			List.of(),
+			0,
+			0,
 			0,
 			0,
 			0

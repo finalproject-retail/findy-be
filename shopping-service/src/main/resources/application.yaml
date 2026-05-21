@@ -36,6 +36,11 @@ mfds:
   barcode:
     base-url: https://openapi.foodsafetykorea.go.kr/api
     key-id: ${MFDS_API_KEY}
+    service-id: I2570
+    data-type: json
+  barcode-product:
+    base-url: https://openapi.foodsafetykorea.go.kr/api
+    key-id: ${MFDS_API_KEY}
     service-id: C005
     data-type: json
 
