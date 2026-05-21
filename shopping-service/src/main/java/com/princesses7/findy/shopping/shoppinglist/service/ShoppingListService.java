@@ -2,17 +2,24 @@ package com.princesses7.findy.shopping.shoppinglist.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
+import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
+import com.princesses7.findy.shopping.product.service.ProductBarcodeReader;
+import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ScanShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListResponse;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
+import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingListItem;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 import com.princesses7.findy.shopping.shoppinglist.repository.ShoppingListRepository;
 
@@ -25,21 +32,25 @@ public class ShoppingListService {
 
 	private final CartRepository cartRepository;
 	private final ShoppingListRepository shoppingListRepository;
+	private final ProductSummaryReader productSummaryReader;
+	private final ProductBarcodeReader productBarcodeReader;
 
 	@Transactional
 	public ShoppingListResponse createShoppingList(Long userId) {
 		Cart cart = getCartByUserId(userId);
 
+		validateCheckedItemsPurchasable(cart);
+
 		ShoppingList shoppingList = ShoppingList.create(cart);
 		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
 
-		return ShoppingListResponse.from(savedShoppingList);
+		return toResponse(savedShoppingList);
 	}
 
 	public ShoppingListResponse getShoppingList(Long userId) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -48,14 +59,17 @@ public class ShoppingListService {
 		AddShoppingListItemRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		int quantity = request.quantityOrDefault();
+		int targetQuantity = getShoppingListItemQuantity(shoppingList, request.productId())
+			+ quantity;
 
-		// TODO: Product Service 연동 후 상품 존재 여부, 품절 여부 검증 추가
+		productSummaryReader.validatePurchasable(request.productId(), targetQuantity);
 		shoppingList.addSearchedItem(
 			request.productId(),
-			request.quantityOrDefault()
+			quantity
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -64,15 +78,21 @@ public class ShoppingListService {
 		ScanShoppingListItemRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
-
-		// TODO: Product Service 연동 후 barcode -> productId 매칭으로 변경
-		// 현재는 productId 기준으로 먼저 구현
-		shoppingList.addScannedItem(
-			request.productId(),
-			request.quantityOrDefault()
+		Long productId = productBarcodeReader.getProductIdByBarcode(request.barcode());
+		int quantity = request.quantityOrDefault();
+		int targetQuantity = calculateScannedTargetQuantity(
+			shoppingList,
+			productId,
+			quantity
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		productSummaryReader.validatePurchasable(productId, targetQuantity);
+		shoppingList.addScannedItem(
+			productId,
+			quantity
+		);
+
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -81,13 +101,14 @@ public class ShoppingListService {
 		ScanShoppingListItemRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		Long productId = productBarcodeReader.getProductIdByBarcode(request.barcode());
 
 		shoppingList.decreaseQuantityByScan(
-			request.productId(),
+			productId,
 			request.quantityOrDefault()
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -97,13 +118,15 @@ public class ShoppingListService {
 		ChangeShoppingListItemQuantityRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		ShoppingListItem item = getShoppingListItem(shoppingList, shoppingListItemId);
 
+		productSummaryReader.validatePurchasable(item.getProductId(), request.quantity());
 		shoppingList.changeItemQuantity(
 			shoppingListItemId,
 			request.quantity()
 		);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
 	}
 
 	@Transactional
@@ -115,7 +138,15 @@ public class ShoppingListService {
 
 		shoppingList.removeItem(shoppingListItemId);
 
-		return ShoppingListResponse.from(shoppingList);
+		return toResponse(shoppingList);
+	}
+
+	@Transactional
+	public void cancelShopping(Long userId) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		shoppingList.cancel();
+		shoppingListRepository.delete(shoppingList);
 	}
 
 	private Cart getCartByUserId(Long userId) {
@@ -126,5 +157,58 @@ public class ShoppingListService {
 	private ShoppingList getShoppingListByUserId(Long userId) {
 		return shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
+	}
+
+	private void validateCheckedItemsPurchasable(Cart cart) {
+		cart.getCheckedItems().forEach(cartItem ->
+			productSummaryReader.validatePurchasable(
+				cartItem.getProductId(),
+				cartItem.getQuantity()
+			)
+		);
+	}
+
+	private ShoppingListItem getShoppingListItem(
+		ShoppingList shoppingList,
+		Long shoppingListItemId
+	) {
+		return shoppingList.getShoppingListItems().stream()
+			.filter(item -> item.hasSameId(shoppingListItemId))
+			.findFirst()
+			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_ITEM_NOT_FOUND));
+	}
+
+	private int getShoppingListItemQuantity(ShoppingList shoppingList, Long productId) {
+		return shoppingList.getShoppingListItems().stream()
+			.filter(item -> item.hasSameProduct(productId))
+			.mapToInt(ShoppingListItem::getQuantity)
+			.findFirst()
+			.orElse(0);
+	}
+
+	private int calculateScannedTargetQuantity(
+		ShoppingList shoppingList,
+		Long productId,
+		int scanQuantity
+	) {
+		return shoppingList.getShoppingListItems().stream()
+			.filter(item -> item.hasSameProduct(productId))
+			.findFirst()
+			.map(item -> Math.max(
+				item.getQuantity(),
+				item.getScannedQuantity() + scanQuantity
+			))
+			.orElse(scanQuantity);
+	}
+
+	private ShoppingListResponse toResponse(ShoppingList shoppingList) {
+		List<Long> productIds = shoppingList.getShoppingListItems().stream()
+			.map(ShoppingListItem::getProductId)
+			.toList();
+
+		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
+			.getProductSummaryMap(productIds);
+
+		return ShoppingListResponse.from(shoppingList, productMap);
 	}
 }

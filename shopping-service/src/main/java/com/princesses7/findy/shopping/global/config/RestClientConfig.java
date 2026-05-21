@@ -20,4 +20,11 @@ public class RestClientConfig {
 			.baseUrl(properties.baseUrl())
 			.build();
 	}
+
+	@Bean
+	public RestClient mfdsLinkedProductRestClient(MfdsLinkedProductProperties properties) {
+		return RestClient.builder()
+			.baseUrl(properties.baseUrl())
+			.build();
+	}
 }

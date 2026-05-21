@@ -129,6 +129,11 @@ public class ShoppingList extends BaseTimeEntity {
 		shoppingListItems.remove(item);
 	}
 
+	public void cancel() {
+		cart.uncheckAllItems();
+		cart.clearShoppingList();
+	}
+
 	public int getTotalItemCount() {
 		return shoppingListItems.stream()
 			.mapToInt(ShoppingListItem::getQuantity)

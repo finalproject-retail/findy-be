@@ -1,16 +1,31 @@
 package com.princesses7.findy.shopping.external.mfds.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record MfdsBarcodeItemResponse(
-	String PRDLST_REPORT_NO,
-	String PRMS_DT,
-	String END_DT,
-	String PRDLST_NM,
-	String POG_DAYCNT,
-	String PRDLST_DCNM,
-	String BSSH_NM,
-	String INDUTY_NM,
-	String SITE_ADDR,
-	String CLSBIZ_DT,
-	String BAR_CD
+
+	@JsonProperty("BRCD_NO")
+	String barcode,
+
+	@JsonProperty("PRDLST_REPORT_NO")
+	String reportNo,
+
+	@JsonProperty("CMPNY_NM")
+	String companyName,
+
+	@JsonProperty("PRDT_NM")
+	String productName,
+
+	@JsonProperty("LAST_UPDT_DTM")
+	String lastUpdatedAt,
+
+	@JsonProperty("PRDLST_NM")
+	String categorySmall,
+
+	@JsonProperty("HRNK_PRDLST_NM")
+	String categoryMiddle,
+
+	@JsonProperty("HTRK_PRDLST_NM")
+	String categoryLarge
 ) {
 }

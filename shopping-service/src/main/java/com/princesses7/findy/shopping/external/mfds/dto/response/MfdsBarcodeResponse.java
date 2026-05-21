@@ -2,28 +2,19 @@ package com.princesses7.findy.shopping.external.mfds.dto.response;
 
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 public record MfdsBarcodeResponse(
-	C005 C005
+
+	@JsonProperty("I2570")
+	MfdsBarcodeBody body
 ) {
 
 	public List<MfdsBarcodeItemResponse> getItems() {
-		if (C005 == null || C005.row() == null) {
+		if (body == null || body.row() == null) {
 			return List.of();
 		}
 
-		return C005.row();
-	}
-
-	public record C005(
-		String total_count,
-		List<MfdsBarcodeItemResponse> row,
-		Result RESULT
-	) {
-	}
-
-	public record Result(
-		String MSG,
-		String CODE
-	) {
+		return body.row();
 	}
 }

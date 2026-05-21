@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: 8887
 
 spring:
   application:
@@ -34,6 +34,11 @@ naver:
 
 mfds:
   barcode:
+    base-url: https://openapi.foodsafetykorea.go.kr/api
+    key-id: ${MFDS_API_KEY}
+    service-id: I2570
+    data-type: json
+  barcode-product:
     base-url: https://openapi.foodsafetykorea.go.kr/api
     key-id: ${MFDS_API_KEY}
     service-id: C005
