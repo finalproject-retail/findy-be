@@ -24,8 +24,8 @@ jobs:
             path: apigateway
           - service: user-service
             path: user-service
-          - service: product-service
-            path: product-service
+          - service: map-service
+            path: map-service
           - service: shopping-service
             path: shopping-service
 
