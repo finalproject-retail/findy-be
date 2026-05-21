@@ -51,5 +51,9 @@ public class ProductBarcodeReader {
 		if (barcode == null || barcode.isBlank()) {
 			throw new ProductException(INVALID_BARCODE);
 		}
+
+		if (!barcode.matches("\\d{8}|\\d{12}|\\d{13}|\\d{14}")) {
+			throw new ProductException(BARCODE_PRODUCT_NOT_FOUND);
+		}
 	}
 }
