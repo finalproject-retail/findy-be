@@ -7,7 +7,8 @@ public record OpenAiProperties(
 	String baseUrl,
 	String apiKey,
 	String embeddingModel,
-	Integer embeddingDimensions
+	Integer embeddingDimensions,
+	String chatModel
 ) {
 
 	public String baseUrl() {
@@ -20,5 +21,9 @@ public record OpenAiProperties(
 
 	public Integer embeddingDimensions() {
 		return embeddingDimensions == null ? 512 : embeddingDimensions;
+	}
+
+	public String chatModel() {
+		return chatModel == null ? "gpt-4o-mini" : chatModel;
 	}
 }
