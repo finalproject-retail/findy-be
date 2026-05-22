@@ -12,11 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.request.UpdateCouponRequest;
+import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponResponse;
 import com.princesses7.findy.shopping.coupon.entity.Coupon;
+import com.princesses7.findy.shopping.coupon.entity.DiscountType;
 import com.princesses7.findy.shopping.coupon.entity.UserCoupon;
 import com.princesses7.findy.shopping.coupon.exception.CouponException;
 import com.princesses7.findy.shopping.coupon.repository.CouponRepository;
@@ -237,5 +239,72 @@ public class CouponService {
 		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
 
 		return UserCouponResponse.from(userCoupon, now);
+	}
+
+	public CouponDiscountResult applyCoupon(
+		Long userId,
+		Long userCouponId,
+		int orderAmount
+	) {
+		if (userCouponId == null) {
+			return CouponDiscountResult.none();
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+
+		UserCoupon userCoupon = userCouponRepository.findByUserCouponIdAndUserId(
+			userCouponId,
+			userId
+		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
+
+		Coupon coupon = userCoupon.getCoupon();
+
+		if (!coupon.isAvailable(now)) {
+			throw new CouponException(COUPON_NOT_AVAILABLE);
+		}
+
+		if (userCoupon.isExpired(now)) {
+			throw new CouponException(COUPON_EXPIRED);
+		}
+
+		if (userCoupon.isUsed()) {
+			throw new CouponException(COUPON_ALREADY_USED);
+		}
+
+		if (orderAmount < coupon.getMinOrderAmount()) {
+			throw new CouponException(COUPON_CONDITION_NOT_MET);
+		}
+
+		int discountAmount = calculateCouponDiscountAmount(coupon, orderAmount);
+
+		return new CouponDiscountResult(coupon.getCouponId(), discountAmount);
+	}
+
+	@Transactional
+	public void useCoupon(
+		Long userId,
+		Long userCouponId
+	) {
+		if (userCouponId == null) {
+			return;
+		}
+
+		UserCoupon userCoupon = userCouponRepository.findByUserCouponIdAndUserId(
+			userCouponId,
+			userId
+		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
+
+		userCoupon.use(LocalDateTime.now());
+	}
+
+	private int calculateCouponDiscountAmount(
+		Coupon coupon,
+		int orderAmount
+	) {
+		if (coupon.getDiscountType() == DiscountType.RATE) {
+			return orderAmount * coupon.getDiscountValue() / 100;
+		}
+
+		return Math.min(coupon.getDiscountValue(), orderAmount);
 	}
 }
