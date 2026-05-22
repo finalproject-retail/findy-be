@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.coupon.service;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.request.UpdateCouponRequest;
+import com.princesses7.findy.shopping.coupon.dto.response.AvailableOrderCouponResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
@@ -181,6 +183,33 @@ public class CouponService {
 		}
 
 		return CouponResponse.from(coupon);
+	}
+
+	@Transactional(readOnly = true)
+	public List<AvailableOrderCouponResponse> getAvailableOrderCoupons(
+		Long userId,
+		int orderAmount
+	) {
+		LocalDateTime now = LocalDateTime.now();
+
+		return userCouponRepository.findAllByUserIdAndIsUsedFalse(userId)
+			.stream()
+			.filter(userCoupon -> isAvailableForOrder(userCoupon, orderAmount, now))
+			.map(userCoupon -> AvailableOrderCouponResponse.of(userCoupon, orderAmount))
+			.toList();
+	}
+
+	private boolean isAvailableForOrder(
+		UserCoupon userCoupon,
+		int orderAmount,
+		LocalDateTime now
+	) {
+		Coupon coupon = userCoupon.getCoupon();
+
+		return coupon.isAvailable(now)
+			&& !userCoupon.isExpired(now)
+			&& !userCoupon.isUsed()
+			&& orderAmount >= coupon.getMinOrderAmount();
 	}
 
 	@Transactional
