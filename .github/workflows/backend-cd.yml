@@ -145,7 +145,7 @@ jobs:
         with:
           repository: ${{ env.INFRA_REPOSITORY }}
           ref: ${{ env.INFRA_BRANCH }}
-          token: ${{ secrets.INFRA_REPO_TOKEN }}
+          token: ${{ secrets.PAT }}
           path: infra
 
       - name: Update Kubernetes manifests
