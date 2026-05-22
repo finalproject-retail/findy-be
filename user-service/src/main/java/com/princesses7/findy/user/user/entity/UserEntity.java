@@ -73,4 +73,8 @@ public class UserEntity extends BaseTimeEntity {
 	@Builder.Default
 	@Column(nullable = false)
 	private boolean isFirstLogin = true;
+
+	public void completeOnboarding() {
+		this.isFirstLogin = false;
+	}
 }
