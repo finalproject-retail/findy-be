@@ -7,6 +7,7 @@ import com.princesses7.findy.shopping.order.entity.Order;
 public record OrderSummaryResponse(
 	Long orderId,
 	Long shoppingListId,
+	Long couponId,
 	int totalAmount,
 	int discountAmount,
 	int finalAmount,
@@ -18,6 +19,7 @@ public record OrderSummaryResponse(
 		return new OrderSummaryResponse(
 			order.getOrderId(),
 			order.getShoppingListId(),
+			order.getCouponId(),
 			order.getTotalAmount(),
 			order.getDiscountAmount(),
 			order.getFinalAmount(),
