@@ -67,7 +67,7 @@ public class CouponController {
 		return ApiResponse.ok("쿠폰 다운로드에 성공했습니다.", response);
 	}
 
-	@GetMapping("/my")
+	@GetMapping("/me")
 	public ApiResponse<UserCouponPageResponse> getMyCoupons(
 		@RequestHeader("X-USER-ID") Long userId,
 		@RequestParam(required = false) Boolean used,
@@ -86,7 +86,7 @@ public class CouponController {
 		return ApiResponse.ok(response);
 	}
 
-	@GetMapping("/my/{userCouponId}")
+	@GetMapping("/me/{userCouponId}")
 	public ApiResponse<UserCouponResponse> getMyCoupon(
 		@RequestHeader("X-USER-ID") Long userId,
 		@PathVariable Long userCouponId
