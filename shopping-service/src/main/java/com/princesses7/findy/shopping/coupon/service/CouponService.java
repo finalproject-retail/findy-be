@@ -192,7 +192,7 @@ public class CouponService {
 	) {
 		LocalDateTime now = LocalDateTime.now();
 
-		return userCouponRepository.findAllByUserIdAndIsUsedFalse(userId)
+		return userCouponRepository.findAllByUserIdAndUsedFalse(userId)
 			.stream()
 			.filter(userCoupon -> isAvailableForOrder(userCoupon, orderAmount, now))
 			.map(userCoupon -> AvailableOrderCouponResponse.of(userCoupon, orderAmount))

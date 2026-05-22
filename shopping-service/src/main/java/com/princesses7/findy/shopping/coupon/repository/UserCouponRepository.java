@@ -41,5 +41,5 @@ public interface UserCouponRepository extends JpaRepository<UserCoupon, Long> {
 	@EntityGraph(attributePaths = "coupon")
 	Optional<UserCoupon> findByUserCouponIdAndUserId(Long userCouponId, Long userId);
 
-	List<UserCoupon> findAllByUserIdAndIsUsedFalse(Long userId);
+	List<UserCoupon> findAllByUserIdAndUsedFalse(Long userId);
 }
