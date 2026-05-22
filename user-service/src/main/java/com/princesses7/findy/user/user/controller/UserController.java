@@ -1,7 +1,5 @@
 package com.princesses7.findy.user.user.controller;
 
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,8 +20,9 @@ public class UserController {
 	private final UserService userService;
 
 	@PostMapping("/signup")
-	public ResponseEntity<ApiResponse<Void>> signup(@Valid @RequestBody SignupRequestDTO request) {
+	public ApiResponse<Void> signup(@Valid @RequestBody SignupRequestDTO request) {
 		userService.signup(request);
-		return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok());
+
+		return ApiResponse.ok("회원가입에 성공했습니다.");
 	}
 }
