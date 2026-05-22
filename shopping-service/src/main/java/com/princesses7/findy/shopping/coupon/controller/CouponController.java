@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.coupon.controller;
 
+import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -8,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.princesses7.findy.shopping.coupon.dto.response.AvailableOrderCouponResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponPageResponse;
@@ -32,6 +35,17 @@ public class CouponController {
 		CouponPageResponse response = couponService.getAvailableCoupons(page, size);
 
 		return ApiResponse.ok(response);
+	}
+
+	@GetMapping("/available-for-order")
+	public ApiResponse<List<AvailableOrderCouponResponse>> getAvailableOrderCoupons(
+		@RequestHeader("X-USER-ID") Long userId,
+		@RequestParam int orderAmount
+	) {
+		return ApiResponse.ok(
+			"주문 시 사용 가능한 쿠폰 조회에 성공했습니다.",
+			couponService.getAvailableOrderCoupons(userId, orderAmount)
+		);
 	}
 
 	@GetMapping("/{couponId}")
