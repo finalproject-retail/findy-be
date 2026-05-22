@@ -1,4 +1,4 @@
-package com.princesses7.findy.user.controller;
+package com.princesses7.findy.user.user.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -7,9 +7,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.princesses7.findy.user.dto.request.SignupRequestDTO;
 import com.princesses7.findy.user.global.response.ApiResponse;
-import com.princesses7.findy.user.service.UserService;
+import com.princesses7.findy.user.user.dto.request.SignupRequestDTO;
+import com.princesses7.findy.user.user.service.UserService;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

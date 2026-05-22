@@ -1,17 +1,17 @@
-package com.princesses7.findy.user.service;
+package com.princesses7.findy.user.user.service;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.princesses7.findy.user.dto.request.SignupRequestDTO;
-import com.princesses7.findy.user.entity.Grade;
-import com.princesses7.findy.user.entity.Role;
-import com.princesses7.findy.user.entity.UserEntity;
-import com.princesses7.findy.user.entity.UserGradeEntity;
 import com.princesses7.findy.user.global.exception.BaseException;
 import com.princesses7.findy.user.global.exception.ErrorCode;
-import com.princesses7.findy.user.repository.UserGradeRepository;
-import com.princesses7.findy.user.repository.UserRepository;
+import com.princesses7.findy.user.user.dto.request.SignupRequestDTO;
+import com.princesses7.findy.user.user.entity.Grade;
+import com.princesses7.findy.user.user.entity.Role;
+import com.princesses7.findy.user.user.entity.UserEntity;
+import com.princesses7.findy.user.user.entity.UserGradeEntity;
+import com.princesses7.findy.user.user.repository.UserGradeRepository;
+import com.princesses7.findy.user.user.repository.UserRepository;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;

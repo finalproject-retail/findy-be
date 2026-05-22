@@ -1,10 +1,10 @@
-package com.princesses7.findy.user.dto.response;
+package com.princesses7.findy.user.user.dto.response;
 
 import java.time.LocalDate;
 
-import com.princesses7.findy.user.entity.Gender;
-import com.princesses7.findy.user.entity.Role;
-import com.princesses7.findy.user.entity.UserGradeEntity;
+import com.princesses7.findy.user.user.entity.Gender;
+import com.princesses7.findy.user.user.entity.Role;
+import com.princesses7.findy.user.user.entity.UserGradeEntity;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

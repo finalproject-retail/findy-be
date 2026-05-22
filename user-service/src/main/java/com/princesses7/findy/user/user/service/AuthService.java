@@ -1,4 +1,4 @@
-package com.princesses7.findy.user.service;
+package com.princesses7.findy.user.user.service;
 
 import org.springframework.security.authentication.AnonymousAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -6,13 +6,13 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import com.princesses7.findy.user.dto.request.LoginRequestDTO;
-import com.princesses7.findy.user.dto.response.TokenResponseDTO;
-import com.princesses7.findy.user.entity.UserEntity;
 import com.princesses7.findy.user.global.exception.BaseException;
 import com.princesses7.findy.user.global.exception.ErrorCode;
-import com.princesses7.findy.user.repository.UserRepository;
 import com.princesses7.findy.user.security.JwtProvider;
+import com.princesses7.findy.user.user.dto.request.LoginRequestDTO;
+import com.princesses7.findy.user.user.dto.response.TokenResponseDTO;
+import com.princesses7.findy.user.user.entity.UserEntity;
+import com.princesses7.findy.user.user.repository.UserRepository;
 
 import lombok.RequiredArgsConstructor;
 

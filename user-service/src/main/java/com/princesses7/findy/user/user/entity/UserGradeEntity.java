@@ -1,4 +1,4 @@
-package com.princesses7.findy.user.entity;
+package com.princesses7.findy.user.user.entity;
 
 import com.princesses7.findy.user.global.entity.BaseTimeEntity;
 

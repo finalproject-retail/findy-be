@@ -1,8 +1,8 @@
-package com.princesses7.findy.user.dto.request;
+package com.princesses7.findy.user.user.dto.request;
 
 import java.time.LocalDate;
 
-import com.princesses7.findy.user.entity.Gender;
+import com.princesses7.findy.user.user.entity.Gender;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;

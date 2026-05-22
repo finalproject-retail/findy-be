@@ -1,4 +1,4 @@
-package com.princesses7.findy.user.dto.request;
+package com.princesses7.findy.user.user.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
