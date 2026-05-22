@@ -24,7 +24,7 @@ public class UserService {
 	private final BCryptPasswordEncoder passwordEncoder;
 
 	@Transactional
-	public void signup(SignupRequestDTO request) {
+	public Long signup(SignupRequestDTO request) {
 		// 1. 중복 체크
 		if (userRepository.findByEmail(request.getEmail()).isPresent()) {
 			throw new BaseException(ErrorCode.INVALID_REQUEST, "이미 존재하는 이메일입니다.");
@@ -51,6 +51,8 @@ public class UserService {
 			.isFirstLogin(true)
 			.build();
 
-		userRepository.save(user);
+		UserEntity savedUser = userRepository.save(user);
+
+		return savedUser.getUserId();
 	}
 }

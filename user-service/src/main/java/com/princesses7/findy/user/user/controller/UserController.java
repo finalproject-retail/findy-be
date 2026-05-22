@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.user.global.response.ApiResponse;
 import com.princesses7.findy.user.user.dto.request.SignupRequestDTO;
+import com.princesses7.findy.user.user.dto.response.SignupResponse;
 import com.princesses7.findy.user.user.service.UserService;
 
 import jakarta.validation.Valid;
@@ -20,9 +21,9 @@ public class UserController {
 	private final UserService userService;
 
 	@PostMapping("/signup")
-	public ApiResponse<Void> signup(@Valid @RequestBody SignupRequestDTO request) {
-		userService.signup(request);
+	public ApiResponse<SignupResponse> signup(@Valid @RequestBody SignupRequestDTO request) {
+		Long userId = userService.signup(request);
 
-		return ApiResponse.ok("회원가입에 성공했습니다.");
+		return ApiResponse.ok("회원가입에 성공했습니다.", new SignupResponse(userId));
 	}
 }
