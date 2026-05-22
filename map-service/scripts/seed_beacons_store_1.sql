@@ -1,6 +1,7 @@
 -- store_id=1, one beacon per grid (522 rows)
 -- beacon_id = grid_id (1..522); run seed_grids_store_1.sql first
 -- grid_id assignment must match grid insert order (y:0..17, x:0..28)
+-- 실물 Minew 4대 grid_id [43, 321, 333, 466] → beacon_uuid e2c56db5-dffb-48d2-b060-d0f5a71096e0
 INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, updated_at) VALUES
 (1, 1, 1, '675004f6-89e4-5c28-a31f-b8065dd5ee56', NOW(), NOW()),
 (2, 1, 2, '9afb206e-2bc9-5552-917b-ef7443f6b3cd', NOW(), NOW()),
@@ -44,7 +45,7 @@ INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, upda
 (40, 1, 40, 'abbd82ff-3e24-5aa0-b841-a788d90d5303', NOW(), NOW()),
 (41, 1, 41, '31f727dc-e3bf-597e-9d39-3e9dcfd924d4', NOW(), NOW()),
 (42, 1, 42, 'a96040f9-29f0-5383-875e-bb96edafbbbb', NOW(), NOW()),
-(43, 1, 43, '6f7e0d67-1d8a-5eae-bd66-27732d3e53f9', NOW(), NOW()),
+(43, 1, 43, 'e2c56db5-dffb-48d2-b060-d0f5a71096e0', NOW(), NOW()),
 (44, 1, 44, 'c189a925-83f0-5d61-bc23-994869a83efd', NOW(), NOW()),
 (45, 1, 45, 'cfe37620-f413-5c42-920f-ed7142160868', NOW(), NOW()),
 (46, 1, 46, '28d5832c-5f33-5a77-844d-89a045251656', NOW(), NOW()),
@@ -322,7 +323,7 @@ INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, upda
 (318, 1, 318, 'd220e060-2b51-59db-907b-1d6553f8a611', NOW(), NOW()),
 (319, 1, 319, '604e4abb-e287-5be2-8b49-69aa7c1017db', NOW(), NOW()),
 (320, 1, 320, '9d023760-12fb-5437-bd1e-ce61162d9e8b', NOW(), NOW()),
-(321, 1, 321, '28447e8c-2248-5c95-89f2-fa4c4d2f692f', NOW(), NOW()),
+(321, 1, 321, 'e2c56db5-dffb-48d2-b060-d0f5a71096e0', NOW(), NOW()),
 (322, 1, 322, 'dbf16f0a-7a67-53cc-b65f-119f5f38a97e', NOW(), NOW()),
 (323, 1, 323, 'fcd8b299-58c1-503d-876c-cecdc6ee5452', NOW(), NOW()),
 (324, 1, 324, '4ccd27fc-be61-50e5-9ac8-66289fc9307f', NOW(), NOW()),
@@ -334,7 +335,7 @@ INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, upda
 (330, 1, 330, '6a59f0f9-400f-5f8b-b7d3-b7a91dab2ebf', NOW(), NOW()),
 (331, 1, 331, '55e656df-a1e5-564b-a9db-e655838ad897', NOW(), NOW()),
 (332, 1, 332, '10a0d0bd-3c0d-5f70-8fd7-4eb1891dc836', NOW(), NOW()),
-(333, 1, 333, '2ba4900e-5807-5f59-a72a-e2e7748a1682', NOW(), NOW()),
+(333, 1, 333, 'e2c56db5-dffb-48d2-b060-d0f5a71096e0', NOW(), NOW()),
 (334, 1, 334, 'a897e076-5c13-51c9-a3b4-9a47a5b1c056', NOW(), NOW()),
 (335, 1, 335, 'd59944af-7883-50fa-a07f-f76f777b6234', NOW(), NOW()),
 (336, 1, 336, '27b0945a-2b6b-5261-8374-81f06b03f761', NOW(), NOW()),
@@ -467,7 +468,7 @@ INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, upda
 (463, 1, 463, 'be0c2698-7bca-51f1-9233-e68665a57060', NOW(), NOW()),
 (464, 1, 464, '0f5d8c01-addc-556f-bb47-3417f92ea57b', NOW(), NOW()),
 (465, 1, 465, 'f74228ea-9e0d-5f50-a377-e1bb19d212de', NOW(), NOW()),
-(466, 1, 466, '7fb03ad9-82db-561d-aa52-3d3ff3a57fc4', NOW(), NOW()),
+(466, 1, 466, 'e2c56db5-dffb-48d2-b060-d0f5a71096e0', NOW(), NOW()),
 (467, 1, 467, 'd0e713ab-d087-5e1a-aeb4-dbcb4329bcd6', NOW(), NOW()),
 (468, 1, 468, '2244a1b1-3cbb-594e-ac0c-baf3fcdaca4e', NOW(), NOW()),
 (469, 1, 469, 'b1844d61-8002-5e1b-ad00-733d1a1b11e1', NOW(), NOW()),
