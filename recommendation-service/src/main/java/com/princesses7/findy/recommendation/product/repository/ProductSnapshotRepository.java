@@ -13,4 +13,6 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 	List<ProductSnapshot> findByDeletedFalse(Pageable pageable);
 
 	List<ProductSnapshot> findByProductIdIn(Collection<Long> productIds);
+
+	List<ProductSnapshot> findByCategoryIdAndDeletedFalse(Long categoryId);
 }

@@ -1,5 +1,6 @@
 package com.princesses7.findy.recommendation.embedding.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,4 +13,6 @@ public interface ProductEmbeddingRepository extends JpaRepository<ProductEmbeddi
 	Optional<ProductEmbedding> findByProductId(Long productId);
 
 	List<ProductEmbedding> findByModelAndDimensions(String model, int dimensions);
+
+	List<ProductEmbedding> findByProductIdIn(Collection<Long> productIds);
 }
