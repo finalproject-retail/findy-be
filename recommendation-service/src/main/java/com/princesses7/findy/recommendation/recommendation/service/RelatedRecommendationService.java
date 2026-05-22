@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,6 +15,7 @@ import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
 import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
+import com.princesses7.findy.recommendation.external.openai.OpenAiRelatedProductRerankClient;
 import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.global.exception.ErrorCode;
@@ -25,6 +25,8 @@ import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 import com.princesses7.findy.recommendation.product.repository.ProductSnapshotRepository;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationListResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.dto.response.RelatedProductRerankItem;
+import com.princesses7.findy.recommendation.recommendation.dto.response.SourceProductResponse;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 
 import lombok.RequiredArgsConstructor;
@@ -36,12 +38,16 @@ public class RelatedRecommendationService {
 
 	private static final int DEFAULT_SIZE = 5;
 	private static final int MAX_SIZE = 20;
-	private static final int FALLBACK_MULTIPLIER = 3;
+	private static final int VECTOR_CANDIDATE_LIMIT = 30;
 
-	private final ProductEmbeddingRepository productEmbeddingRepository;
+	private static final double MIN_VECTOR_SCORE = 0.35;
+	private static final double MIN_RERANK_SCORE = 0.55;
+
 	private final ProductSnapshotRepository productRepository;
+	private final ProductEmbeddingRepository productEmbeddingRepository;
 	private final CategorySnapshotRepository categoryRepository;
 	private final OpenAiEmbeddingClient openAiEmbeddingClient;
+	private final OpenAiRelatedProductRerankClient rerankClient;
 	private final OpenAiProperties openAiProperties;
 
 	public ProductRecommendationListResponse getRelatedRecommendations(
@@ -64,7 +70,7 @@ public class RelatedRecommendationService {
 		);
 
 		if (candidateEmbeddings.isEmpty()) {
-			return fallback(userId, sourceProduct, normalizedSize);
+			return emptyResponse(userId, sourceProduct, sourceCategoryName);
 		}
 
 		List<Long> candidateProductIds = candidateEmbeddings.stream()
@@ -74,7 +80,7 @@ public class RelatedRecommendationService {
 		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(candidateProductIds);
 
 		if (productMap.isEmpty()) {
-			return fallback(userId, sourceProduct, normalizedSize);
+			return emptyResponse(userId, sourceProduct, sourceCategoryName);
 		}
 
 		Map<Long, String> categoryNameMap = findCategoryNameMap(
@@ -88,84 +94,117 @@ public class RelatedRecommendationService {
 			sourceProduct.toRelatedRecommendationText(sourceCategoryName)
 		);
 
-		List<ProductRecommendationResponse> recommendations = candidateEmbeddings.stream()
-			.map(candidateEmbedding -> toRecommendationResponse(
+		ProductEmbedding sourceEmbedding = productEmbeddingRepository.findByProductId(sourceProduct.getProductId())
+			.orElse(null);
+
+		List<RelatedCandidate> vectorCandidates = candidateEmbeddings.stream()
+			.map(candidateEmbedding -> toRelatedCandidate(
 				sourceProduct,
+				sourceEmbedding,
 				candidateEmbedding,
 				productMap,
-				categoryNameMap,
 				relatedIntentEmbedding
 			))
 			.filter(Objects::nonNull)
+			.filter(candidate -> candidate.vectorScore() >= MIN_VECTOR_SCORE)
 			.sorted(
-				Comparator.comparing(ProductRecommendationResponse::score)
+				Comparator.comparing(RelatedCandidate::vectorScore)
 					.reversed()
-					.thenComparing(ProductRecommendationResponse::productId)
+					.thenComparing(candidate -> candidate.product().getProductId())
 			)
-			.limit(normalizedSize)
+			.limit(VECTOR_CANDIDATE_LIMIT)
 			.toList();
 
-		if (recommendations.isEmpty()) {
-			return fallback(userId, sourceProduct, normalizedSize);
+		if (vectorCandidates.isEmpty()) {
+			return emptyResponse(userId, sourceProduct, sourceCategoryName);
 		}
+
+		List<ProductSnapshot> rerankTargets = vectorCandidates.stream()
+			.map(RelatedCandidate::product)
+			.toList();
+
+		List<RelatedProductRerankItem> rerankItems = rerankClient.rerank(
+			sourceProduct,
+			sourceCategoryName,
+			rerankTargets,
+			categoryNameMap,
+			normalizedSize
+		);
+
+		List<ProductRecommendationResponse> recommendations = toRerankedRecommendations(
+			vectorCandidates,
+			rerankItems,
+			normalizedSize
+		);
 
 		return new ProductRecommendationListResponse(
 			userId,
 			sourceProduct.getProductId(),
+			SourceProductResponse.from(sourceProduct, sourceCategoryName),
 			RecommendationType.RELATED,
 			recommendations
 		);
 	}
 
-	private ProductRecommendationResponse toRecommendationResponse(
+	private RelatedCandidate toRelatedCandidate(
 		ProductSnapshot sourceProduct,
+		ProductEmbedding sourceEmbedding,
 		ProductEmbedding candidateEmbedding,
 		Map<Long, ProductSnapshot> productMap,
-		Map<Long, String> categoryNameMap,
 		List<Double> relatedIntentEmbedding
 	) {
 		ProductSnapshot candidate = productMap.get(candidateEmbedding.getProductId());
 
-		if (candidate == null || candidate.getProductId().equals(sourceProduct.getProductId())) {
+		if (candidate == null) {
 			return null;
 		}
 
-		double similarityScore = VectorSimilarityCalculator.cosineSimilarity(
+		if (candidate.getProductId().equals(sourceProduct.getProductId())) {
+			return null;
+		}
+
+		double relatedSimilarity = VectorSimilarityCalculator.cosineSimilarity(
 			relatedIntentEmbedding,
 			candidateEmbedding.getEmbeddingVector()
 		);
 
-		double score = calculateScore(
-			sourceProduct,
-			candidate,
-			categoryNameMap.getOrDefault(candidate.getCategoryId(), ""),
-			similarityScore
-		);
+		double sourceSimilarity = 0.0;
 
-		return ProductRecommendationResponse.from(
-			candidate,
-			score,
-			RecommendationType.RELATED,
-			createReason(sourceProduct, candidate)
-		);
-	}
-
-	private double calculateScore(
-		ProductSnapshot sourceProduct,
-		ProductSnapshot candidate,
-		String candidateCategoryName,
-		double similarityScore
-	) {
-		double score = normalizeSimilarity(similarityScore) * 0.85;
-
-		if (candidate.getCategoryId().equals(sourceProduct.getCategoryId())) {
-			score -= 0.08;
-		} else {
-			score += 0.08;
+		if (sourceEmbedding != null) {
+			sourceSimilarity = VectorSimilarityCalculator.cosineSimilarity(
+				sourceEmbedding.getEmbeddingVector(),
+				candidateEmbedding.getEmbeddingVector()
+			);
 		}
 
-		if (candidateCategoryName != null && !candidateCategoryName.isBlank()) {
-			score += 0.02;
+		double score = calculateVectorScore(
+			sourceProduct,
+			candidate,
+			relatedSimilarity,
+			sourceSimilarity
+		);
+
+		return new RelatedCandidate(candidate, score);
+	}
+
+	private double calculateVectorScore(
+		ProductSnapshot sourceProduct,
+		ProductSnapshot candidate,
+		double relatedSimilarity,
+		double sourceSimilarity
+	) {
+		double score = normalizeSimilarity(relatedSimilarity) * 0.75;
+
+		if (candidate.getCategoryId().equals(sourceProduct.getCategoryId())) {
+			score -= 0.20;
+		} else {
+			score += 0.04;
+		}
+
+		if (sourceSimilarity >= 0.85) {
+			score -= 0.18;
+		} else if (sourceSimilarity >= 0.78) {
+			score -= 0.10;
 		}
 
 		score += calculateDiscountScore(candidate.getDiscountRate());
@@ -173,36 +212,57 @@ public class RelatedRecommendationService {
 		return clamp(score);
 	}
 
-	private ProductRecommendationListResponse fallback(
-		Long userId,
-		ProductSnapshot sourceProduct,
+	private List<ProductRecommendationResponse> toRerankedRecommendations(
+		List<RelatedCandidate> vectorCandidates,
+		List<RelatedProductRerankItem> rerankItems,
 		int size
 	) {
-		List<ProductRecommendationResponse> recommendations = productRepository.findByDeletedFalse(
-				PageRequest.of(0, size * FALLBACK_MULTIPLIER)
-			)
-			.stream()
-			.filter(ProductSnapshot::isRecommendable)
-			.filter(product -> !product.getProductId().equals(sourceProduct.getProductId()))
+		if (rerankItems == null || rerankItems.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, RelatedProductRerankItem> rerankMap = rerankItems.stream()
+			.filter(RelatedProductRerankItem::isComplementary)
+			.filter(item -> item.safeScore() >= MIN_RERANK_SCORE)
+			.collect(Collectors.toMap(
+				RelatedProductRerankItem::productId,
+				item -> item,
+				(left, right) -> left
+			));
+
+		return vectorCandidates.stream()
+			.filter(candidate -> rerankMap.containsKey(candidate.product().getProductId()))
+			.map(candidate -> {
+				RelatedProductRerankItem item = rerankMap.get(candidate.product().getProductId());
+				double finalScore = calculateFinalScore(candidate.vectorScore(), item.safeScore());
+
+				return ProductRecommendationResponse.from(
+					candidate.product(),
+					finalScore,
+					RecommendationType.RELATED,
+					item.safeReason()
+				);
+			})
 			.sorted(
-				Comparator.comparing(this::getDiscountRate)
+				Comparator.comparing(ProductRecommendationResponse::score)
 					.reversed()
-					.thenComparing(ProductSnapshot::getProductId)
+					.thenComparing(ProductRecommendationResponse::productId)
 			)
 			.limit(size)
-			.map(product -> ProductRecommendationResponse.from(
-				product,
-				calculateFallbackScore(product),
-				RecommendationType.RELATED,
-				"연관 상품 임베딩 데이터가 부족하여 구매 가능한 상품을 기준으로 추천합니다."
-			))
 			.toList();
+	}
 
+	private ProductRecommendationListResponse emptyResponse(
+		Long userId,
+		ProductSnapshot sourceProduct,
+		String sourceCategoryName
+	) {
 		return new ProductRecommendationListResponse(
 			userId,
 			sourceProduct.getProductId(),
+			SourceProductResponse.from(sourceProduct, sourceCategoryName),
 			RecommendationType.RELATED,
-			recommendations
+			List.of()
 		);
 	}
 
@@ -235,19 +295,11 @@ public class RelatedRecommendationService {
 			));
 	}
 
-	private String createReason(
-		ProductSnapshot sourceProduct,
-		ProductSnapshot candidate
+	private double calculateFinalScore(
+		double vectorScore,
+		double rerankScore
 	) {
-		if (!candidate.getCategoryId().equals(sourceProduct.getCategoryId())) {
-			return "현재 상품과 함께 구매하기 좋은 보완 상품으로 AI 유사도 기반 추천되었습니다.";
-		}
-
-		if (hasDiscount(candidate)) {
-			return "현재 상품과 함께 살펴볼 만한 할인 상품으로 AI 유사도 기반 추천되었습니다.";
-		}
-
-		return "현재 상품의 정보와 쇼핑 맥락을 반영해 AI 유사도 기반으로 추천되었습니다.";
+		return clamp((rerankScore * 0.75) + (vectorScore * 0.25));
 	}
 
 	private double normalizeSimilarity(double similarityScore) {
@@ -266,15 +318,15 @@ public class RelatedRecommendationService {
 		double rate = discountRate.doubleValue();
 
 		if (rate >= 30) {
-			return 0.07;
-		}
-
-		if (rate >= 20) {
 			return 0.05;
 		}
 
-		if (rate >= 10) {
+		if (rate >= 20) {
 			return 0.03;
+		}
+
+		if (rate >= 10) {
+			return 0.02;
 		}
 
 		if (rate > 0) {
@@ -282,33 +334,6 @@ public class RelatedRecommendationService {
 		}
 
 		return 0.0;
-	}
-
-	private double calculateFallbackScore(ProductSnapshot product) {
-		double score = 0.05;
-
-		if (hasDiscount(product)) {
-			score += calculateDiscountScore(product.getDiscountRate());
-		}
-
-		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
-			score += 0.03;
-		}
-
-		return clamp(score);
-	}
-
-	private boolean hasDiscount(ProductSnapshot product) {
-		return product.getDiscountRate() != null
-			&& product.getDiscountRate().compareTo(BigDecimal.ZERO) > 0;
-	}
-
-	private BigDecimal getDiscountRate(ProductSnapshot product) {
-		if (product.getDiscountRate() == null) {
-			return BigDecimal.ZERO;
-		}
-
-		return product.getDiscountRate();
 	}
 
 	private double clamp(double score) {
@@ -325,5 +350,11 @@ public class RelatedRecommendationService {
 		}
 
 		return Math.min(size, MAX_SIZE);
+	}
+
+	private record RelatedCandidate(
+		ProductSnapshot product,
+		double vectorScore
+	) {
 	}
 }
