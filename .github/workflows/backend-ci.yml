@@ -28,6 +28,8 @@ jobs:
             path: user-service
           - service: map-service
             path: map-service
+          - service: recommendation-service
+            path: recommendation-service
           - service: shopping-service
             path: shopping-service
 
@@ -66,6 +68,7 @@ jobs:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       JWT_SECRET_KEY: ci-test-jwt-secret-key-for-findy-backend
+      OPENAI_API_KEY: ci-test-openai-key
 
     steps:
       - name: Checkout

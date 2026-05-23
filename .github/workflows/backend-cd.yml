@@ -32,6 +32,8 @@ jobs:
             path: user-service
           - service: map-service
             path: map-service
+          - service: recommendation-service
+            path: recommendation-service
           - service: shopping-service
             path: shopping-service
 
@@ -70,6 +72,7 @@ jobs:
       DB_USERNAME: postgres
       DB_PASSWORD: postgres
       JWT_SECRET_KEY: ci-test-jwt-secret-key-for-findy-backend
+      OPENAI_API_KEY: ci-test-openai-key
 
     steps:
       - name: Checkout backend
@@ -97,15 +100,15 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: apigateway
-            path: apigateway
-            ecr_repository: findy-apigateway-ecr
           - service: user-service
             path: user-service
             ecr_repository: findy-user-service-ecr
           - service: map-service
             path: map-service
             ecr_repository: findy-map-service-ecr
+          - service: recommendation-service
+            path: recommendation-service
+            ecr_repository: findy-recommendation-service-ecr
           - service: shopping-service
             path: shopping-service
             ecr_repository: findy-shopping-service-ecr
@@ -162,9 +165,9 @@ jobs:
             sed -i -E "s|image: .*${ecr_repository}:.*|image: ${image}|" "${file}"
           }
 
-          update_image "apigateway" "findy-apigateway-ecr"
           update_image "user-service" "findy-user-service-ecr"
           update_image "map-service" "findy-map-service-ecr"
+          update_image "recommendation-service" "findy-recommendation-service-ecr"
           update_image "shopping-service" "findy-shopping-service-ecr"
 
       - name: Commit and push infra changes
