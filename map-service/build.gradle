@@ -37,6 +37,10 @@ dependencies {
 
 	// .env ??? ???? ???? ?????
 	implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
+    // Prometheus Actuator 설정
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
 }
 
 tasks.named('test') {
