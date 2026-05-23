@@ -48,3 +48,12 @@ mfds:
 openai:
   api-key: ${OPENAI_API_KEY}
   model: gpt-4o-mini
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
