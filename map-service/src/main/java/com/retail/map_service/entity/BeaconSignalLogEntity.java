@@ -1,6 +1,6 @@
 package com.retail.map_service.entity;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 import com.retail.map_service.global.entity.BaseTimeEntity;
 
@@ -44,9 +44,9 @@ public class BeaconSignalLogEntity extends BaseTimeEntity {
 	private BeaconEntity beacon;
 
 	@Column(name = "timestamp_iso")
-	private LocalDateTime timestampIso;
+	private OffsetDateTime timestampIso;
 
-	@Column(columnDefinition = "macaddr")
+	@Column(length = 17)
 	private String mac;
 
 	@Column(name = "bluetooth_address_hex", length = 14)
@@ -54,7 +54,7 @@ public class BeaconSignalLogEntity extends BaseTimeEntity {
 
 	private Integer rssi;
 
-	@Column(length = 30)
+	@Column(length = 36)
 	private String uuid;
 
 	private Integer major;
