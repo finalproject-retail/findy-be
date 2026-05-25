@@ -39,6 +39,7 @@ def main() -> None:
     lines = [
         "-- store_id=1, grid 29x18 = 522 cells",
         "-- SHELF: walls/shelves, AISLE: walkable (pathfinding uses AISLE only)",
+        "-- 실물 Minew 비콘 설치 격자(grid_id): 43, 321, 333, 466 (레이아웃은 기존과 동일)",
         "INSERT INTO grids (store_id, grid_x, grid_y, cell_type, created_at, updated_at) VALUES",
         ",\n".join(values) + ";",
     ]

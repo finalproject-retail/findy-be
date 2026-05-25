@@ -21,10 +21,12 @@ RUN --mount=type=cache,target=/root/.gradle \
 
 FROM eclipse-temurin:17-jre-jammy AS runtime
 
+ENV TZ=Asia/Seoul
+
 WORKDIR /app
 
 COPY --from=builder /app/app.jar app.jar
 
 EXPOSE 8888
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Seoul", "-jar", "app.jar"]
