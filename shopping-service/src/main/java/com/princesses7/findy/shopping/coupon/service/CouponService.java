@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.coupon.service;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -12,11 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.coupon.dto.request.CreateCouponRequest;
 import com.princesses7.findy.shopping.coupon.dto.request.UpdateCouponRequest;
+import com.princesses7.findy.shopping.coupon.dto.response.AvailableOrderCouponResponse;
+import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponPageResponse;
 import com.princesses7.findy.shopping.coupon.dto.response.UserCouponResponse;
 import com.princesses7.findy.shopping.coupon.entity.Coupon;
+import com.princesses7.findy.shopping.coupon.entity.DiscountType;
 import com.princesses7.findy.shopping.coupon.entity.UserCoupon;
 import com.princesses7.findy.shopping.coupon.exception.CouponException;
 import com.princesses7.findy.shopping.coupon.repository.CouponRepository;
@@ -181,6 +185,33 @@ public class CouponService {
 		return CouponResponse.from(coupon);
 	}
 
+	@Transactional(readOnly = true)
+	public List<AvailableOrderCouponResponse> getAvailableOrderCoupons(
+		Long userId,
+		int orderAmount
+	) {
+		LocalDateTime now = LocalDateTime.now();
+
+		return userCouponRepository.findAllByUserIdAndUsedFalse(userId)
+			.stream()
+			.filter(userCoupon -> isAvailableForOrder(userCoupon, orderAmount, now))
+			.map(userCoupon -> AvailableOrderCouponResponse.of(userCoupon, orderAmount))
+			.toList();
+	}
+
+	private boolean isAvailableForOrder(
+		UserCoupon userCoupon,
+		int orderAmount,
+		LocalDateTime now
+	) {
+		Coupon coupon = userCoupon.getCoupon();
+
+		return coupon.isAvailable(now)
+			&& !userCoupon.isExpired(now)
+			&& !userCoupon.isUsed()
+			&& orderAmount >= coupon.getMinOrderAmount();
+	}
+
 	@Transactional
 	public UserCouponResponse downloadCoupon(Long userId, Long couponId) {
 		LocalDateTime now = LocalDateTime.now();
@@ -237,5 +268,72 @@ public class CouponService {
 		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
 
 		return UserCouponResponse.from(userCoupon, now);
+	}
+
+	public CouponDiscountResult applyCoupon(
+		Long userId,
+		Long userCouponId,
+		int orderAmount
+	) {
+		if (userCouponId == null) {
+			return CouponDiscountResult.none();
+		}
+
+		LocalDateTime now = LocalDateTime.now();
+
+		UserCoupon userCoupon = userCouponRepository.findByUserCouponIdAndUserId(
+			userCouponId,
+			userId
+		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
+
+		Coupon coupon = userCoupon.getCoupon();
+
+		if (!coupon.isAvailable(now)) {
+			throw new CouponException(COUPON_NOT_AVAILABLE);
+		}
+
+		if (userCoupon.isExpired(now)) {
+			throw new CouponException(COUPON_EXPIRED);
+		}
+
+		if (userCoupon.isUsed()) {
+			throw new CouponException(COUPON_ALREADY_USED);
+		}
+
+		if (orderAmount < coupon.getMinOrderAmount()) {
+			throw new CouponException(COUPON_CONDITION_NOT_MET);
+		}
+
+		int discountAmount = calculateCouponDiscountAmount(coupon, orderAmount);
+
+		return new CouponDiscountResult(coupon.getCouponId(), discountAmount);
+	}
+
+	@Transactional
+	public void useCoupon(
+		Long userId,
+		Long userCouponId
+	) {
+		if (userCouponId == null) {
+			return;
+		}
+
+		UserCoupon userCoupon = userCouponRepository.findByUserCouponIdAndUserId(
+			userCouponId,
+			userId
+		).orElseThrow(() -> new CouponException(USER_COUPON_NOT_FOUND));
+
+		userCoupon.use(LocalDateTime.now());
+	}
+
+	private int calculateCouponDiscountAmount(
+		Coupon coupon,
+		int orderAmount
+	) {
+		if (coupon.getDiscountType() == DiscountType.RATE) {
+			return orderAmount * coupon.getDiscountValue() / 100;
+		}
+
+		return Math.min(coupon.getDiscountValue(), orderAmount);
 	}
 }

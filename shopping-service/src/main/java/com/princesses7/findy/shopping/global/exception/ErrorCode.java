@@ -81,7 +81,8 @@ public enum ErrorCode {
 	USER_COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "COUPON_007", "보유 쿠폰을 찾을 수 없습니다."),
 	COUPON_ALREADY_USED(HttpStatus.BAD_REQUEST, "COUPON_008", "이미 사용한 쿠폰입니다."),
 	COUPON_EXPIRED(HttpStatus.BAD_REQUEST, "COUPON_009", "만료된 쿠폰입니다."),
-
+	COUPON_CONDITION_NOT_MET(HttpStatus.BAD_REQUEST, "COUPON_010", "쿠폰 적용 조건을 만족하지 않습니다."),
+	
 	// Order
 	ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_001", "주문 정보를 찾을 수 없습니다."),
 	ORDER_ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER_002", "본인의 주문만 조회할 수 있습니다.");

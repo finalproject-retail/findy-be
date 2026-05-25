@@ -1,6 +1,7 @@
 package com.princesses7.findy.shopping.coupon.repository;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.domain.Page;
@@ -39,4 +40,6 @@ public interface UserCouponRepository extends JpaRepository<UserCoupon, Long> {
 
 	@EntityGraph(attributePaths = "coupon")
 	Optional<UserCoupon> findByUserCouponIdAndUserId(Long userCouponId, Long userId);
+
+	List<UserCoupon> findAllByUserIdAndUsedFalse(Long userId);
 }

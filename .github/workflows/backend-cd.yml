@@ -1,0 +1,185 @@
+name: Backend CD
+
+on:
+  push:
+    branches:
+      - dev
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  AWS_ACCOUNT_ID: "414901227428"
+  AWS_REGION: ap-northeast-2
+  IMAGE_TAG: ${{ github.sha }}
+  INFRA_REPOSITORY: finalproject-retail/findy-infra
+  INFRA_BRANCH: dev
+
+jobs:
+  test:
+    name: Test ${{ matrix.service }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: apigateway
+            path: apigateway
+          - service: user-service
+            path: user-service
+          - service: map-service
+            path: map-service
+          - service: recommendation-service
+            path: recommendation-service
+          - service: shopping-service
+            path: shopping-service
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: findy
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d findy"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+
+    env:
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_NAME: findy
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      JWT_SECRET_KEY: ci-test-jwt-secret-key-for-findy-backend
+      OPENAI_API_KEY: ci-test-openai-key
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Run tests
+        run: ./gradlew test --no-daemon
+
+  build-and-push:
+    name: Build and push ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: test
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: user-service
+            path: user-service
+            ecr_repository: findy-user-service-ecr
+          - service: map-service
+            path: map-service
+            ecr_repository: findy-map-service-ecr
+          - service: recommendation-service
+            path: recommendation-service
+            ecr_repository: findy-recommendation-service-ecr
+          - service: shopping-service
+            path: shopping-service
+            ecr_repository: findy-shopping-service-ecr
+
+    steps:
+      - name: Checkout backend
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push image
+        env:
+          IMAGE_URI: ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ matrix.ecr_repository }}
+        run: |
+          docker build \
+            --tag "${IMAGE_URI}:${IMAGE_TAG}" \
+            --tag "${IMAGE_URI}:latest" \
+            "${{ matrix.path }}"
+          docker push "${IMAGE_URI}:${IMAGE_TAG}"
+          docker push "${IMAGE_URI}:latest"
+
+  update-infra:
+    name: Update infra image tags
+    runs-on: ubuntu-latest
+    needs: build-and-push
+
+    steps:
+      - name: Checkout infra
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.INFRA_REPOSITORY }}
+          ref: ${{ env.INFRA_BRANCH }}
+          token: ${{ secrets.PAT }}
+          path: infra
+
+      - name: Update Kubernetes manifests
+        working-directory: infra
+        run: |
+          set -euo pipefail
+
+          update_image() {
+            local service="$1"
+            local ecr_repository="$2"
+            local image="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ecr_repository}:${IMAGE_TAG}"
+            local file="k8s/${service}/deployment.yaml"
+
+            sed -i -E "s|image: .*${ecr_repository}:.*|image: ${image}|" "${file}"
+          }
+
+          update_image "user-service" "findy-user-service-ecr"
+          update_image "map-service" "findy-map-service-ecr"
+          update_image "recommendation-service" "findy-recommendation-service-ecr"
+          update_image "shopping-service" "findy-shopping-service-ecr"
+
+      - name: Commit and push infra changes
+        working-directory: infra
+        run: |
+          if git diff --quiet; then
+            echo "No infra image tag changes."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add k8s/*/deployment.yaml
+          git commit -m "chore: update backend images to ${IMAGE_TAG}"
+          git push origin "${INFRA_BRANCH}"

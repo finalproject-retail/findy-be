@@ -29,3 +29,12 @@ spring:
 jwt:
   secret: ${JWT_SECRET_KEY}
   expiration_time: 3600000 # 1시간 (밀리초 단위)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      show-details: always
