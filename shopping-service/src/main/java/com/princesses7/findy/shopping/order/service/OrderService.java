@@ -8,6 +8,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.cart.service.CartCleanupService;
+import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
+import com.princesses7.findy.shopping.coupon.service.CouponService;
 import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderDetailResponse;
@@ -33,22 +35,42 @@ public class OrderService {
 	private final OrderRepository orderRepository;
 	private final InventoryStockService inventoryStockService;
 	private final CartCleanupService cartCleanupService;
+	private final CouponService couponService;
 
 	@Transactional
 	public OrderCreateResponse createOrder(Long userId) {
-		return createOrder(userId, DEFAULT_STORE_ID);
+		return createOrder(userId, null, DEFAULT_STORE_ID);
 	}
 
 	@Transactional
-	public OrderCreateResponse createOrder(Long userId, Long storeId) {
+	public OrderCreateResponse createOrder(Long userId, Long userCouponId) {
+		return createOrder(userId, userCouponId, DEFAULT_STORE_ID);
+	}
+
+	@Transactional
+	public OrderCreateResponse createOrder(
+		Long userId,
+		Long userCouponId,
+		Long storeId
+	) {
 		PurchaseAmountResponse amountResponse = purchaseAmountService.calculate(userId);
+
+		CouponDiscountResult couponDiscount = couponService.applyCoupon(
+			userId,
+			userCouponId,
+			amountResponse.finalAmount()
+		);
+
+		int totalDiscountAmount = amountResponse.discountAmount() + couponDiscount.discountAmount();
+		int finalAmount = amountResponse.finalAmount() - couponDiscount.discountAmount();
 
 		Order order = Order.create(
 			userId,
 			amountResponse.shoppingListId(),
+			couponDiscount.couponId(),
 			amountResponse.totalAmount(),
-			amountResponse.discountAmount(),
-			amountResponse.finalAmount()
+			totalDiscountAmount,
+			finalAmount
 		);
 
 		amountResponse.items().forEach(item ->
@@ -59,6 +81,8 @@ public class OrderService {
 
 		inventoryStockService.decreaseStocks(storeId, savedOrder.getOrderItems());
 		cartCleanupService.cleanupPurchasedCartItems(userId, savedOrder.getOrderItems());
+		couponService.useCoupon(userId, userCouponId);
+
 		savedOrder.complete();
 
 		return toResponse(savedOrder);
@@ -90,6 +114,7 @@ public class OrderService {
 			order.getOrderId(),
 			order.getUserId(),
 			order.getShoppingListId(),
+			order.getCouponId(),
 			order.getTotalAmount(),
 			order.getDiscountAmount(),
 			order.getFinalAmount(),

@@ -38,6 +38,7 @@ public class UserCoupon extends BaseTimeEntity {
 	@JoinColumn(name = "coupon_id", nullable = false)
 	private Coupon coupon;
 
+	// TODO: is_used를 used로 수정하는 것에 대해 논의 필요
 	@Column(name = "is_used", nullable = false)
 	private boolean used;
 

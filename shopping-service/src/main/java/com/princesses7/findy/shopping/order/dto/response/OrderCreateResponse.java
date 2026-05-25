@@ -6,6 +6,7 @@ public record OrderCreateResponse(
 	Long orderId,
 	Long userId,
 	Long shoppingListId,
+	Long couponId,
 	int totalAmount,
 	int discountAmount,
 	int finalAmount,

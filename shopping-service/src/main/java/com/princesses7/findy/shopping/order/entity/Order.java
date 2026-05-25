@@ -64,6 +64,7 @@ public class Order extends BaseTimeEntity {
 	public static Order create(
 		Long userId,
 		Long shoppingListId,
+		Long couponId,
 		int totalAmount,
 		int discountAmount,
 		int finalAmount
@@ -71,7 +72,7 @@ public class Order extends BaseTimeEntity {
 		Order order = new Order();
 		order.userId = userId;
 		order.shoppingListId = shoppingListId;
-		order.couponId = null;
+		order.couponId = couponId;
 		order.totalAmount = totalAmount;
 		order.discountAmount = discountAmount;
 		order.finalAmount = finalAmount;
