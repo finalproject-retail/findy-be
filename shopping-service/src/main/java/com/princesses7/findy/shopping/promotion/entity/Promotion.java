@@ -152,6 +152,46 @@ public class Promotion extends BaseTimeEntity {
 		return calculateStatus(now) == PromotionStatus.ACTIVE;
 	}
 
+	public String getBenefitText() {
+		if (promotionType == PromotionType.DISCOUNT) {
+			return createDiscountText();
+		}
+
+		if (promotionType == PromotionType.BOGO) {
+			return createBogoText();
+		}
+
+		if (promotionType == PromotionType.GIFT) {
+			return createGiftText();
+		}
+
+		return "행사 혜택";
+	}
+
+	private String createDiscountText() {
+		if (discountRate == null) {
+			return "할인 행사";
+		}
+
+		return discountRate.stripTrailingZeros().toPlainString() + "% 할인";
+	}
+
+	private String createBogoText() {
+		if (buyQuantity == null || buyQuantity < 1) {
+			return "1+1 행사";
+		}
+
+		return buyQuantity + "+1 행사";
+	}
+
+	private String createGiftText() {
+		if (giftItem == null || giftItem.isBlank()) {
+			return "사은품 증정";
+		}
+
+		return giftItem + " 증정";
+	}
+
 	private static PromotionStatus calculateStatusByPeriod(
 		LocalDateTime startAt,
 		LocalDateTime endAt,
