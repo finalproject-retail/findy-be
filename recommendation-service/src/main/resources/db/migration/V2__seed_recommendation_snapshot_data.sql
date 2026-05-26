@@ -40,8 +40,11 @@ INSERT INTO products (
     volume,
     allergy_info,
     badge_text,
+    category_review_required,
     sale_status,
-    is_deleted
+    is_deleted,
+    created_at,
+    updated_at
 )
 VALUES
     (
@@ -59,8 +62,11 @@ VALUES
         '120g',
         '밀, 대두 함유',
         '테스트상품',
+        FALSE,
         'ON_SALE',
-        FALSE
+        FALSE,
+        now(),
+        now()
     ),
     (
         10002,
@@ -77,8 +83,11 @@ VALUES
         '110g',
         '밀, 대두, 우유 함유',
         '품절임박',
+        FALSE,
         'ON_SALE',
-        FALSE
+        FALSE,
+        now(),
+        now()
     ),
     (
         10003,
@@ -95,8 +104,11 @@ VALUES
         '210g x 12개',
         NULL,
         '추천상품',
+        FALSE,
         'ON_SALE',
-        FALSE
+        FALSE,
+        now(),
+        now()
     ),
     (
         10004,
@@ -113,8 +125,11 @@ VALUES
         '1L',
         '우유 함유',
         '신선식품',
+        FALSE,
         'ON_SALE',
-        FALSE
+        FALSE,
+        now(),
+        now()
     )
     ON CONFLICT (product_id) DO NOTHING;
 
