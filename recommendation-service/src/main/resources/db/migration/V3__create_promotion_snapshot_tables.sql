@@ -19,8 +19,12 @@ CREATE TABLE IF NOT EXISTS promotion_products (
     promotion_id         BIGINT      NOT NULL,
     product_id           BIGINT      NOT NULL,
     promotion_price      INTEGER,
-    grid_id              BIGINT      NOT NULL
-);
+    grid_id              BIGINT      NOT NULL,
+
+    CONSTRAINT fk_promotion_products_promotion
+    FOREIGN KEY (promotion_id)
+    REFERENCES promotions (promotion_id)
+    );
 
 CREATE INDEX IF NOT EXISTS idx_promotion_products_product_id
     ON promotion_products (product_id);
@@ -30,3 +34,6 @@ CREATE INDEX IF NOT EXISTS idx_promotion_products_promotion_id
 
 CREATE INDEX IF NOT EXISTS idx_promotions_status_period
     ON promotions (status, start_at, end_at);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_promotion_products_promotion_product
+    ON promotion_products (promotion_id, product_id);
