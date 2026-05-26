@@ -124,13 +124,15 @@ INSERT INTO inventories (
     store_id,
     stock_quantity,
     unit,
-    stock_status
+    stock_status,
+    created_at,
+    updated_at
 )
 VALUES
-    (10001, 10001, 1, 100, 'EA', 'IN_STOCK'),
-    (10002, 10002, 1, 3, 'EA', 'LOW_STOCK'),
-    (10003, 10003, 1, 50, 'EA', 'IN_STOCK'),
-    (10004, 10004, 1, 30, 'EA', 'IN_STOCK')
+    (10001, 10001, 1, 100, 'EA', 'IN_STOCK', now(), now()),
+    (10002, 10002, 1, 3, 'EA', 'LOW_STOCK', now(), now()),
+    (10003, 10003, 1, 50, 'EA', 'IN_STOCK', now(), now()),
+    (10004, 10004, 1, 30, 'EA', 'IN_STOCK', now(), now())
     ON CONFLICT (inventory_id) DO NOTHING;
 
 INSERT INTO user_preferred_categories (
