@@ -57,7 +57,6 @@ jobs:
           fi
 
           all_test_services="$(jq -cn '[
-            {"service":"apigateway","path":"apigateway"},
             {"service":"user-service","path":"user-service"},
             {"service":"map-service","path":"map-service"},
             {"service":"recommendation-service","path":"recommendation-service"},
@@ -77,9 +76,6 @@ jobs:
             case "${file}" in
               .github/workflows/backend-cd.yml|docker-compose.yml)
                 run_all=true
-                ;;
-              apigateway/*)
-                changed_services["apigateway"]=1
                 ;;
               user-service/*)
                 changed_services["user-service"]=1
@@ -101,13 +97,11 @@ jobs:
             deploy_services="${all_deploy_services}"
           else
             test_services="$(jq -cn \
-              --arg apigateway "${changed_services[apigateway]+yes}" \
               --arg user_service "${changed_services[user-service]+yes}" \
               --arg map_service "${changed_services[map-service]+yes}" \
               --arg recommendation_service "${changed_services[recommendation-service]+yes}" \
               --arg shopping_service "${changed_services[shopping-service]+yes}" \
               '[
-                (select($apigateway != "") | {"service":"apigateway","path":"apigateway"}),
                 (select($user_service != "") | {"service":"user-service","path":"user-service"}),
                 (select($map_service != "") | {"service":"map-service","path":"map-service"}),
                 (select($recommendation_service != "") | {"service":"recommendation-service","path":"recommendation-service"}),

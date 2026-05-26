@@ -6,15 +6,17 @@ spring:
     name: recommendation-service
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:findy}
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:findy}?currentSchema=${DB_SCHEMA:recommendation_service}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
 
   flyway:
     enabled: true
-    table: flyway_schema_history_recommendation_service
-    baseline-on-migrate: true
+    schemas: ${DB_SCHEMA:recommendation_service}
+    default-schema: ${DB_SCHEMA:recommendation_service}
+    create-schemas: true
+    table: flyway_schema_history
     locations: classpath:db/migration
 
   jpa:
@@ -25,6 +27,7 @@ spring:
     open-in-view: false
     properties:
       hibernate:
+        default_schema: ${DB_SCHEMA:recommendation_service}
         format_sql: true
 
 openai:
