@@ -11,10 +11,16 @@ spring:
     password: ${DB_PASSWORD:1234}
     driver-class-name: org.postgresql.Driver
 
+  flyway:
+    enabled: true
+    table: flyway_schema_history_recommendation_service
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: true
     open-in-view: false
     properties:

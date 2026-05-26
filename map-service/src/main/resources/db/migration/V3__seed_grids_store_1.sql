@@ -1,3 +1,5 @@
+-- Regenerate: cd map-service/scripts && python generate_grids_sql.py
+
 -- store_id=1, grid 29x18 = 522 cells
 -- SHELF: walls/shelves, AISLE: walkable (pathfinding uses AISLE only)
 -- 실물 Minew 비콘 설치 격자(grid_id): 43, 321, 333, 466 (레이아웃은 기존과 동일)
