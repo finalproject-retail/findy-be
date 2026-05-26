@@ -96,7 +96,7 @@ public enum ErrorCode {
 	PROMOTION_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PROMOTION_006", "행사 상품을 찾을 수 없습니다."),
 	INVALID_PROMOTION_PRODUCT(HttpStatus.BAD_REQUEST, "PROMOTION_007", "행사 상품 정보가 올바르지 않습니다."),
 	PROMOTION_PRODUCT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PROMOTION_008", "해당 행사에 등록된 상품이 아닙니다."),
-	;
+	INVALID_PROMOTION_REQUEST(HttpStatus.BAD_REQUEST, "PROMOTION_009", "프로모션 요청 값이 올바르지 않습니다.");
 
 	private final HttpStatus status;
 	private final String code;
