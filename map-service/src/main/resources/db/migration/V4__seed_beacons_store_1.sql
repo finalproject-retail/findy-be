@@ -1,5 +1,7 @@
+﻿-- Regenerate: cd map-service/scripts && python generate_beacons_sql.py
+
 -- store_id=1, one beacon per grid (522 rows)
--- beacon_id = grid_id (1..522); run seed_grids_store_1.sql first
+-- beacon_id = grid_id (1..522); apply V3__seed_grids_store_1.sql first
 -- grid_id assignment must match grid insert order (y:0..17, x:0..28)
 -- 실물 Minew 4대 grid_id [43, 321, 333, 466] → beacon_uuid e2c56db5-dffb-48d2-b060-d0f5a71096e0
 INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, updated_at) VALUES
@@ -526,4 +528,5 @@ INSERT INTO beacons (beacon_id, store_id, grid_id, beacon_uuid, created_at, upda
 (521, 1, 521, '90b598cc-29f6-5d3b-9e55-de9b744df7d0', NOW(), NOW()),
 (522, 1, 522, 'e877ebe1-2686-541f-9254-d82b361090dd', NOW(), NOW());
 
-SELECT setval(pg_get_serial_sequence('beacons', 'beacon_id'), (SELECT MAX(beacon_id) FROM beacons));
+SELECT setval(pg_get_serial_sequence('grids', 'grid_id'), (SELECT COALESCE(MAX(grid_id), 1) FROM grids));
+SELECT setval(pg_get_serial_sequence('beacons', 'beacon_id'), (SELECT COALESCE(MAX(beacon_id), 1) FROM beacons));
