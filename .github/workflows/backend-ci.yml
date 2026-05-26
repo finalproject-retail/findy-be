@@ -14,24 +14,97 @@ permissions:
   contents: read
 
 jobs:
+  detect-changed-services:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed backend services
+        id: detect
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_SHA="${{ github.event.pull_request.base.sha }}"
+            HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            BASE_SHA="${{ github.event.before }}"
+            HEAD_SHA="${{ github.sha }}"
+
+            if [[ "${BASE_SHA}" == "0000000000000000000000000000000000000000" ]]; then
+              BASE_SHA="$(git rev-list --max-parents=0 "${HEAD_SHA}")"
+            fi
+          fi
+
+          mapfile -t changed_files < <(git diff --name-only "${BASE_SHA}" "${HEAD_SHA}")
+
+          all_services="$(jq -cn '[
+            {"service":"user-service","path":"user-service"},
+            {"service":"map-service","path":"map-service"},
+            {"service":"recommendation-service","path":"recommendation-service"},
+            {"service":"shopping-service","path":"shopping-service"}
+          ]')"
+
+          run_all=false
+          declare -A changed_services=()
+
+          for file in "${changed_files[@]}"; do
+            case "${file}" in
+              .github/workflows/backend-ci.yml|docker-compose.yml)
+                run_all=true
+                ;;
+              user-service/*)
+                changed_services["user-service"]=1
+                ;;
+              map-service/*)
+                changed_services["map-service"]=1
+                ;;
+              recommendation-service/*)
+                changed_services["recommendation-service"]=1
+                ;;
+              shopping-service/*)
+                changed_services["shopping-service"]=1
+                ;;
+            esac
+          done
+
+          if [[ "${run_all}" == "true" ]]; then
+            services="${all_services}"
+          else
+            services="$(jq -cn \
+              --arg user_service "${changed_services[user-service]+yes}" \
+              --arg map_service "${changed_services[map-service]+yes}" \
+              --arg recommendation_service "${changed_services[recommendation-service]+yes}" \
+              --arg shopping_service "${changed_services[shopping-service]+yes}" \
+              '[
+                (select($user_service != "") | {"service":"user-service","path":"user-service"}),
+                (select($map_service != "") | {"service":"map-service","path":"map-service"}),
+                (select($recommendation_service != "") | {"service":"recommendation-service","path":"recommendation-service"}),
+                (select($shopping_service != "") | {"service":"shopping-service","path":"shopping-service"})
+              ]')"
+          fi
+
+          echo "services=${services}" >> "${GITHUB_OUTPUT}"
+          echo "Changed services: ${services}"
+
   test:
     name: Test ${{ matrix.service }}
     runs-on: ubuntu-latest
+    needs: detect-changed-services
+    if: ${{ needs.detect-changed-services.outputs.services != '[]' }}
 
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - service: apigateway
-            path: apigateway
-          - service: user-service
-            path: user-service
-          - service: map-service
-            path: map-service
-          - service: recommendation-service
-            path: recommendation-service
-          - service: shopping-service
-            path: shopping-service
+        include: ${{ fromJSON(needs.detect-changed-services.outputs.services) }}
 
     services:
       postgres:
