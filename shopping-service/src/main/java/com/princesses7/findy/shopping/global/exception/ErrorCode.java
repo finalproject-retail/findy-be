@@ -82,10 +82,21 @@ public enum ErrorCode {
 	COUPON_ALREADY_USED(HttpStatus.BAD_REQUEST, "COUPON_008", "이미 사용한 쿠폰입니다."),
 	COUPON_EXPIRED(HttpStatus.BAD_REQUEST, "COUPON_009", "만료된 쿠폰입니다."),
 	COUPON_CONDITION_NOT_MET(HttpStatus.BAD_REQUEST, "COUPON_010", "쿠폰 적용 조건을 만족하지 않습니다."),
-	
+
 	// Order
 	ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_001", "주문 정보를 찾을 수 없습니다."),
-	ORDER_ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER_002", "본인의 주문만 조회할 수 있습니다.");
+	ORDER_ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER_002", "본인의 주문만 조회할 수 있습니다."),
+
+	// Promotion
+	PROMOTION_NOT_FOUND(HttpStatus.NOT_FOUND, "PROMOTION_001", "행사를 찾을 수 없습니다."),
+	INVALID_PROMOTION_PERIOD(HttpStatus.BAD_REQUEST, "PROMOTION_002", "행사 기간 설정이 올바르지 않습니다."),
+	INVALID_PROMOTION_BENEFIT(HttpStatus.BAD_REQUEST, "PROMOTION_003", "행사 혜택 설정이 올바르지 않습니다."),
+	PROMOTION_ALREADY_ENDED(HttpStatus.BAD_REQUEST, "PROMOTION_004", "이미 종료된 행사입니다."),
+	PROMOTION_PRODUCT_ALREADY_EXISTS(HttpStatus.CONFLICT, "PROMOTION_005", "이미 행사에 등록된 상품입니다."),
+	PROMOTION_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PROMOTION_006", "행사 상품을 찾을 수 없습니다."),
+	INVALID_PROMOTION_PRODUCT(HttpStatus.BAD_REQUEST, "PROMOTION_007", "행사 상품 정보가 올바르지 않습니다."),
+	PROMOTION_PRODUCT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PROMOTION_008", "해당 행사에 등록된 상품이 아닙니다."),
+	;
 
 	private final HttpStatus status;
 	private final String code;
