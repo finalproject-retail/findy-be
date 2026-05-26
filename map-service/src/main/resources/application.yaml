@@ -10,15 +10,17 @@ spring:
     time-zone: Asia/Seoul
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+    url: jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}?currentSchema=${DB_SCHEMA:map_service}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   flyway:
     enabled: true
-    table: flyway_schema_history_map_service
-    baseline-on-migrate: true
+    schemas: ${DB_SCHEMA:map_service}
+    default-schema: ${DB_SCHEMA:map_service}
+    create-schemas: true
+    table: flyway_schema_history
     locations: classpath:db/migration
 
   jpa:
@@ -28,6 +30,7 @@ spring:
 
     properties:
       hibernate:
+        default_schema: ${DB_SCHEMA:map_service}
         format_sql: true
 
 jwt:
