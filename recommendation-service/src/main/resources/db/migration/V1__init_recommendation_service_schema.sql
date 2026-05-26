@@ -15,8 +15,11 @@ CREATE TABLE IF NOT EXISTS products (
     volume                   VARCHAR(100),
     allergy_info             TEXT,
     badge_text               VARCHAR(100),
+    category_review_required BOOLEAN        NOT NULL DEFAULT FALSE,
     sale_status              VARCHAR(255)   NOT NULL,
-    is_deleted               BOOLEAN        NOT NULL
+    is_deleted               BOOLEAN        NOT NULL DEFAULT FALSE,
+    created_at               TIMESTAMP      NOT NULL,
+    updated_at               TIMESTAMP      NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS inventories (
@@ -25,8 +28,10 @@ CREATE TABLE IF NOT EXISTS inventories (
     store_id        BIGINT        NOT NULL,
     stock_quantity  INTEGER       NOT NULL,
     unit            VARCHAR(30)   NOT NULL,
-    stock_status    VARCHAR(255)  NOT NULL
-);
+    stock_status    VARCHAR(255)  NOT NULL,
+    created_at      TIMESTAMP     NOT NULL,
+    updated_at      TIMESTAMP     NOT NULL
+    );
 
 CREATE TABLE IF NOT EXISTS categories (
     category_id         BIGINT PRIMARY KEY,
