@@ -44,6 +44,9 @@ public class Promotion extends BaseTimeEntity {
 	@Column(name = "buy_quantity")
 	private Integer buyQuantity;
 
+	@Column(name = "get_quantity")
+	private Integer getQuantity;
+
 	@Column(name = "gift_item")
 	private String giftItem;
 
@@ -65,6 +68,7 @@ public class Promotion extends BaseTimeEntity {
 		PromotionType promotionType,
 		Integer minPurchaseAmount,
 		Integer buyQuantity,
+		Integer getQuantity,
 		String giftItem,
 		BigDecimal discountRate,
 		LocalDateTime startAt,
@@ -72,12 +76,13 @@ public class Promotion extends BaseTimeEntity {
 	) {
 		validatePromotionName(promotionName);
 		validatePeriod(startAt, endAt);
-		validateBenefit(promotionType, minPurchaseAmount, buyQuantity, giftItem, discountRate);
+		validateBenefit(promotionType, minPurchaseAmount, buyQuantity, getQuantity, giftItem, discountRate);
 
 		this.promotionName = promotionName;
 		this.promotionType = promotionType;
 		this.minPurchaseAmount = minPurchaseAmount;
 		this.buyQuantity = buyQuantity;
+		this.getQuantity = getQuantity;
 		this.giftItem = giftItem;
 		this.discountRate = discountRate;
 		this.startAt = startAt;
@@ -90,6 +95,7 @@ public class Promotion extends BaseTimeEntity {
 		PromotionType promotionType,
 		Integer minPurchaseAmount,
 		Integer buyQuantity,
+		Integer getQuantity,
 		String giftItem,
 		BigDecimal discountRate,
 		LocalDateTime startAt,
@@ -100,6 +106,7 @@ public class Promotion extends BaseTimeEntity {
 			promotionType,
 			minPurchaseAmount,
 			buyQuantity,
+			getQuantity,
 			giftItem,
 			discountRate,
 			startAt,
@@ -112,6 +119,7 @@ public class Promotion extends BaseTimeEntity {
 		PromotionType promotionType,
 		Integer minPurchaseAmount,
 		Integer buyQuantity,
+		Integer getQuantity,
 		String giftItem,
 		BigDecimal discountRate,
 		LocalDateTime startAt,
@@ -119,12 +127,13 @@ public class Promotion extends BaseTimeEntity {
 	) {
 		validatePromotionName(promotionName);
 		validatePeriod(startAt, endAt);
-		validateBenefit(promotionType, minPurchaseAmount, buyQuantity, giftItem, discountRate);
+		validateBenefit(promotionType, minPurchaseAmount, buyQuantity, getQuantity, giftItem, discountRate);
 
 		this.promotionName = promotionName;
 		this.promotionType = promotionType;
 		this.minPurchaseAmount = minPurchaseAmount;
 		this.buyQuantity = buyQuantity;
+		this.getQuantity = getQuantity;
 		this.giftItem = giftItem;
 		this.discountRate = discountRate;
 		this.startAt = startAt;
@@ -177,11 +186,11 @@ public class Promotion extends BaseTimeEntity {
 	}
 
 	private String createBogoText() {
-		if (buyQuantity == null || buyQuantity < 1) {
-			return "1+1 행사";
+		if (buyQuantity == null || buyQuantity < 1 || getQuantity == null || getQuantity < 1) {
+			return "묶음 행사";
 		}
 
-		return buyQuantity + "+1 행사";
+		return buyQuantity + "+" + getQuantity + " 행사";
 	}
 
 	private String createGiftText() {
@@ -227,6 +236,7 @@ public class Promotion extends BaseTimeEntity {
 		PromotionType promotionType,
 		Integer minPurchaseAmount,
 		Integer buyQuantity,
+		Integer getQuantity,
 		String giftItem,
 		BigDecimal discountRate
 	) {
@@ -239,7 +249,7 @@ public class Promotion extends BaseTimeEntity {
 		}
 
 		if (promotionType == PromotionType.BOGO) {
-			validateBogoBenefit(buyQuantity);
+			validateBogoBenefit(buyQuantity, getQuantity);
 		}
 
 		if (promotionType == PromotionType.GIFT) {
@@ -247,8 +257,15 @@ public class Promotion extends BaseTimeEntity {
 		}
 	}
 
-	private static void validateBogoBenefit(Integer buyQuantity) {
+	private static void validateBogoBenefit(
+		Integer buyQuantity,
+		Integer getQuantity
+	) {
 		if (buyQuantity == null || buyQuantity < 1) {
+			throw new PromotionException(INVALID_PROMOTION_BENEFIT);
+		}
+
+		if (getQuantity == null || getQuantity < 1) {
 			throw new PromotionException(INVALID_PROMOTION_BENEFIT);
 		}
 	}
