@@ -1,4 +1,4 @@
-package com.princesses7.findy.recommendation;
+package com.princesses7.findy.analytics;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -8,7 +8,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 
 @SpringBootApplication
 @ConfigurationPropertiesScan
-public class RecommendationServiceApplication {
+public class AnalyticsServiceApplication {
 
 	public static void main(String[] args) {
 		Dotenv dotenv = Dotenv.configure()
@@ -19,6 +19,6 @@ public class RecommendationServiceApplication {
 			System.setProperty(entry.getKey(), entry.getValue())
 		);
 
-		SpringApplication.run(RecommendationServiceApplication.class, args);
+		SpringApplication.run(AnalyticsServiceApplication.class, args);
 	}
 }
