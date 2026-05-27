@@ -6,12 +6,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import com.princesses7.findy.recommendation.global.response.ApiResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -48,17 +51,7 @@ public class GlobalExceptionHandler {
 			.map(error -> error.getField() + ": " + error.getDefaultMessage())
 			.collect(Collectors.joining(", "));
 
-		log.warn(
-			"Validation exception occurred. uri={}, message={}",
-			request.getRequestURI(),
-			message
-		);
-
-		ErrorCode errorCode = ErrorCode.INVALID_INPUT_VALUE;
-
-		return ResponseEntity
-			.status(errorCode.getStatus())
-			.body(ApiResponse.fail(errorCode.getCode(), message));
+		return badRequest(request, "Validation exception occurred", message);
 	}
 
 	@ExceptionHandler(BindException.class)
@@ -72,17 +65,40 @@ public class GlobalExceptionHandler {
 			.map(error -> error.getField() + ": " + error.getDefaultMessage())
 			.collect(Collectors.joining(", "));
 
-		log.warn(
-			"Bind exception occurred. uri={}, message={}",
-			request.getRequestURI(),
-			message
-		);
+		return badRequest(request, "Bind exception occurred", message);
+	}
 
-		ErrorCode errorCode = ErrorCode.INVALID_INPUT_VALUE;
+	@ExceptionHandler(MissingServletRequestParameterException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMissingServletRequestParameterException(
+		MissingServletRequestParameterException exception,
+		HttpServletRequest request
+	) {
+		String message = exception.getParameterName() + "은(는) 필수 요청 파라미터입니다.";
 
-		return ResponseEntity
-			.status(errorCode.getStatus())
-			.body(ApiResponse.fail(errorCode.getCode(), message));
+		return badRequest(request, "Missing request parameter", message);
+	}
+
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiResponse<Void>> handleMethodArgumentTypeMismatchException(
+		MethodArgumentTypeMismatchException exception,
+		HttpServletRequest request
+	) {
+		String message = exception.getName() + " 값의 형식이 올바르지 않습니다.";
+
+		return badRequest(request, "Type mismatch exception occurred", message);
+	}
+
+	@ExceptionHandler(ConstraintViolationException.class)
+	public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(
+		ConstraintViolationException exception,
+		HttpServletRequest request
+	) {
+		String message = exception.getConstraintViolations()
+			.stream()
+			.map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
+			.collect(Collectors.joining(", "));
+
+		return badRequest(request, "Constraint violation exception occurred", message);
 	}
 
 	@ExceptionHandler(HttpRequestMethodNotSupportedException.class)
@@ -120,5 +136,24 @@ public class GlobalExceptionHandler {
 		return ResponseEntity
 			.status(errorCode.getStatus())
 			.body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));
+	}
+
+	private ResponseEntity<ApiResponse<Void>> badRequest(
+		HttpServletRequest request,
+		String logMessage,
+		String responseMessage
+	) {
+		ErrorCode errorCode = ErrorCode.INVALID_INPUT_VALUE;
+
+		log.warn(
+			"{}. uri={}, message={}",
+			logMessage,
+			request.getRequestURI(),
+			responseMessage
+		);
+
+		return ResponseEntity
+			.status(errorCode.getStatus())
+			.body(ApiResponse.fail(errorCode.getCode(), responseMessage));
 	}
 }
