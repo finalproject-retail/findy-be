@@ -12,6 +12,7 @@ public enum ErrorCode {
     FORBIDDEN(HttpStatus.FORBIDDEN, "COMMON_004", "접근 권한이 없습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "COMMON_005", "지원하지 않는 HTTP 메서드입니다."),
     STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_001", "매장을 찾을 수 없습니다."),
+    STORE_MAP_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_004", "매장 지도를 찾을 수 없습니다."),
     GRID_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_002", "격자를 찾을 수 없습니다."),
     BEACON_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_003", "비콘을 찾을 수 없습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 내부 오류가 발생했습니다.");
