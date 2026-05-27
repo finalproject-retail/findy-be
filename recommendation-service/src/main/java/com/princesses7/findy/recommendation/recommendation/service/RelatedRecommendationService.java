@@ -141,6 +141,10 @@ public class RelatedRecommendationService {
 			normalizedSize
 		);
 
+		if (recommendations.isEmpty()) {
+			recommendations = toVectorFallbackRecommendations(vectorCandidates, normalizedSize);
+		}
+
 		return new ProductRecommendationListResponse(
 			userId,
 			sourceProduct.getProductId(),
@@ -247,6 +251,26 @@ public class RelatedRecommendationService {
 					item.safeReason()
 				);
 			})
+			.sorted(
+				Comparator.comparing(ProductRecommendationResponse::score)
+					.reversed()
+					.thenComparing(ProductRecommendationResponse::productId)
+			)
+			.limit(size)
+			.toList();
+	}
+
+	private List<ProductRecommendationResponse> toVectorFallbackRecommendations(
+		List<RelatedCandidate> vectorCandidates,
+		int size
+	) {
+		return vectorCandidates.stream()
+			.map(candidate -> ProductRecommendationResponse.from(
+				candidate.product(),
+				candidate.vectorScore(),
+				RecommendationType.RELATED,
+				"AI 재정렬 결과가 부족하여 벡터 유사도 기반으로 추천한 연관 상품입니다."
+			))
 			.sorted(
 				Comparator.comparing(ProductRecommendationResponse::score)
 					.reversed()
