@@ -1,4 +1,4 @@
-package com.princesses7.findy.recommendation.global.config;
+package com.princesses7.findy.analytics.global.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;

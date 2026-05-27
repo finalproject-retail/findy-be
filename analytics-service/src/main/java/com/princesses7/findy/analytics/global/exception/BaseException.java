@@ -1,4 +1,4 @@
-package com.princesses7.findy.recommendation.global.exception;
+package com.princesses7.findy.analytics.global.exception;
 
 import lombok.Getter;
 

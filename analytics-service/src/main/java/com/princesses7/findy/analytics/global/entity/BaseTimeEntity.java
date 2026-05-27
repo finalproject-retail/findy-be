@@ -1,4 +1,4 @@
-package com.princesses7.findy.recommendation.global.entity;
+package com.princesses7.findy.analytics.global.entity;
 
 import java.time.LocalDateTime;
 

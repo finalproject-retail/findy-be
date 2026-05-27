@@ -1,4 +1,4 @@
-package com.princesses7.findy.recommendation.global.exception;
+package com.princesses7.findy.analytics.global.exception;
 
 import java.util.stream.Collectors;
 
@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import com.princesses7.findy.recommendation.global.response.ApiResponse;
+import com.princesses7.findy.analytics.global.response.ApiResponse;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;

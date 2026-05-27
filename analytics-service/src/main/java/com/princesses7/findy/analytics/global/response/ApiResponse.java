@@ -1,4 +1,4 @@
-package com.princesses7.findy.recommendation.global.response;
+package com.princesses7.findy.analytics.global.response;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
 
