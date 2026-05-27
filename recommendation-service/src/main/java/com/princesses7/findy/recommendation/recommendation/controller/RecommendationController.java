@@ -9,8 +9,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.princesses7.findy.recommendation.global.response.ApiResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PersonalizedRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationListResponse;
+import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SubstituteRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.service.PersonalizedRecommendationService;
+import com.princesses7.findy.recommendation.recommendation.service.PromotionRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.service.RelatedRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.service.SubstituteRecommendationService;
 
@@ -24,6 +26,7 @@ public class RecommendationController {
 	private final PersonalizedRecommendationService personalizedRecommendationService;
 	private final RelatedRecommendationService relatedRecommendationService;
 	private final SubstituteRecommendationService substituteRecommendationService;
+	private final PromotionRecommendationService promotionRecommendationService;
 
 	@GetMapping("/personalized")
 	public ApiResponse<PersonalizedRecommendationResponse> getPersonalizedRecommendations(
@@ -66,5 +69,20 @@ public class RecommendationController {
 		);
 
 		return ApiResponse.ok("대체 상품 추천 조회에 성공했습니다.", response);
+	}
+
+	@GetMapping("/promotions")
+	public ApiResponse<PromotionRecommendationResponse> getPromotionRecommendations(
+		@RequestParam Long userId,
+		@RequestParam Long storeId,
+		@RequestParam(defaultValue = "10") int size
+	) {
+		PromotionRecommendationResponse response = promotionRecommendationService.getPromotionRecommendations(
+			userId,
+			storeId,
+			size
+		);
+
+		return ApiResponse.ok("행사 상품 추천 조회에 성공했습니다.", response);
 	}
 }
