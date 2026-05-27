@@ -27,6 +27,7 @@ import com.princesses7.findy.recommendation.recommendation.dto.response.ProductR
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.RelatedProductRerankItem;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SourceProductResponse;
+import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
@@ -145,6 +146,11 @@ public class RelatedRecommendationService {
 			recommendations = toVectorFallbackRecommendations(vectorCandidates, normalizedSize);
 		}
 
+		recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
+			recommendations,
+			normalizedSize
+		);
+
 		return new ProductRecommendationListResponse(
 			userId,
 			sourceProduct.getProductId(),
@@ -238,46 +244,40 @@ public class RelatedRecommendationService {
 				(left, right) -> left
 			));
 
-		return vectorCandidates.stream()
-			.filter(candidate -> rerankMap.containsKey(candidate.product().getProductId()))
-			.map(candidate -> {
-				RelatedProductRerankItem item = rerankMap.get(candidate.product().getProductId());
-				double finalScore = calculateFinalScore(candidate.vectorScore(), item.safeScore());
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+			vectorCandidates.stream()
+				.filter(candidate -> rerankMap.containsKey(candidate.product().getProductId()))
+				.map(candidate -> {
+					RelatedProductRerankItem item = rerankMap.get(candidate.product().getProductId());
+					double finalScore = calculateFinalScore(candidate.vectorScore(), item.safeScore());
 
-				return ProductRecommendationResponse.from(
-					candidate.product(),
-					finalScore,
-					RecommendationType.RELATED,
-					item.safeReason()
-				);
-			})
-			.sorted(
-				Comparator.comparing(ProductRecommendationResponse::score)
-					.reversed()
-					.thenComparing(ProductRecommendationResponse::productId)
-			)
-			.limit(size)
-			.toList();
+					return ProductRecommendationResponse.from(
+						candidate.product(),
+						finalScore,
+						RecommendationType.RELATED,
+						item.safeReason()
+					);
+				})
+				.toList(),
+			size
+		);
 	}
 
 	private List<ProductRecommendationResponse> toVectorFallbackRecommendations(
 		List<RelatedCandidate> vectorCandidates,
 		int size
 	) {
-		return vectorCandidates.stream()
-			.map(candidate -> ProductRecommendationResponse.from(
-				candidate.product(),
-				candidate.vectorScore(),
-				RecommendationType.RELATED,
-				"AI 재정렬 결과가 부족하여 벡터 유사도 기반으로 추천한 연관 상품입니다."
-			))
-			.sorted(
-				Comparator.comparing(ProductRecommendationResponse::score)
-					.reversed()
-					.thenComparing(ProductRecommendationResponse::productId)
-			)
-			.limit(size)
-			.toList();
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+			vectorCandidates.stream()
+				.map(candidate -> ProductRecommendationResponse.from(
+					candidate.product(),
+					candidate.vectorScore(),
+					RecommendationType.RELATED,
+					"AI 재정렬 결과가 부족하여 벡터 유사도 기반으로 추천한 연관 상품입니다."
+				))
+				.toList(),
+			size
+		);
 	}
 
 	private ProductRecommendationListResponse emptyResponse(

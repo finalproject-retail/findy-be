@@ -31,6 +31,7 @@ import com.princesses7.findy.recommendation.promotion.entity.PromotionStatus;
 import com.princesses7.findy.recommendation.promotion.repository.PromotionProductSnapshotRepository;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 
 import lombok.RequiredArgsConstructor;
@@ -107,23 +108,18 @@ public class PromotionRecommendationService {
 			);
 		}
 
-		List<PromotionProductRecommendationResponse> recommendations = activePromotionProducts.stream()
-			.map(promotionProduct -> toRecommendation(
-				promotionProduct,
-				productMap,
-				embeddingMap,
-				inventoryMap,
-				categoryNameMap,
-				promotionIntentEmbedding
-			))
-			.filter(Objects::nonNull)
-			.sorted(
-				Comparator.comparing(PromotionProductRecommendationResponse::score)
-					.reversed()
-					.thenComparing(PromotionProductRecommendationResponse::productId)
-			)
-			.limit(normalizedSize)
-			.toList();
+		List<PromotionProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizePromotionRecommendations(
+			activePromotionProducts.stream()
+				.map(promotionProduct -> toFallbackRecommendation(
+					promotionProduct,
+					productMap,
+					inventoryMap,
+					categoryNameMap
+				))
+				.filter(Objects::nonNull)
+				.toList(),
+			size
+		);
 
 		if (recommendations.isEmpty()) {
 			return fallbackResponse(
@@ -194,7 +190,7 @@ public class PromotionRecommendationService {
 			reason
 		);
 	}
-	
+
 	private List<Double> createPromotionIntentEmbedding(UserPreferenceResponse userPreference) {
 		try {
 			return openAiEmbeddingClient.createEmbedding(
