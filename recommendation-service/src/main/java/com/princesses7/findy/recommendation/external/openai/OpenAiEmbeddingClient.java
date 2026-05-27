@@ -12,7 +12,9 @@ import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.global.exception.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OpenAiEmbeddingClient {
@@ -44,6 +46,7 @@ public class OpenAiEmbeddingClient {
 		} catch (BaseException exception) {
 			throw exception;
 		} catch (Exception exception) {
+			log.error("OpenAI embedding request failed. message={}", exception.getMessage(), exception);
 			throw new BaseException(ErrorCode.RECOMMENDATION_EMBEDDING_FAILED);
 		}
 	}

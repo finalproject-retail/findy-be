@@ -18,6 +18,7 @@ import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
 import com.princesses7.findy.recommendation.preference.repository.CategorySnapshotRepository;
 import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 import com.princesses7.findy.recommendation.product.repository.ProductSnapshotRepository;
+import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,9 +34,12 @@ public class ProductEmbeddingService {
 	private final ProductEmbeddingRepository productEmbeddingRepository;
 	private final OpenAiEmbeddingClient openAiEmbeddingClient;
 	private final OpenAiProperties openAiProperties;
+	private final RecommendationRequestValidator requestValidator;
 
 	@Transactional
 	public ProductEmbeddingResponse createOrUpdateProductEmbedding(Long productId) {
+		requestValidator.validatePositiveId(productId, "productId");
+
 		ProductSnapshot product = productRepository.findById(productId)
 			.orElseThrow(() -> new BaseException(ErrorCode.RECOMMENDATION_PRODUCT_NOT_FOUND));
 
@@ -100,10 +104,6 @@ public class ProductEmbeddingService {
 	}
 
 	private int normalizeLimit(int limit) {
-		if (limit <= 0) {
-			return DEFAULT_LIMIT;
-		}
-
-		return Math.min(limit, MAX_BATCH_SIZE);
+		return requestValidator.normalizeSize(limit, DEFAULT_LIMIT, MAX_BATCH_SIZE);
 	}
 }

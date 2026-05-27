@@ -27,6 +27,7 @@ import com.princesses7.findy.recommendation.recommendation.dto.response.Personal
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationBaseType;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
+import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -46,11 +47,13 @@ public class PersonalizedRecommendationService {
 	private final ProductSnapshotRepository productRepository;
 	private final CategorySnapshotRepository categoryRepository;
 	private final PersonalizedRecommendationScorer scorer;
+	private final RecommendationRequestValidator requestValidator;
 
 	public PersonalizedRecommendationResponse getPersonalizedRecommendations(
 		Long userId,
 		int size
 	) {
+		requestValidator.validatePositiveId(userId, "userId");
 		int normalizedSize = normalizeSize(size);
 
 		UserPreferenceResponse userPreference = userPreferenceQueryService.getUserPreference(userId);
@@ -268,10 +271,6 @@ public class PersonalizedRecommendationService {
 	}
 
 	private int normalizeSize(int size) {
-		if (size <= 0) {
-			return DEFAULT_SIZE;
-		}
-
-		return Math.min(size, MAX_SIZE);
+		return requestValidator.normalizeSize(size, DEFAULT_SIZE, MAX_SIZE);
 	}
 }
