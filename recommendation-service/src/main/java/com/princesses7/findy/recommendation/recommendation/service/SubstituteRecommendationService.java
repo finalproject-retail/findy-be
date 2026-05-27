@@ -2,7 +2,6 @@ package com.princesses7.findy.recommendation.recommendation.service;
 
 import java.math.BigDecimal;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,6 +26,7 @@ import com.princesses7.findy.recommendation.recommendation.dto.response.ProductR
 import com.princesses7.findy.recommendation.recommendation.dto.response.SourceInventoryResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SourceProductResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SubstituteRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
@@ -93,8 +93,11 @@ public class SubstituteRecommendationService {
 				sourceProduct.getCategoryId()
 			)
 			.stream()
-			.filter(ProductSnapshot::isRecommendable)
-			.filter(candidate -> !candidate.getProductId().equals(sourceProduct.getProductId()))
+			.filter(RecommendationResultPolicy::isDisplayableProduct)
+			.filter(candidate -> RecommendationResultPolicy.isDifferentProduct(
+				candidate,
+				sourceProduct.getProductId()
+			))
 			.toList();
 
 		if (candidateProducts.isEmpty()) {
@@ -133,27 +136,24 @@ public class SubstituteRecommendationService {
 
 		ProductEmbedding sourceEmbedding = embeddingMap.get(sourceProduct.getProductId());
 
-		List<ProductRecommendationResponse> recommendations = candidateProducts.stream()
-			.filter(candidate -> inventoryMap.containsKey(candidate.getProductId()))
-			.map(candidate -> ProductRecommendationResponse.from(
-				candidate,
-				calculateScore(
-					sourceProduct,
-					sourceEmbedding,
+		List<ProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
+			candidateProducts.stream()
+				.filter(candidate -> inventoryMap.containsKey(candidate.getProductId()))
+				.map(candidate -> ProductRecommendationResponse.from(
 					candidate,
-					embeddingMap.get(candidate.getProductId()),
-					inventoryMap.get(candidate.getProductId())
-				),
-				RecommendationType.SUBSTITUTE,
-				createReason(sourceInventory.get(), candidate)
-			))
-			.sorted(
-				Comparator.comparing(ProductRecommendationResponse::score)
-					.reversed()
-					.thenComparing(ProductRecommendationResponse::productId)
-			)
-			.limit(normalizedSize)
-			.toList();
+					calculateScore(
+						sourceProduct,
+						sourceEmbedding,
+						candidate,
+						embeddingMap.get(candidate.getProductId()),
+						inventoryMap.get(candidate.getProductId())
+					),
+					RecommendationType.SUBSTITUTE,
+					createReason(sourceInventory.get(), candidate)
+				))
+				.toList(),
+			normalizedSize
+		);
 
 		return new SubstituteRecommendationResponse(
 			userId,
