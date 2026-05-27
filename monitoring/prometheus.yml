@@ -13,5 +13,6 @@ scrape_configs:
       - targets:
           - "apigateway:8080"
           - "user-service:8889"
-          - "shopping-service:8886"
+          - "shopping-service:8887"
           - "map-service:8888"
+          - "recommendation-service:8886"
