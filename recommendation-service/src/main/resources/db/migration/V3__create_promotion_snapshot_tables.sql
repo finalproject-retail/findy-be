@@ -1,3 +1,5 @@
+-- promotion snapshot tables for recommendation-service
+
 CREATE TABLE IF NOT EXISTS promotions (
     promotion_id        BIGINT PRIMARY KEY,
     promotion_name      VARCHAR(255)  NOT NULL,
