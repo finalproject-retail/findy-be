@@ -16,3 +16,4 @@ scrape_configs:
           - "shopping-service:8887"
           - "map-service:8888"
           - "recommendation-service:8886"
+          - "analytics-service:8885"
