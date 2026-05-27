@@ -51,7 +51,8 @@ jobs:
             {"service":"user-service","path":"user-service"},
             {"service":"map-service","path":"map-service"},
             {"service":"recommendation-service","path":"recommendation-service"},
-            {"service":"shopping-service","path":"shopping-service"}
+            {"service":"shopping-service","path":"shopping-service"},
+            {"service":"analytics-service","path":"analytics-service"}
           ]')"
 
           run_all=false
@@ -74,6 +75,9 @@ jobs:
               shopping-service/*)
                 changed_services["shopping-service"]=1
                 ;;
+              analytics-service/*)
+                changed_services["analytics-service"]=1
+                ;;
             esac
           done
 
@@ -85,11 +89,13 @@ jobs:
               --arg map_service "${changed_services[map-service]+yes}" \
               --arg recommendation_service "${changed_services[recommendation-service]+yes}" \
               --arg shopping_service "${changed_services[shopping-service]+yes}" \
+              --arg analytics_service "${changed_services[analytics-service]+yes}" \
               '[
                 (select($user_service != "") | {"service":"user-service","path":"user-service"}),
                 (select($map_service != "") | {"service":"map-service","path":"map-service"}),
                 (select($recommendation_service != "") | {"service":"recommendation-service","path":"recommendation-service"}),
-                (select($shopping_service != "") | {"service":"shopping-service","path":"shopping-service"})
+                (select($shopping_service != "") | {"service":"shopping-service","path":"shopping-service"}),
+                (select($analytics_service != "") | {"service":"analytics-service","path":"analytics-service"})
               ]')"
           fi
 
