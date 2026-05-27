@@ -33,6 +33,20 @@ public class PromotionRecommendationScoreCalculator {
 		return clamp(score);
 	}
 
+	public double calculateFallback(
+		ProductSnapshot product,
+		PromotionProductSnapshot promotionProduct,
+		InventorySnapshot inventory
+	) {
+		double score = 0.35;
+
+		score += calculatePromotionBenefitScore(product, promotionProduct) * 0.35;
+		score += calculateStockScore(inventory) * 0.15;
+		score += calculatePromotionTypeScore(promotionProduct.getPromotion()) * 0.15;
+
+		return clamp(score);
+	}
+
 	public String createReason(
 		ProductSnapshot product,
 		PromotionProductSnapshot promotionProduct,
@@ -61,6 +75,31 @@ public class PromotionRecommendationScoreCalculator {
 
 	private double normalizeSimilarity(double similarityScore) {
 		return Math.max(0.0, Math.min((similarityScore + 1.0) / 2.0, 1.0));
+	}
+
+	public String createFallbackReason(
+		ProductSnapshot product,
+		PromotionProductSnapshot promotionProduct
+	) {
+		PromotionSnapshot promotion = promotionProduct.getPromotion();
+
+		if (promotionProduct.getPromotionPrice() != null) {
+			return "추천 데이터가 부족하여 행사 가격과 재고를 기준으로 추천한 상품입니다.";
+		}
+
+		if (promotion.getPromotionType() == PromotionType.BOGO) {
+			return "추천 데이터가 부족하여 현재 진행 중인 묶음 행사 상품을 우선 추천했습니다.";
+		}
+
+		if (promotion.getPromotionType() == PromotionType.GIFT) {
+			return "추천 데이터가 부족하여 현재 진행 중인 사은품 행사 상품을 우선 추천했습니다.";
+		}
+
+		if (hasDiscount(product)) {
+			return "추천 데이터가 부족하여 할인 혜택이 있는 행사 상품을 우선 추천했습니다.";
+		}
+
+		return "추천 데이터가 부족하여 구매 가능한 행사 상품을 기준으로 추천했습니다.";
 	}
 
 	private double calculatePromotionBenefitScore(
