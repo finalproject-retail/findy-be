@@ -1,7 +1,7 @@
 server:
   address: 0.0.0.0
   port: 8887
-
+#CICD 테스트중입니다 ㅇㅅㅇ
 spring:
   application:
     name: shopping-service
