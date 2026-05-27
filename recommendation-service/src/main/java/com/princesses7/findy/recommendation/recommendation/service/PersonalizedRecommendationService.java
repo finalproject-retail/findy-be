@@ -2,7 +2,6 @@ package com.princesses7.findy.recommendation.recommendation.service;
 
 import java.math.BigDecimal;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -25,6 +24,7 @@ import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 import com.princesses7.findy.recommendation.product.repository.ProductSnapshotRepository;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PersonalizedRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationBaseType;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
@@ -98,22 +98,19 @@ public class PersonalizedRecommendationService {
 				.toList()
 		);
 
-		List<ProductRecommendationResponse> recommendations = candidateEmbeddings.stream()
-			.map(productEmbedding -> toRecommendationResponse(
-				userPreference,
-				productEmbedding,
-				productMap,
-				categoryNameMap,
-				userPreferenceEmbedding
-			))
-			.filter(Objects::nonNull)
-			.sorted(
-				Comparator.comparing(ProductRecommendationResponse::score)
-					.reversed()
-					.thenComparing(ProductRecommendationResponse::productId)
-			)
-			.limit(normalizedSize)
-			.toList();
+		List<ProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
+			candidateEmbeddings.stream()
+				.map(productEmbedding -> toRecommendationResponse(
+					userPreference,
+					productEmbedding,
+					productMap,
+					categoryNameMap,
+					userPreferenceEmbedding
+				))
+				.filter(Objects::nonNull)
+				.toList(),
+			normalizedSize
+		);
 
 		if (recommendations.isEmpty()) {
 			return fallback(
@@ -201,24 +198,19 @@ public class PersonalizedRecommendationService {
 		UserPreferenceResponse userPreference,
 		RecommendationBaseType baseType
 	) {
-		List<ProductRecommendationResponse> recommendations = productRepository.findByDeletedFalse(
-				PageRequest.of(0, size * FALLBACK_MULTIPLIER)
-			)
-			.stream()
-			.filter(ProductSnapshot::isRecommendable)
-			.sorted(
-				Comparator.comparing(this::getDiscountRate)
-					.reversed()
-					.thenComparing(ProductSnapshot::getProductId)
-			)
-			.limit(size)
-			.map(product -> ProductRecommendationResponse.from(
-				product,
-				scorer.fallbackScore(product),
-				RecommendationType.PERSONALIZED,
-				createFallbackReason(baseType)
-			))
-			.toList();
+		List<ProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
+			productRepository.findByDeletedFalse(PageRequest.of(0, size * FALLBACK_MULTIPLIER))
+				.stream()
+				.filter(RecommendationResultPolicy::isDisplayableProduct)
+				.map(product -> ProductRecommendationResponse.from(
+					product,
+					scorer.fallbackScore(product),
+					RecommendationType.PERSONALIZED,
+					createFallbackReason(baseType)
+				))
+				.toList(),
+			size
+		);
 
 		return new PersonalizedRecommendationResponse(
 			userId,
