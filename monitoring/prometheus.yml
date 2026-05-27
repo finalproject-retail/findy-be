@@ -12,6 +12,6 @@ scrape_configs:
     static_configs:
       - targets:
           - "apigateway:8080"
-          - "user-service:8080"
-          - "shopping-service:8080"
-          - "map-service:8080"
+          - "user-service:8889"
+          - "shopping-service:8886"
+          - "map-service:8888"
