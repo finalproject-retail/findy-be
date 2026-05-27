@@ -28,6 +28,7 @@ import com.princesses7.findy.recommendation.recommendation.dto.response.SourceIn
 import com.princesses7.findy.recommendation.recommendation.dto.response.SourceProductResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SubstituteRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
+import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -43,6 +44,7 @@ public class SubstituteRecommendationService {
 	private final ProductEmbeddingRepository productEmbeddingRepository;
 	private final InventorySnapshotRepository inventoryRepository;
 	private final CategorySnapshotRepository categoryRepository;
+	private final RecommendationRequestValidator requestValidator;
 
 	public SubstituteRecommendationResponse getSubstituteRecommendations(
 		Long userId,
@@ -50,6 +52,9 @@ public class SubstituteRecommendationService {
 		Long storeId,
 		int size
 	) {
+		requestValidator.validatePositiveId(userId, "userId");
+		requestValidator.validatePositiveId(productId, "productId");
+		requestValidator.validatePositiveId(storeId, "storeId");
 		int normalizedSize = normalizeSize(size);
 
 		ProductSnapshot sourceProduct = productRepository.findById(productId)
@@ -388,10 +393,6 @@ public class SubstituteRecommendationService {
 	}
 
 	private int normalizeSize(int size) {
-		if (size <= 0) {
-			return DEFAULT_SIZE;
-		}
-
-		return Math.min(size, MAX_SIZE);
+		return requestValidator.normalizeSize(size, DEFAULT_SIZE, MAX_SIZE);
 	}
 }
