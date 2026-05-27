@@ -9,6 +9,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
+import com.princesses7.findy.shopping.promotion.dto.response.PromotionDiscountResult;
+import com.princesses7.findy.shopping.promotion.service.PromotionDiscountService;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountItemResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseTargetItemResponse;
@@ -24,6 +26,7 @@ public class PurchaseAmountService {
 
 	private final PurchaseTargetService purchaseTargetService;
 	private final ProductRepository productRepository;
+	private final PromotionDiscountService promotionDiscountService;
 
 	public PurchaseAmountResponse calculate(Long userId) {
 		PurchaseTargetResponse targetResponse = purchaseTargetService.getPurchaseTargets(userId);
@@ -55,15 +58,20 @@ public class PurchaseAmountService {
 	}
 
 	private PurchaseAmountItemResponse calculateItem(PurchaseTargetItemResponse item) {
-		Product product = productRepository.findById(item.productId())
+		Product product = productRepository.findByProductIdAndIsDeletedFalse(item.productId())
 			.orElseThrow(() -> new PurchaseException(PRODUCT_NOT_FOUND));
 
 		int productPrice = product.getSalePrice();
 		int totalAmount = productPrice * item.purchaseQuantity();
 
-		// TODO: 행사/쿠폰 도메인 구현 후 상품별 할인 금액 계산 로직 연동
-		int discountAmount = 0;
+		PromotionDiscountResult promotionDiscount = promotionDiscountService.calculateBestDiscount(
+			item.productId(),
+			item.purchaseQuantity(),
+			productPrice,
+			totalAmount
+		);
 
+		int discountAmount = promotionDiscount.discountAmount();
 		int finalAmount = totalAmount - discountAmount;
 
 		return new PurchaseAmountItemResponse(
@@ -72,7 +80,11 @@ public class PurchaseAmountService {
 			productPrice,
 			totalAmount,
 			discountAmount,
-			finalAmount
+			finalAmount,
+			promotionDiscount.promotionId(),
+			promotionDiscount.promotionName(),
+			promotionDiscount.promotionType(),
+			promotionDiscount.benefitText()
 		);
 	}
 }
