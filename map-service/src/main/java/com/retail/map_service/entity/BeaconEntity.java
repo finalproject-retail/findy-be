@@ -40,4 +40,16 @@ public class BeaconEntity extends BaseTimeEntity {
 
 	@Column(name = "beacon_uuid", nullable = false, length = 255)
 	private String beaconUuid;
+
+	/** iBeacon major; 실물=40011, 가상=store_id */
+	@Column(name = "major")
+	private Integer major;
+
+	/** iBeacon minor; 실물=BeaconSET 값, 가상=grid_id */
+	@Column(name = "minor")
+	private Integer minor;
+
+	/** BLE MAC; 실물=Minew, 가상=FA:00:01:00:.. */
+	@Column(name = "mac", length = 17)
+	private String mac;
 }
