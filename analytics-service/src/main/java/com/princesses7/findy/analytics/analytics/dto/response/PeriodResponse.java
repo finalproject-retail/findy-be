@@ -1,4 +1,4 @@
-package com.princesses7.findy.analytics.analytics.dto;
+package com.princesses7.findy.analytics.analytics.dto.response;
 
 import java.time.LocalDate;
 
