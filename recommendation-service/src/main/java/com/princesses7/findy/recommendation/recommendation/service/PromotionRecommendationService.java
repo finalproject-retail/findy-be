@@ -88,13 +88,24 @@ public class PromotionRecommendationService {
 				.toList()
 		);
 
-		if (productMap.isEmpty() || embeddingMap.isEmpty() || inventoryMap.isEmpty()) {
+		if (productMap.isEmpty() || inventoryMap.isEmpty()) {
 			return emptyResponse(userId, storeId, userPreference);
 		}
 
-		List<Double> promotionIntentEmbedding = openAiEmbeddingClient.createEmbedding(
-			intentBuilder.build(userPreference)
-		);
+		List<Double> promotionIntentEmbedding = createPromotionIntentEmbedding(userPreference);
+
+		if (embeddingMap.isEmpty() || promotionIntentEmbedding.isEmpty()) {
+			return fallbackResponse(
+				userId,
+				storeId,
+				userPreference,
+				activePromotionProducts,
+				productMap,
+				inventoryMap,
+				categoryNameMap,
+				normalizedSize
+			);
+		}
 
 		List<PromotionProductRecommendationResponse> recommendations = activePromotionProducts.stream()
 			.map(promotionProduct -> toRecommendation(
@@ -113,6 +124,19 @@ public class PromotionRecommendationService {
 			)
 			.limit(normalizedSize)
 			.toList();
+
+		if (recommendations.isEmpty()) {
+			return fallbackResponse(
+				userId,
+				storeId,
+				userPreference,
+				activePromotionProducts,
+				productMap,
+				inventoryMap,
+				categoryNameMap,
+				normalizedSize
+			);
+		}
 
 		return new PromotionRecommendationResponse(
 			userId,
@@ -160,6 +184,85 @@ public class PromotionRecommendationService {
 			promotionProduct,
 			similarityScore
 		);
+
+		return PromotionProductRecommendationResponse.of(
+			product,
+			categoryName,
+			promotionProduct,
+			inventory,
+			score,
+			reason
+		);
+	}
+	
+	private List<Double> createPromotionIntentEmbedding(UserPreferenceResponse userPreference) {
+		try {
+			return openAiEmbeddingClient.createEmbedding(
+				intentBuilder.build(userPreference)
+			);
+		} catch (BaseException exception) {
+			return List.of();
+		}
+	}
+
+	private PromotionRecommendationResponse fallbackResponse(
+		Long userId,
+		Long storeId,
+		UserPreferenceResponse userPreference,
+		List<PromotionProductSnapshot> activePromotionProducts,
+		Map<Long, ProductSnapshot> productMap,
+		Map<Long, InventorySnapshot> inventoryMap,
+		Map<Long, String> categoryNameMap,
+		int size
+	) {
+		List<PromotionProductRecommendationResponse> recommendations = activePromotionProducts.stream()
+			.map(promotionProduct -> toFallbackRecommendation(
+				promotionProduct,
+				productMap,
+				inventoryMap,
+				categoryNameMap
+			))
+			.filter(Objects::nonNull)
+			.sorted(
+				Comparator.comparing(PromotionProductRecommendationResponse::score)
+					.reversed()
+					.thenComparing(PromotionProductRecommendationResponse::productId)
+			)
+			.limit(size)
+			.toList();
+
+		return new PromotionRecommendationResponse(
+			userId,
+			storeId,
+			userPreference.preferredCategories(),
+			userPreference.shoppingStyles(),
+			RecommendationType.PROMOTION,
+			recommendations
+		);
+	}
+
+	private PromotionProductRecommendationResponse toFallbackRecommendation(
+		PromotionProductSnapshot promotionProduct,
+		Map<Long, ProductSnapshot> productMap,
+		Map<Long, InventorySnapshot> inventoryMap,
+		Map<Long, String> categoryNameMap
+	) {
+		Long productId = promotionProduct.getProductId();
+
+		ProductSnapshot product = productMap.get(productId);
+		InventorySnapshot inventory = inventoryMap.get(productId);
+
+		if (product == null || inventory == null) {
+			return null;
+		}
+
+		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
+		double score = scoreCalculator.calculateFallback(
+			product,
+			promotionProduct,
+			inventory
+		);
+		String reason = scoreCalculator.createFallbackReason(product, promotionProduct);
 
 		return PromotionProductRecommendationResponse.of(
 			product,
