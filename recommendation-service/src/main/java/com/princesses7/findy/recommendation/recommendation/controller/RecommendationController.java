@@ -9,24 +9,31 @@ import org.springframework.web.bind.annotation.RestController;
 import com.princesses7.findy.recommendation.global.response.ApiResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PersonalizedRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationListResponse;
-import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SubstituteRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.log.dto.service.RecommendationImpressionLogCommand;
+import com.princesses7.findy.recommendation.recommendation.log.service.RecommendationLogService;
 import com.princesses7.findy.recommendation.recommendation.service.PersonalizedRecommendationService;
-import com.princesses7.findy.recommendation.recommendation.service.PromotionRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.service.RelatedRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.service.SubstituteRecommendationService;
+import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/recommendations")
 public class RecommendationController {
 
+	private static final String PERSONALIZED_DISPLAY_LOCATION = "HOME_PERSONALIZED";
+	private static final String RELATED_DISPLAY_LOCATION = "PRODUCT_DETAIL_RELATED";
+	private static final String SUBSTITUTE_DISPLAY_LOCATION = "SUBSTITUTE_RECOMMENDATION";
+
 	private final PersonalizedRecommendationService personalizedRecommendationService;
 	private final RelatedRecommendationService relatedRecommendationService;
 	private final SubstituteRecommendationService substituteRecommendationService;
-	private final PromotionRecommendationService promotionRecommendationService;
+	private final RecommendationLogService recommendationLogService;
 
 	@GetMapping("/personalized")
 	public ApiResponse<PersonalizedRecommendationResponse> getPersonalizedRecommendations(
@@ -35,6 +42,15 @@ public class RecommendationController {
 	) {
 		PersonalizedRecommendationResponse response = personalizedRecommendationService
 			.getPersonalizedRecommendations(userId, size);
+
+		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
+			userId,
+			null,
+			null,
+			RecommendationType.PERSONALIZED,
+			PERSONALIZED_DISPLAY_LOCATION,
+			response.recommendations()
+		));
 
 		return ApiResponse.ok("개인 맞춤 추천 조회에 성공했습니다.", response);
 	}
@@ -50,6 +66,15 @@ public class RecommendationController {
 			productId,
 			size
 		);
+
+		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
+			userId,
+			productId,
+			null,
+			response.recommendationType(),
+			RELATED_DISPLAY_LOCATION,
+			response.recommendations()
+		));
 
 		return ApiResponse.ok("연관 상품 추천 조회에 성공했습니다.", response);
 	}
@@ -68,21 +93,29 @@ public class RecommendationController {
 			size
 		);
 
+		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
+			userId,
+			productId,
+			storeId,
+			response.recommendationType(),
+			SUBSTITUTE_DISPLAY_LOCATION,
+			response.recommendations()
+		));
+
 		return ApiResponse.ok("대체 상품 추천 조회에 성공했습니다.", response);
 	}
 
-	@GetMapping("/promotions")
-	public ApiResponse<PromotionRecommendationResponse> getPromotionRecommendations(
-		@RequestParam Long userId,
-		@RequestParam Long storeId,
-		@RequestParam(defaultValue = "10") int size
-	) {
-		PromotionRecommendationResponse response = promotionRecommendationService.getPromotionRecommendations(
-			userId,
-			storeId,
-			size
-		);
-
-		return ApiResponse.ok("행사 상품 추천 조회에 성공했습니다.", response);
+	private void saveImpressionLogsSafely(RecommendationImpressionLogCommand command) {
+		try {
+			recommendationLogService.saveImpressionLogs(command);
+		} catch (Exception exception) {
+			log.warn(
+				"Recommendation impression log save failed. userId={}, recommendationType={}, displayLocation={}, message={}",
+				command.userId(),
+				command.recommendationType(),
+				command.displayLocation(),
+				exception.getMessage()
+			);
+		}
 	}
 }
