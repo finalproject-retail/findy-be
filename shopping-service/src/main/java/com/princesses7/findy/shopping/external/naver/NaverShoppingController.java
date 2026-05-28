@@ -11,8 +11,8 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/test/naver-shopping")
-public class NaverShoppingTestController {
+@RequestMapping("/api/v1/naver-shopping")
+public class NaverShoppingController {
 
 	private final NaverShoppingClient naverShoppingClient;
 

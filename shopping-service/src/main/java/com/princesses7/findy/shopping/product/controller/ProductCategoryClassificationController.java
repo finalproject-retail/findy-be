@@ -12,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/test/products/categories/classify")
-public class ProductCategoryClassificationTestController {
+@RequestMapping("/api/v1/products/categories/classify")
+public class ProductCategoryClassificationController {
 
 	private final OpenAiCategoryClassifierClient classifierClient;
 
