@@ -12,9 +12,11 @@ import com.princesses7.findy.shopping.product.category.ProductCategoryCatalog;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class OpenAiCategoryClassifierClient {
@@ -29,45 +31,41 @@ public class OpenAiCategoryClassifierClient {
 		String brandName,
 		String externalCategory
 	) {
+		if (properties.apiKey() == null || properties.apiKey().isBlank()) {
+			return ProductCategoryClassificationResponse.failed("OpenAI API Key가 설정되지 않았습니다.");
+		}
+
 		RestClient restClient = RestClient.builder()
 			.baseUrl("https://api.openai.com")
 			.build();
-
-		Map<String, Object> request = createRequest(productName, brandName, externalCategory);
 
 		try {
 			JsonNode response = restClient.post()
 				.uri("/v1/chat/completions")
 				.header("Authorization", "Bearer " + properties.apiKey())
 				.header("Content-Type", "application/json")
-				.body(request)
+				.body(createRequest(productName, brandName, externalCategory))
 				.retrieve()
 				.body(JsonNode.class);
 
-			System.out.println(response.toPrettyString());
-
-			JsonNode contentNode = response
+			String content = response
 				.path("choices")
 				.get(0)
 				.path("message")
-				.path("content");
-
-			String content;
-
-			if (contentNode.isArray()) {
-				content = contentNode.get(0)
-					.path("text")
-					.asText();
-			} else {
-				content = contentNode.asText();
-			}
+				.path("content")
+				.asText();
 
 			JsonNode result = objectMapper.readTree(content);
 
 			Long categoryId = result.path("categoryId").asLong();
-			String categoryPath = result.path("categoryPath").asText();
-			BigDecimal confidence = new BigDecimal(result.path("confidence").asText());
-			String reason = result.path("reason").asText();
+			BigDecimal confidence = new BigDecimal(result.path("confidence").asText("0"));
+			String reason = result.path("reason").asText("AI 카테고리 분류 결과입니다.");
+
+			if (!ProductCategoryCatalog.exists(categoryId)) {
+				return ProductCategoryClassificationResponse.failed("AI가 존재하지 않는 카테고리를 반환했습니다.");
+			}
+
+			String categoryPath = ProductCategoryCatalog.pathOf(categoryId);
 
 			return new ProductCategoryClassificationResponse(
 				categoryId,
@@ -76,16 +74,15 @@ public class OpenAiCategoryClassifierClient {
 				confidence.compareTo(REVIEW_THRESHOLD) < 0,
 				reason
 			);
-		} catch (Exception e) {
-			e.printStackTrace();
-
-			return new ProductCategoryClassificationResponse(
-				null,
-				null,
-				BigDecimal.ZERO,
-				true,
-				"AI 카테고리 분류에 실패했습니다."
+		} catch (Exception exception) {
+			log.warn("AI 카테고리 분류에 실패했습니다. productName={}, brandName={}, externalCategory={}",
+				productName,
+				brandName,
+				externalCategory,
+				exception
 			);
+
+			return ProductCategoryClassificationResponse.failed("AI 카테고리 분류에 실패했습니다.");
 		}
 	}
 
@@ -107,8 +104,43 @@ public class OpenAiCategoryClassifierClient {
 					"content", createUserPrompt(productName, brandName, externalCategory)
 				)
 			),
-			"response_format", Map.of(
-				"type", "json_object"
+			"response_format", createResponseFormat()
+		);
+	}
+
+	private Map<String, Object> createResponseFormat() {
+		return Map.of(
+			"type", "json_schema",
+			"json_schema", Map.of(
+				"name", "product_category_classification",
+				"strict", true,
+				"schema", Map.of(
+					"type", "object",
+					"additionalProperties", false,
+					"properties", Map.of(
+						"categoryId", Map.of(
+							"type", "integer",
+							"enum", ProductCategoryCatalog.categoryIds()
+						),
+						"categoryPath", Map.of(
+							"type", "string"
+						),
+						"confidence", Map.of(
+							"type", "number",
+							"minimum", 0,
+							"maximum", 1
+						),
+						"reason", Map.of(
+							"type", "string"
+						)
+					),
+					"required", List.of(
+						"categoryId",
+						"categoryPath",
+						"confidence",
+						"reason"
+					)
+				)
 			)
 		);
 	}
@@ -119,16 +151,9 @@ public class OpenAiCategoryClassifierClient {
 			반드시 제공된 Findy 카테고리 후보 중 하나만 선택한다.
 			존재하지 않는 categoryId를 만들지 않는다.
 			상품명, 브랜드, 외부 카테고리를 기준으로 가장 적절한 depth 3 카테고리를 고른다.
-			confidence는 0.00부터 1.00 사이 숫자로 작성한다.
-			응답은 반드시 JSON만 반환한다.
-			
-			응답 형식:
-			{
-			  "categoryId": 17,
-			  "categoryPath": "가공/냉동 식품 > 면/통조림 > 라면",
-			  "confidence": 0.95,
-			  "reason": "상품명과 외부 카테고리에 라면 정보가 포함되어 있음"
-			}
+			상품명이 쇼핑몰 광고 문구를 포함하더라도 실제 상품의 종류를 우선 판단한다.
+			확신이 낮아도 가장 가까운 카테고리 하나를 선택하되 confidence를 낮게 준다.
+			응답은 반드시 지정된 JSON Schema를 따른다.
 			""";
 	}
 
@@ -148,21 +173,8 @@ public class OpenAiCategoryClassifierClient {
 			nullToEmpty(productName),
 			nullToEmpty(brandName),
 			nullToEmpty(externalCategory),
-			createCategoryCandidateText()
+			ProductCategoryCatalog.createCandidateText()
 		);
-	}
-
-	private String createCategoryCandidateText() {
-		StringBuilder builder = new StringBuilder();
-
-		for (ProductCategoryCatalog.CategoryCandidate category : ProductCategoryCatalog.CATEGORIES) {
-			builder.append(category.categoryId())
-				.append(": ")
-				.append(category.path())
-				.append("\n");
-		}
-
-		return builder.toString();
 	}
 
 	private String nullToEmpty(String value) {
