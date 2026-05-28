@@ -1,6 +1,8 @@
 package com.princesses7.findy.shopping.product.category;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public final class ProductCategoryCatalog {
 
@@ -69,6 +71,39 @@ public final class ProductCategoryCatalog {
 		new CategoryCandidate(45L, "라이프 스타일 > 홈케어/캠핑 > 캠핑/아웃도어 용품"),
 		new CategoryCandidate(46L, "라이프 스타일 > 홈케어/캠핑 > 차량 용품")
 	);
+
+	private static final Map<Long, String> CATEGORY_PATH_BY_ID = CATEGORIES.stream()
+		.collect(Collectors.toUnmodifiableMap(
+			CategoryCandidate::categoryId,
+			CategoryCandidate::path
+		));
+
+	public static boolean exists(Long categoryId) {
+		return categoryId != null && CATEGORY_PATH_BY_ID.containsKey(categoryId);
+	}
+
+	public static String pathOf(Long categoryId) {
+		return CATEGORY_PATH_BY_ID.get(categoryId);
+	}
+
+	public static List<Long> categoryIds() {
+		return CATEGORIES.stream()
+			.map(CategoryCandidate::categoryId)
+			.toList();
+	}
+
+	public static String createCandidateText() {
+		StringBuilder builder = new StringBuilder();
+
+		for (CategoryCandidate category : CATEGORIES) {
+			builder.append(category.categoryId())
+				.append(": ")
+				.append(category.path())
+				.append("\n");
+		}
+
+		return builder.toString();
+	}
 
 	public record CategoryCandidate(
 		Long categoryId,
