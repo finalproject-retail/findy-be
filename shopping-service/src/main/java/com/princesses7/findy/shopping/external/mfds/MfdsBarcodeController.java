@@ -12,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/test/mfds/barcodes")
-public class MfdsBarcodeTestController {
+@RequestMapping("/api/v1/mfds/barcodes")
+public class MfdsBarcodeController {
 
 	private final MfdsBarcodeClient mfdsBarcodeClient;
 	private final MfdsLinkedProductClient mfdsLinkedProductClient;

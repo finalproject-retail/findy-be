@@ -13,8 +13,8 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/test/purchase-amounts")
-public class PurchaseAmountTestController {
+@RequestMapping("/api/v1/purchase-amounts")
+public class PurchaseAmountController {
 
 	private final PurchaseAmountService purchaseAmountService;
 
