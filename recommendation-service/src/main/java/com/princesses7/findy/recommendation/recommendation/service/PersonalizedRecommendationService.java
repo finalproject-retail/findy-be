@@ -140,6 +140,7 @@ public class PersonalizedRecommendationService {
 		 * 이후 구매 기록 기능을 붙이면
 		 * hasPurchaseHistory 값을 실제 구매 기록 존재 여부로 교체하면 됩니다.
 		 */
+		// TODO: 구매 기록 조회 로직과 연결
 		boolean hasPurchaseHistory = false;
 
 		if (hasPreference && hasPurchaseHistory) {
