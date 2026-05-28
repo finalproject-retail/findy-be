@@ -13,10 +13,13 @@ import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductImportResultResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
+import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class NaverProductImportService {
@@ -42,11 +45,16 @@ public class NaverProductImportService {
 				continue;
 			}
 
-			ProductImportCommand command = naverProductMapper.toCommand(item);
-			Product product = productRepository.save(Product.create(command));
-			inventoryService.createDefaultInventory(product);
+			try {
+				ProductImportCommand command = naverProductMapper.toCommand(item);
+				Product product = productRepository.save(Product.create(command));
+				inventoryService.createDefaultInventory(product);
 
-			importedCount++;
+				importedCount++;
+			} catch (ProductException exception) {
+				log.warn("상품 import를 건너뜁니다. productId={}, title={}", item.productId(), item.title(), exception);
+				skippedCount++;
+			}
 		}
 
 		return new ProductImportResultResponse(importedCount, skippedCount);
