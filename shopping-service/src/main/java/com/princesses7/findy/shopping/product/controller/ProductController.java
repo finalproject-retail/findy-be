@@ -65,12 +65,12 @@ public class ProductController {
 		);
 	}
 
-	@GetMapping("/mart-recommendations")
+	@GetMapping("/findy-recommendations")
 	public ApiResponse<List<ProductResponse>> getMartRecommendedProducts(
 		@RequestParam(defaultValue = "10") int size
 	) {
 		return ApiResponse.ok(
-			"마트 추천 상품 조회에 성공했습니다.",
+			"Findy 추천 상품 조회에 성공했습니다.",
 			productService.getMartRecommendedProducts(size)
 		);
 	}
