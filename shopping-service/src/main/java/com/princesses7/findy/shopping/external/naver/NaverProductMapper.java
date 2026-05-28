@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.external.naver;
 
+import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
+
 import java.math.BigDecimal;
 
 import org.springframework.stereotype.Component;
@@ -9,6 +11,7 @@ import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierCl
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
+import com.princesses7.findy.shopping.product.exception.ProductException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -17,7 +20,6 @@ import lombok.RequiredArgsConstructor;
 public class NaverProductMapper {
 
 	private static final String EXTERNAL_SOURCE = "NAVER";
-	private static final Long DEFAULT_CATEGORY_ID = 1L;
 
 	private final OpenAiCategoryClassifierClient categoryClassifierClient;
 
@@ -29,15 +31,15 @@ public class NaverProductMapper {
 		ProductCategoryClassificationResponse classification =
 			categoryClassifierClient.classify(productName, brandName, externalCategory);
 
-		Long categoryId = classification.categoryId() == null
-			? DEFAULT_CATEGORY_ID
-			: classification.categoryId();
+		if (!classification.isClassified()) {
+			throw new ProductException(CATEGORY_CLASSIFICATION_FAILED);
+		}
 
 		Integer salePrice = parsePrice(item.lprice());
 		Integer originalPrice = resolveOriginalPrice(item.hprice(), salePrice);
 
 		return new ProductImportCommand(
-			categoryId,
+			classification.categoryId(),
 			brandName,
 			productName,
 			null,
@@ -54,7 +56,6 @@ public class NaverProductMapper {
 			null,
 			null,
 			SaleStatus.ON_SALE,
-
 			classification.confidence(),
 			"AI",
 			classification.reviewRequired()
@@ -87,11 +88,14 @@ public class NaverProductMapper {
 
 	private String buildExternalCategory(NaverShoppingItemResponse item) {
 		return String.join(" > ",
-			nullToEmpty(item.category1()),
-			nullToEmpty(item.category2()),
-			nullToEmpty(item.category3()),
-			nullToEmpty(item.category4())
-		).replaceAll("( > )+", " > ").trim();
+				nullToEmpty(item.category1()),
+				nullToEmpty(item.category2()),
+				nullToEmpty(item.category3()),
+				nullToEmpty(item.category4())
+			)
+			.replaceAll("( > )+", " > ")
+			.replaceAll("^ > | > $", "")
+			.trim();
 	}
 
 	private String nullToEmpty(String value) {
