@@ -11,6 +11,7 @@ import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 @Component
 public class PersonalizedRecommendationScorer {
 
+	// TODO: LLM으로 상품 태그 자동 분류하도록 수정
 	private static final List<String> FRESH_CATEGORY_KEYWORDS = List.of(
 		"신선 식품",
 		"농산",
