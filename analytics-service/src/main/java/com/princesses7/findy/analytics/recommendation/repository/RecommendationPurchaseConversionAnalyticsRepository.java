@@ -19,7 +19,7 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 			COUNT(*) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
-		FROM recommendation_logs
+		FROM analytics_service.recommendation_logs
 		WHERE created_at >= :fromDateTime
 			AND created_at < :toDateTime
 			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
@@ -38,7 +38,7 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 			COUNT(*) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
-		FROM recommendation_logs
+		FROM analytics_service.recommendation_logs
 		WHERE created_at >= :fromDateTime
 			AND created_at < :toDateTime
 			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
@@ -61,7 +61,7 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 			COUNT(*) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
-		FROM recommendation_logs
+		FROM analytics_service.recommendation_logs
 		WHERE created_at >= :fromDateTime
 			AND created_at < :toDateTime
 			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)

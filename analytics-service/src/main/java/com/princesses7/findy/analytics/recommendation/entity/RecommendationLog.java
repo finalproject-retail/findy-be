@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "recommendation_logs")
+@Table(name = "recommendation_logs", schema = "analytics_service")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class RecommendationLog extends BaseTimeEntity {
 
