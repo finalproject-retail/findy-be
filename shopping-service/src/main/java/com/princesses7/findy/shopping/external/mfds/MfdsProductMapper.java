@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.external.mfds;
 
+import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
+
 import java.math.BigDecimal;
 import java.util.Optional;
 
@@ -7,26 +9,43 @@ import org.springframework.stereotype.Component;
 
 import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsBarcodeItemResponse;
 import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsLinkedProductItemResponse;
+import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
+import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
+import com.princesses7.findy.shopping.product.exception.ProductException;
+
+import lombok.RequiredArgsConstructor;
 
 @Component
+@RequiredArgsConstructor
 public class MfdsProductMapper {
 
 	private static final String EXTERNAL_SOURCE = "MFDS";
-	private static final Long DEFAULT_CATEGORY_ID = 1L;
 	private static final int DEFAULT_PRICE = 0;
-	private static final String CATEGORY_CLASSIFIED_BY = "MFDS";
+
+	private final OpenAiCategoryClassifierClient categoryClassifierClient;
 
 	public ProductImportCommand toCommand(
 		String barcode,
 		Optional<MfdsBarcodeItemResponse> barcodeItem,
 		Optional<MfdsLinkedProductItemResponse> linkedItem
 	) {
+		String productName = getProductName(barcodeItem, linkedItem);
+		String brandName = getCompanyName(barcodeItem, linkedItem);
+		String externalCategory = createExternalCategory(barcodeItem, linkedItem);
+
+		ProductCategoryClassificationResponse classification =
+			categoryClassifierClient.classify(productName, brandName, externalCategory);
+
+		if (!classification.isClassified()) {
+			throw new ProductException(CATEGORY_CLASSIFICATION_FAILED);
+		}
+
 		return new ProductImportCommand(
-			DEFAULT_CATEGORY_ID,
-			getCompanyName(barcodeItem, linkedItem),
-			getProductName(barcodeItem, linkedItem),
+			classification.categoryId(),
+			brandName,
+			productName,
 			getBarcode(barcode, barcodeItem, linkedItem),
 			EXTERNAL_SOURCE,
 			getReportNo(barcodeItem, linkedItem),
@@ -41,10 +60,34 @@ public class MfdsProductMapper {
 			null,
 			createBadgeText(barcodeItem, linkedItem),
 			SaleStatus.ON_SALE,
-			BigDecimal.ZERO,
-			CATEGORY_CLASSIFIED_BY,
-			true
+			classification.confidence(),
+			"AI",
+			classification.reviewRequired()
 		);
+	}
+
+	private String createExternalCategory(
+		Optional<MfdsBarcodeItemResponse> barcodeItem,
+		Optional<MfdsLinkedProductItemResponse> linkedItem
+	) {
+		String barcodeCategory = barcodeItem
+			.map(item -> String.join(" > ",
+				defaultText(item.categoryLarge()),
+				defaultText(item.categoryMiddle()),
+				defaultText(item.categorySmall())
+			))
+			.orElse("");
+
+		String foodType = linkedItem
+			.map(MfdsLinkedProductItemResponse::foodType)
+			.filter(this::hasText)
+			.orElse("");
+
+		return String.join(" > ", barcodeCategory, foodType)
+			.replace("정보 없음", "")
+			.replaceAll("( > )+", " > ")
+			.replaceAll("^ > | > $", "")
+			.trim();
 	}
 
 	private String getCompanyName(
