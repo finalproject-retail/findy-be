@@ -75,6 +75,27 @@ public class PersonalizedRecommendationScorer {
 		return Math.min(score, 1.0);
 	}
 
+	public double popularFallbackScore(
+		ProductSnapshot product,
+		long popularityScore,
+		double maxPopularityScore
+	) {
+		double normalizedPopularityScore = 0.0;
+
+		if (maxPopularityScore > 0) {
+			normalizedPopularityScore = Math.min(popularityScore / maxPopularityScore, 1.0);
+		}
+
+		double score = normalizedPopularityScore * 0.85;
+		score += calculateDiscountScore(product.getDiscountRate());
+
+		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
+			score += 0.05;
+		}
+
+		return Math.min(score, 1.0);
+	}
+
 	public String createReason(
 		UserPreferenceResponse userPreference,
 		ProductSnapshot product,

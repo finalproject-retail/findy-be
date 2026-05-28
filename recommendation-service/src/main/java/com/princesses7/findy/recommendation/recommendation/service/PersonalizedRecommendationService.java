@@ -1,6 +1,7 @@
 package com.princesses7.findy.recommendation.recommendation.service;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,8 @@ import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 import com.princesses7.findy.recommendation.product.repository.ProductSnapshotRepository;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PersonalizedRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.log.repository.RecommendationLogRepository;
+import com.princesses7.findy.recommendation.recommendation.log.repository.projection.PopularProductProjection;
 import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationBaseType;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
@@ -39,6 +42,7 @@ public class PersonalizedRecommendationService {
 	private static final int DEFAULT_SIZE = 10;
 	private static final int MAX_SIZE = 30;
 	private static final int FALLBACK_MULTIPLIER = 3;
+	private static final int POPULAR_LOOKBACK_DAYS = 14;
 
 	private final UserPreferenceQueryService userPreferenceQueryService;
 	private final OpenAiEmbeddingClient openAiEmbeddingClient;
@@ -48,6 +52,7 @@ public class PersonalizedRecommendationService {
 	private final CategorySnapshotRepository categoryRepository;
 	private final PersonalizedRecommendationScorer scorer;
 	private final RecommendationRequestValidator requestValidator;
+	private final RecommendationLogRepository recommendationLogRepository;
 
 	public PersonalizedRecommendationResponse getPersonalizedRecommendations(
 		Long userId,
@@ -199,7 +204,89 @@ public class PersonalizedRecommendationService {
 		UserPreferenceResponse userPreference,
 		RecommendationBaseType baseType
 	) {
-		List<ProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
+		List<ProductRecommendationResponse> recommendations = List.of();
+
+		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
+			recommendations = findPopularFallbackRecommendations(size);
+		}
+
+		if (recommendations.isEmpty()) {
+			recommendations = findDefaultFallbackRecommendations(size, baseType);
+		}
+
+		return new PersonalizedRecommendationResponse(
+			userId,
+			baseType,
+			userPreference.preferredCategories(),
+			userPreference.shoppingStyles(),
+			recommendations
+		);
+	}
+
+	private List<ProductRecommendationResponse> findPopularFallbackRecommendations(int size) {
+		LocalDateTime fromDateTime = LocalDateTime.now().minusDays(POPULAR_LOOKBACK_DAYS);
+
+		List<PopularProductProjection> popularProducts = recommendationLogRepository.findPopularPersonalizedProducts(
+			fromDateTime,
+			size * FALLBACK_MULTIPLIER
+		);
+
+		if (popularProducts.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(
+			popularProducts.stream()
+				.map(PopularProductProjection::getProductId)
+				.toList()
+		);
+
+		double maxPopularityScore = popularProducts.stream()
+			.mapToLong(popularProduct -> defaultLong(popularProduct.getPopularityScore()))
+			.max()
+			.orElse(1L);
+
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+			popularProducts.stream()
+				.map(popularProduct -> toPopularFallbackResponse(
+					popularProduct,
+					productMap,
+					maxPopularityScore
+				))
+				.filter(Objects::nonNull)
+				.toList(),
+			size
+		);
+	}
+
+	private ProductRecommendationResponse toPopularFallbackResponse(
+		PopularProductProjection popularProduct,
+		Map<Long, ProductSnapshot> productMap,
+		double maxPopularityScore
+	) {
+		ProductSnapshot product = productMap.get(popularProduct.getProductId());
+
+		if (product == null) {
+			return null;
+		}
+
+		return ProductRecommendationResponse.from(
+			product,
+			scorer.popularFallbackScore(
+				product,
+				defaultLong(popularProduct.getPopularityScore()),
+				maxPopularityScore
+			),
+			RecommendationType.PERSONALIZED,
+			createPopularFallbackReason(popularProduct)
+		);
+	}
+
+	private List<ProductRecommendationResponse> findDefaultFallbackRecommendations(
+		int size,
+		RecommendationBaseType baseType
+	) {
+		return RecommendationResultPolicy.finalizeProductRecommendations(
 			productRepository.findByDeletedFalse(PageRequest.of(0, size * FALLBACK_MULTIPLIER))
 				.stream()
 				.filter(RecommendationResultPolicy::isDisplayableProduct)
@@ -212,14 +299,18 @@ public class PersonalizedRecommendationService {
 				.toList(),
 			size
 		);
+	}
 
-		return new PersonalizedRecommendationResponse(
-			userId,
-			baseType,
-			userPreference.preferredCategories(),
-			userPreference.shoppingStyles(),
-			recommendations
-		);
+	private String createPopularFallbackReason(PopularProductProjection popularProduct) {
+		if (defaultLong(popularProduct.getClickCount()) > 0) {
+			return "개인화 데이터가 부족하여 최근 클릭 반응이 높은 인기 상품을 추천합니다.";
+		}
+
+		return "개인화 데이터가 부족하여 최근 추천 화면에 자주 노출된 인기 상품을 추천합니다.";
+	}
+
+	private long defaultLong(Long value) {
+		return value == null ? 0L : value;
 	}
 
 	private String createFallbackReason(RecommendationBaseType baseType) {
