@@ -11,6 +11,7 @@ import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 @Component
 public class PersonalizedRecommendationScorer {
 
+	// TODO: LLM으로 상품 태그 자동 분류하도록 수정
 	private static final List<String> FRESH_CATEGORY_KEYWORDS = List.of(
 		"신선 식품",
 		"농산",
@@ -66,6 +67,27 @@ public class PersonalizedRecommendationScorer {
 	public double fallbackScore(ProductSnapshot product) {
 		double score = 0.05;
 
+		score += calculateDiscountScore(product.getDiscountRate());
+
+		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
+			score += 0.05;
+		}
+
+		return Math.min(score, 1.0);
+	}
+
+	public double popularFallbackScore(
+		ProductSnapshot product,
+		long popularityScore,
+		double maxPopularityScore
+	) {
+		double normalizedPopularityScore = 0.0;
+
+		if (maxPopularityScore > 0) {
+			normalizedPopularityScore = Math.min(popularityScore / maxPopularityScore, 1.0);
+		}
+
+		double score = normalizedPopularityScore * 0.85;
 		score += calculateDiscountScore(product.getDiscountRate());
 
 		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
