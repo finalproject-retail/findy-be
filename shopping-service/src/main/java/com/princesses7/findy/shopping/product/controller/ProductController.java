@@ -26,7 +26,7 @@ public class ProductController {
 		@RequestParam(required = false) String keyword,
 		@RequestParam(defaultValue = "0") int page,
 		@RequestParam(defaultValue = "20") int size,
-		// 인기순 정렬은 Redis 랭킹 데이터 연동 시 별도 구현 예정
+		// TODO: 인기순 정렬은 Redis 랭킹 데이터 연동 시 별도 구현 예정
 		@RequestParam(defaultValue = "createdAt") String sortBy,
 		@RequestParam(defaultValue = "desc") String direction
 	) {
