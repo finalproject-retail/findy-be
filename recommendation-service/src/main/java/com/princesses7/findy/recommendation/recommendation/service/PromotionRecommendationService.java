@@ -2,7 +2,6 @@ package com.princesses7.findy.recommendation.recommendation.service;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -17,7 +16,6 @@ import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalcu
 import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
 import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
-import com.princesses7.findy.recommendation.global.exception.ErrorCode;
 import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
 import com.princesses7.findy.recommendation.inventory.repository.InventorySnapshotRepository;
 import com.princesses7.findy.recommendation.preference.dto.response.UserPreferenceResponse;
@@ -33,6 +31,7 @@ import com.princesses7.findy.recommendation.recommendation.dto.response.Promotio
 import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
+import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
 import lombok.RequiredArgsConstructor;
 
@@ -54,11 +53,21 @@ public class PromotionRecommendationService {
 	private final OpenAiProperties openAiProperties;
 	private final PromotionRecommendationIntentBuilder intentBuilder;
 	private final PromotionRecommendationScoreCalculator scoreCalculator;
+	private final RecommendationRequestValidator requestValidator;
 
 	public PromotionRecommendationResponse getPromotionRecommendations(
 		Long userId,
 		Long storeId,
 		int size
+	) {
+		return getPromotionRecommendations(userId, storeId, size, null);
+	}
+
+	public PromotionRecommendationResponse getPromotionRecommendations(
+		Long userId,
+		Long storeId,
+		int size,
+		Long currentGridId
 	) {
 		validateRequest(userId, storeId);
 
@@ -104,22 +113,27 @@ public class PromotionRecommendationService {
 				productMap,
 				inventoryMap,
 				categoryNameMap,
-				normalizedSize
+				normalizedSize,
+				currentGridId
 			);
 		}
 
-		List<PromotionProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizePromotionRecommendations(
-			activePromotionProducts.stream()
-				.map(promotionProduct -> toFallbackRecommendation(
-					promotionProduct,
-					productMap,
-					inventoryMap,
-					categoryNameMap
-				))
-				.filter(Objects::nonNull)
-				.toList(),
-			size
-		);
+		List<PromotionProductRecommendationResponse> recommendations = RecommendationResultPolicy
+			.finalizePromotionRecommendations(
+				activePromotionProducts.stream()
+					.map(promotionProduct -> toRecommendation(
+						promotionProduct,
+						productMap,
+						embeddingMap,
+						inventoryMap,
+						categoryNameMap,
+						promotionIntentEmbedding,
+						currentGridId
+					))
+					.filter(Objects::nonNull)
+					.toList(),
+				normalizedSize
+			);
 
 		if (recommendations.isEmpty()) {
 			return fallbackResponse(
@@ -130,7 +144,8 @@ public class PromotionRecommendationService {
 				productMap,
 				inventoryMap,
 				categoryNameMap,
-				normalizedSize
+				normalizedSize,
+				currentGridId
 			);
 		}
 
@@ -139,7 +154,7 @@ public class PromotionRecommendationService {
 			storeId,
 			userPreference.preferredCategories(),
 			userPreference.shoppingStyles(),
-			RecommendationType.PROMOTION,
+			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			recommendations
 		);
 	}
@@ -150,7 +165,8 @@ public class PromotionRecommendationService {
 		Map<Long, ProductEmbedding> embeddingMap,
 		Map<Long, InventorySnapshot> inventoryMap,
 		Map<Long, String> categoryNameMap,
-		List<Double> promotionIntentEmbedding
+		List<Double> promotionIntentEmbedding,
+		Long currentGridId
 	) {
 		Long productId = promotionProduct.getProductId();
 
@@ -171,14 +187,16 @@ public class PromotionRecommendationService {
 			similarityScore,
 			product,
 			promotionProduct,
-			inventory
+			inventory,
+			currentGridId
 		);
 
 		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
 		String reason = scoreCalculator.createReason(
 			product,
 			promotionProduct,
-			similarityScore
+			similarityScore,
+			currentGridId
 		);
 
 		return PromotionProductRecommendationResponse.of(
@@ -187,6 +205,7 @@ public class PromotionRecommendationService {
 			promotionProduct,
 			inventory,
 			score,
+			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			reason
 		);
 	}
@@ -209,30 +228,30 @@ public class PromotionRecommendationService {
 		Map<Long, ProductSnapshot> productMap,
 		Map<Long, InventorySnapshot> inventoryMap,
 		Map<Long, String> categoryNameMap,
-		int size
+		int size,
+		Long currentGridId
 	) {
-		List<PromotionProductRecommendationResponse> recommendations = activePromotionProducts.stream()
-			.map(promotionProduct -> toFallbackRecommendation(
-				promotionProduct,
-				productMap,
-				inventoryMap,
-				categoryNameMap
-			))
-			.filter(Objects::nonNull)
-			.sorted(
-				Comparator.comparing(PromotionProductRecommendationResponse::score)
-					.reversed()
-					.thenComparing(PromotionProductRecommendationResponse::productId)
-			)
-			.limit(size)
-			.toList();
+		List<PromotionProductRecommendationResponse> recommendations = RecommendationResultPolicy
+			.finalizePromotionRecommendations(
+				activePromotionProducts.stream()
+					.map(promotionProduct -> toFallbackRecommendation(
+						promotionProduct,
+						productMap,
+						inventoryMap,
+						categoryNameMap,
+						currentGridId
+					))
+					.filter(Objects::nonNull)
+					.toList(),
+				size
+			);
 
 		return new PromotionRecommendationResponse(
 			userId,
 			storeId,
 			userPreference.preferredCategories(),
 			userPreference.shoppingStyles(),
-			RecommendationType.PROMOTION,
+			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			recommendations
 		);
 	}
@@ -241,7 +260,8 @@ public class PromotionRecommendationService {
 		PromotionProductSnapshot promotionProduct,
 		Map<Long, ProductSnapshot> productMap,
 		Map<Long, InventorySnapshot> inventoryMap,
-		Map<Long, String> categoryNameMap
+		Map<Long, String> categoryNameMap,
+		Long currentGridId
 	) {
 		Long productId = promotionProduct.getProductId();
 
@@ -256,9 +276,10 @@ public class PromotionRecommendationService {
 		double score = scoreCalculator.calculateFallback(
 			product,
 			promotionProduct,
-			inventory
+			inventory,
+			currentGridId
 		);
-		String reason = scoreCalculator.createFallbackReason(product, promotionProduct);
+		String reason = scoreCalculator.createFallbackReason(product, promotionProduct, currentGridId);
 
 		return PromotionProductRecommendationResponse.of(
 			product,
@@ -266,6 +287,7 @@ public class PromotionRecommendationService {
 			promotionProduct,
 			inventory,
 			score,
+			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			reason
 		);
 	}
@@ -344,7 +366,7 @@ public class PromotionRecommendationService {
 			storeId,
 			userPreference.preferredCategories(),
 			userPreference.shoppingStyles(),
-			RecommendationType.PROMOTION,
+			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			List.of()
 		);
 	}
@@ -353,16 +375,11 @@ public class PromotionRecommendationService {
 		Long userId,
 		Long storeId
 	) {
-		if (userId == null || storeId == null) {
-			throw new BaseException(ErrorCode.INVALID_INPUT_VALUE);
-		}
+		requestValidator.validatePositiveId(userId, "userId");
+		requestValidator.validatePositiveId(storeId, "storeId");
 	}
 
 	private int normalizeSize(int size) {
-		if (size <= 0) {
-			return DEFAULT_SIZE;
-		}
-
-		return Math.min(size, MAX_SIZE);
+		return requestValidator.normalizeSize(size, DEFAULT_SIZE, MAX_SIZE);
 	}
 }
