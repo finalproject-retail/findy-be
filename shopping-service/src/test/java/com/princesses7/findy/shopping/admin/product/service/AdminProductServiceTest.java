@@ -42,7 +42,7 @@ class AdminProductServiceTest {
 	@Test
 	@DisplayName("관리자 상품 목록 조회 시 검색어, 카테고리, 판매 상태 조건을 적용한다")
 	void getProductsWithFilters() {
-		when(productRepository.findAdminProducts(
+		when(productRepository.findAdminProductsWithKeyword(
 			eq("우유"),
 			eq(10L),
 			eq(SaleStatus.ON_SALE),
@@ -62,7 +62,7 @@ class AdminProductServiceTest {
 		assertThat(response).isNotNull();
 		assertThat(response.products()).isEmpty();
 
-		verify(productRepository).findAdminProducts(
+		verify(productRepository).findAdminProductsWithKeyword(
 			eq("우유"),
 			eq(10L),
 			eq(SaleStatus.ON_SALE),
@@ -73,8 +73,7 @@ class AdminProductServiceTest {
 	@Test
 	@DisplayName("관리자 상품 목록 조회 시 검색어가 공백이면 null 조건으로 조회한다")
 	void getProductsWithBlankKeyword() {
-		when(productRepository.findAdminProducts(
-			isNull(),
+		when(productRepository.findAdminProductsWithoutKeyword(
 			isNull(),
 			isNull(),
 			any(Pageable.class)
@@ -92,8 +91,7 @@ class AdminProductServiceTest {
 
 		assertThat(response).isNotNull();
 
-		verify(productRepository).findAdminProducts(
-			isNull(),
+		verify(productRepository).findAdminProductsWithoutKeyword(
 			isNull(),
 			isNull(),
 			any(Pageable.class)

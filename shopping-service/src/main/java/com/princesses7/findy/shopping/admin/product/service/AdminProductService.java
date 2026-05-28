@@ -69,14 +69,38 @@ public class AdminProductService {
 			createSort(sortBy, direction)
 		);
 
-		Page<Product> products = productRepository.findAdminProducts(
-			normalizeKeyword(keyword),
+		String normalizedKeyword = normalizeKeyword(keyword);
+
+		Page<Product> products = findAdminProducts(
+			normalizedKeyword,
 			categoryId,
 			saleStatus,
 			pageable
 		);
 
 		return AdminProductPageResponse.from(toAdminProductResponsePage(products, pageable));
+	}
+
+	private Page<Product> findAdminProducts(
+		String keyword,
+		Long categoryId,
+		SaleStatus saleStatus,
+		Pageable pageable
+	) {
+		if (keyword == null) {
+			return productRepository.findAdminProductsWithoutKeyword(
+				categoryId,
+				saleStatus,
+				pageable
+			);
+		}
+
+		return productRepository.findAdminProductsWithKeyword(
+			keyword,
+			categoryId,
+			saleStatus,
+			pageable
+		);
 	}
 
 	public AdminProductDetailResponse getProductDetail(Long productId) {

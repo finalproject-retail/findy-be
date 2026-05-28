@@ -47,15 +47,28 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		SELECT p
 		FROM Product p
 		WHERE p.isDeleted = false
-		  AND (:keyword IS NULL
-		       OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
+		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+		""")
+	Page<Product> findAdminProductsWithoutKeyword(
+		@Param("categoryId") Long categoryId,
+		@Param("saleStatus") SaleStatus saleStatus,
+		Pageable pageable
+	);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.isDeleted = false
+		  AND (
+		       LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
 		       OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
 		       OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
 		  )
 		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
 		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
 		""")
-	Page<Product> findAdminProducts(
+	Page<Product> findAdminProductsWithKeyword(
 		@Param("keyword") String keyword,
 		@Param("categoryId") Long categoryId,
 		@Param("saleStatus") SaleStatus saleStatus,
