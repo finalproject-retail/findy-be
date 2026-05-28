@@ -42,6 +42,26 @@ public record PromotionProductRecommendationResponse(
 		double score,
 		String reason
 	) {
+		return of(
+			product,
+			categoryName,
+			promotionProduct,
+			inventory,
+			score,
+			RecommendationType.PROMOTION,
+			reason
+		);
+	}
+
+	public static PromotionProductRecommendationResponse of(
+		ProductSnapshot product,
+		String categoryName,
+		PromotionProductSnapshot promotionProduct,
+		InventorySnapshot inventory,
+		double score,
+		RecommendationType recommendationType,
+		String reason
+	) {
 		PromotionSnapshot promotion = promotionProduct.getPromotion();
 
 		return new PromotionProductRecommendationResponse(
@@ -64,7 +84,7 @@ public record PromotionProductRecommendationResponse(
 			inventory.getStockQuantity(),
 			inventory.getStockStatus(),
 			round(score),
-			RecommendationType.PROMOTION,
+			recommendationType,
 			reason
 		);
 	}

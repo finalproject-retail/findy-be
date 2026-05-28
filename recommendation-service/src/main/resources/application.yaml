@@ -49,3 +49,19 @@ management:
   endpoint:
     health:
       show-details: always
+
+recommendation:
+  promotion:
+    score:
+      embedding-weight: 0.70
+      promotion-benefit-weight: 0.15
+      stock-weight: 0.05
+      promotion-type-weight: 0.05
+      location-weight: 0.05
+      fallback-base-score: 0.30
+      fallback-benefit-weight: 0.35
+      fallback-stock-weight: 0.15
+      fallback-promotion-type-weight: 0.15
+      fallback-location-weight: 0.05
+      near-grid-distance: 2
+      displayable-grid-distance: 5

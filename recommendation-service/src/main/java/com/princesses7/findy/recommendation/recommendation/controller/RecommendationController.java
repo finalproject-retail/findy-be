@@ -9,10 +9,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.princesses7.findy.recommendation.global.response.ApiResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PersonalizedRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationListResponse;
+import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SubstituteRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.log.dto.service.PromotionRecommendationImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.RecommendationImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.service.RecommendationLogService;
 import com.princesses7.findy.recommendation.recommendation.service.PersonalizedRecommendationService;
+import com.princesses7.findy.recommendation.recommendation.service.PromotionRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.service.RelatedRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.service.SubstituteRecommendationService;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
@@ -29,10 +32,12 @@ public class RecommendationController {
 	private static final String PERSONALIZED_DISPLAY_LOCATION = "HOME_PERSONALIZED";
 	private static final String RELATED_DISPLAY_LOCATION = "PRODUCT_DETAIL_RELATED";
 	private static final String SUBSTITUTE_DISPLAY_LOCATION = "SUBSTITUTE_RECOMMENDATION";
+	private static final String AI_PROMOTION_DISPLAY_LOCATION = "AI_PERSONALIZED_PROMOTION";
 
 	private final PersonalizedRecommendationService personalizedRecommendationService;
 	private final RelatedRecommendationService relatedRecommendationService;
 	private final SubstituteRecommendationService substituteRecommendationService;
+	private final PromotionRecommendationService promotionRecommendationService;
 	private final RecommendationLogService recommendationLogService;
 
 	@GetMapping("/personalized")
@@ -105,12 +110,52 @@ public class RecommendationController {
 		return ApiResponse.ok("대체 상품 추천 조회에 성공했습니다.", response);
 	}
 
+	@GetMapping("/promotions/personalized")
+	public ApiResponse<PromotionRecommendationResponse> getAiPersonalizedPromotionRecommendations(
+		@RequestParam Long userId,
+		@RequestParam Long storeId,
+		@RequestParam(defaultValue = "10") int size,
+		@RequestParam(required = false) Long currentGridId
+	) {
+		PromotionRecommendationResponse response = promotionRecommendationService.getPromotionRecommendations(
+			userId,
+			storeId,
+			size,
+			currentGridId
+		);
+
+		savePromotionImpressionLogsSafely(new PromotionRecommendationImpressionLogCommand(
+			userId,
+			null,
+			storeId,
+			response.recommendationType(),
+			AI_PROMOTION_DISPLAY_LOCATION,
+			response.recommendations()
+		));
+
+		return ApiResponse.ok("AI 개인화 프로모션 추천 조회에 성공했습니다.", response);
+	}
+
 	private void saveImpressionLogsSafely(RecommendationImpressionLogCommand command) {
 		try {
 			recommendationLogService.saveImpressionLogs(command);
 		} catch (Exception exception) {
 			log.warn(
 				"Recommendation impression log save failed. userId={}, recommendationType={}, displayLocation={}, message={}",
+				command.userId(),
+				command.recommendationType(),
+				command.displayLocation(),
+				exception.getMessage()
+			);
+		}
+	}
+
+	private void savePromotionImpressionLogsSafely(PromotionRecommendationImpressionLogCommand command) {
+		try {
+			recommendationLogService.savePromotionImpressionLogs(command);
+		} catch (Exception exception) {
+			log.warn(
+				"Promotion recommendation impression log save failed. userId={}, recommendationType={}, displayLocation={}, message={}",
 				command.userId(),
 				command.recommendationType(),
 				command.displayLocation(),
