@@ -9,4 +9,20 @@ public record ProductCategoryClassificationResponse(
 	boolean reviewRequired,
 	String reason
 ) {
+
+	public static ProductCategoryClassificationResponse failed(String reason) {
+		return new ProductCategoryClassificationResponse(
+			null,
+			null,
+			BigDecimal.ZERO,
+			true,
+			reason
+		);
+	}
+
+	public boolean isClassified() {
+		return categoryId != null
+			&& confidence != null
+			&& confidence.compareTo(BigDecimal.ZERO) > 0;
+	}
 }
