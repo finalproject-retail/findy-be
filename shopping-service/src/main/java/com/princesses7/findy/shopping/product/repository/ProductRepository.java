@@ -8,8 +8,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import com.princesses7.findy.shopping.product.entity.Product;
+import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
@@ -39,6 +41,25 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	boolean existsByExternalSourceAndExternalProductIdAndIsDeletedFalse(
 		String externalSource,
 		String externalProductId
+	);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.isDeleted = false
+		  AND (:keyword IS NULL
+		       OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		       OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		       OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		  )
+		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
+		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+		""")
+	Page<Product> findAdminProducts(
+		@Param("keyword") String keyword,
+		@Param("categoryId") Long categoryId,
+		@Param("saleStatus") SaleStatus saleStatus,
+		Pageable pageable
 	);
 
 	@Query("""
