@@ -10,16 +10,15 @@ import com.princesses7.findy.recommendation.promotion.entity.PromotionProductSna
 import com.princesses7.findy.recommendation.promotion.entity.PromotionSnapshot;
 import com.princesses7.findy.recommendation.promotion.entity.PromotionType;
 
+import lombok.RequiredArgsConstructor;
+
 @Component
+@RequiredArgsConstructor
 public class PromotionRecommendationScoreCalculator {
 
-	private static final double EMBEDDING_WEIGHT = 0.70;
-	private static final double PROMOTION_BENEFIT_WEIGHT = 0.15;
-	private static final double STOCK_WEIGHT = 0.05;
-	private static final double PROMOTION_TYPE_WEIGHT = 0.05;
-	private static final double LOCATION_WEIGHT = 0.05;
+	private final PromotionRecommendationScoreProperties properties;
 
-	public double calculate(
+	public PromotionRecommendationScoreResult calculate(
 		double similarityScore,
 		ProductSnapshot product,
 		PromotionProductSnapshot promotionProduct,
@@ -28,24 +27,39 @@ public class PromotionRecommendationScoreCalculator {
 		return calculate(similarityScore, product, promotionProduct, inventory, null);
 	}
 
-	public double calculate(
+	public PromotionRecommendationScoreResult calculate(
 		double similarityScore,
 		ProductSnapshot product,
 		PromotionProductSnapshot promotionProduct,
 		InventorySnapshot inventory,
 		Long currentGridId
 	) {
-		double score = normalizeSimilarity(similarityScore) * EMBEDDING_WEIGHT;
+		double embeddingScore = normalizeSimilarity(similarityScore);
+		double promotionBenefitScore = calculatePromotionBenefitScore(product, promotionProduct);
+		double stockScore = calculateStockScore(inventory);
+		double promotionTypeScore = calculatePromotionTypeScore(promotionProduct.getPromotion());
+		double locationScore = calculateLocationScore(promotionProduct, currentGridId);
 
-		score += calculatePromotionBenefitScore(product, promotionProduct) * PROMOTION_BENEFIT_WEIGHT;
-		score += calculateStockScore(inventory) * STOCK_WEIGHT;
-		score += calculatePromotionTypeScore(promotionProduct.getPromotion()) * PROMOTION_TYPE_WEIGHT;
-		score += calculateLocationScore(promotionProduct, currentGridId) * LOCATION_WEIGHT;
+		double weightedScore =
+			embeddingScore * properties.embeddingWeight()
+				+ promotionBenefitScore * properties.promotionBenefitWeight()
+				+ stockScore * properties.stockWeight()
+				+ promotionTypeScore * properties.promotionTypeWeight()
+				+ locationScore * properties.locationWeight();
 
-		return clamp(score);
+		double totalScore = weightedScore / properties.activeWeightSum();
+
+		return new PromotionRecommendationScoreResult(
+			clamp(totalScore),
+			embeddingScore,
+			promotionBenefitScore,
+			stockScore,
+			promotionTypeScore,
+			locationScore
+		);
 	}
 
-	public double calculateFallback(
+	public PromotionRecommendationScoreResult calculateFallback(
 		ProductSnapshot product,
 		PromotionProductSnapshot promotionProduct,
 		InventorySnapshot inventory
@@ -53,96 +67,31 @@ public class PromotionRecommendationScoreCalculator {
 		return calculateFallback(product, promotionProduct, inventory, null);
 	}
 
-	public double calculateFallback(
+	public PromotionRecommendationScoreResult calculateFallback(
 		ProductSnapshot product,
 		PromotionProductSnapshot promotionProduct,
 		InventorySnapshot inventory,
 		Long currentGridId
 	) {
-		double score = 0.30;
+		double promotionBenefitScore = calculatePromotionBenefitScore(product, promotionProduct);
+		double stockScore = calculateStockScore(inventory);
+		double promotionTypeScore = calculatePromotionTypeScore(promotionProduct.getPromotion());
+		double locationScore = calculateLocationScore(promotionProduct, currentGridId);
 
-		score += calculatePromotionBenefitScore(product, promotionProduct) * 0.35;
-		score += calculateStockScore(inventory) * 0.15;
-		score += calculatePromotionTypeScore(promotionProduct.getPromotion()) * 0.15;
-		score += calculateLocationScore(promotionProduct, currentGridId) * 0.05;
+		double totalScore = properties.fallbackBaseScore()
+			+ promotionBenefitScore * properties.fallbackBenefitWeight()
+			+ stockScore * properties.fallbackStockWeight()
+			+ promotionTypeScore * properties.fallbackPromotionTypeWeight()
+			+ locationScore * properties.fallbackLocationWeight();
 
-		return clamp(score);
-	}
-
-	public String createReason(
-		ProductSnapshot product,
-		PromotionProductSnapshot promotionProduct,
-		double similarityScore
-	) {
-		return createReason(product, promotionProduct, similarityScore, null);
-	}
-
-	public String createReason(
-		ProductSnapshot product,
-		PromotionProductSnapshot promotionProduct,
-		double similarityScore,
-		Long currentGridId
-	) {
-		PromotionSnapshot promotion = promotionProduct.getPromotion();
-
-		if (isNearCurrentGrid(promotionProduct, currentGridId)) {
-			return "사용자 선호 정보와 의미적으로 유사하고 현재 위치와 가까운 행사 상품이라 추천했습니다.";
-		}
-
-		if (promotionProduct.getPromotionPrice() != null) {
-			return "사용자 선호 정보와 의미적으로 유사한 행사 상품이며, 행사 가격 혜택이 적용되어 추천했습니다.";
-		}
-
-		if (promotion.getPromotionType() == PromotionType.BOGO) {
-			return "사용자 선호 정보와 의미적으로 유사한 묶음 행사 상품이라 추천했습니다.";
-		}
-
-		if (promotion.getPromotionType() == PromotionType.GIFT) {
-			return "사용자 선호 정보와 의미적으로 유사한 사은품 행사 상품이라 추천했습니다.";
-		}
-
-		if (hasDiscount(product)) {
-			return "사용자 선호 정보와 의미적으로 유사하고 할인 혜택이 있는 상품이라 추천했습니다.";
-		}
-
-		return "사용자 선호 정보와 행사 상품 정보를 AI 임베딩으로 비교해 추천했습니다.";
-	}
-
-	public String createFallbackReason(
-		ProductSnapshot product,
-		PromotionProductSnapshot promotionProduct
-	) {
-		return createFallbackReason(product, promotionProduct, null);
-	}
-
-	public String createFallbackReason(
-		ProductSnapshot product,
-		PromotionProductSnapshot promotionProduct,
-		Long currentGridId
-	) {
-		PromotionSnapshot promotion = promotionProduct.getPromotion();
-
-		if (isNearCurrentGrid(promotionProduct, currentGridId)) {
-			return "추천 데이터가 부족하여 현재 위치와 가까운 행사 상품을 우선 추천했습니다.";
-		}
-
-		if (promotionProduct.getPromotionPrice() != null) {
-			return "추천 데이터가 부족하여 행사 가격과 재고를 기준으로 추천한 상품입니다.";
-		}
-
-		if (promotion.getPromotionType() == PromotionType.BOGO) {
-			return "추천 데이터가 부족하여 현재 진행 중인 묶음 행사 상품을 우선 추천했습니다.";
-		}
-
-		if (promotion.getPromotionType() == PromotionType.GIFT) {
-			return "추천 데이터가 부족하여 현재 진행 중인 사은품 행사 상품을 우선 추천했습니다.";
-		}
-
-		if (hasDiscount(product)) {
-			return "추천 데이터가 부족하여 할인 혜택이 있는 행사 상품을 우선 추천했습니다.";
-		}
-
-		return "추천 데이터가 부족하여 구매 가능한 행사 상품을 기준으로 추천했습니다.";
+		return new PromotionRecommendationScoreResult(
+			clamp(totalScore),
+			0.0,
+			promotionBenefitScore,
+			stockScore,
+			promotionTypeScore,
+			locationScore
+		);
 	}
 
 	private double normalizeSimilarity(double similarityScore) {
@@ -211,22 +160,15 @@ public class PromotionRecommendationScoreCalculator {
 			return 1.0;
 		}
 
-		if (distance <= 2) {
+		if (distance <= properties.nearGridDistance()) {
 			return 0.7;
 		}
 
-		if (distance <= 5) {
+		if (distance <= properties.displayableGridDistance()) {
 			return 0.4;
 		}
 
 		return 0.0;
-	}
-
-	private boolean isNearCurrentGrid(
-		PromotionProductSnapshot promotionProduct,
-		Long currentGridId
-	) {
-		return calculateLocationScore(promotionProduct, currentGridId) > 0.0;
 	}
 
 	private boolean hasDiscount(ProductSnapshot product) {

@@ -54,6 +54,7 @@ public class PromotionRecommendationService {
 	private final PromotionRecommendationIntentBuilder intentBuilder;
 	private final PromotionRecommendationScoreCalculator scoreCalculator;
 	private final RecommendationRequestValidator requestValidator;
+	private final PromotionRecommendationReasonBuilder reasonBuilder;
 
 	public PromotionRecommendationResponse getPromotionRecommendations(
 		Long userId,
@@ -183,7 +184,7 @@ public class PromotionRecommendationService {
 			productEmbedding.getEmbeddingVector()
 		);
 
-		double score = scoreCalculator.calculate(
+		PromotionRecommendationScoreResult scoreResult = scoreCalculator.calculate(
 			similarityScore,
 			product,
 			promotionProduct,
@@ -192,19 +193,14 @@ public class PromotionRecommendationService {
 		);
 
 		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
-		String reason = scoreCalculator.createReason(
-			product,
-			promotionProduct,
-			similarityScore,
-			currentGridId
-		);
+		String reason = reasonBuilder.createAiReason(product, promotionProduct, scoreResult);
 
 		return PromotionProductRecommendationResponse.of(
 			product,
 			categoryName,
 			promotionProduct,
 			inventory,
-			score,
+			scoreResult.totalScore(),
 			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			reason
 		);
@@ -272,21 +268,22 @@ public class PromotionRecommendationService {
 			return null;
 		}
 
-		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
-		double score = scoreCalculator.calculateFallback(
+		PromotionRecommendationScoreResult scoreResult = scoreCalculator.calculateFallback(
 			product,
 			promotionProduct,
 			inventory,
 			currentGridId
 		);
-		String reason = scoreCalculator.createFallbackReason(product, promotionProduct, currentGridId);
+
+		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
+		String reason = reasonBuilder.createFallbackReason(product, promotionProduct, scoreResult);
 
 		return PromotionProductRecommendationResponse.of(
 			product,
 			categoryName,
 			promotionProduct,
 			inventory,
-			score,
+			scoreResult.totalScore(),
 			RecommendationType.AI_PERSONALIZED_PROMOTION,
 			reason
 		);
