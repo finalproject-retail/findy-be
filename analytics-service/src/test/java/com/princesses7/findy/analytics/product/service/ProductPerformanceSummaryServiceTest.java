@@ -1,0 +1,151 @@
+package com.princesses7.findy.analytics.product.service;
+
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.BDDMockito.*;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.princesses7.findy.analytics.analytics.support.AnalyticsPeriodResolver;
+import com.princesses7.findy.analytics.analytics.support.PeriodRange;
+import com.princesses7.findy.analytics.product.dto.query.ProductPerformanceProductQueryResult;
+import com.princesses7.findy.analytics.product.dto.query.ProductPerformanceSummaryQueryResult;
+import com.princesses7.findy.analytics.product.dto.response.ProductPerformanceSummaryResponse;
+import com.princesses7.findy.analytics.product.repository.ProductPerformanceSummaryRepository;
+
+@ExtendWith(MockitoExtension.class)
+class ProductPerformanceSummaryServiceTest {
+
+	@Mock
+	private ProductPerformanceSummaryRepository productPerformanceSummaryRepository;
+
+	@Mock
+	private AnalyticsPeriodResolver analyticsPeriodResolver;
+
+	@InjectMocks
+	private ProductPerformanceSummaryService productPerformanceSummaryService;
+
+	@Test
+	@DisplayName("상품 성과 요약과 상위 상품 성과를 조회한다")
+	void getProductPerformanceSummary() {
+		LocalDate fromDate = LocalDate.of(2026, 5, 1);
+		LocalDate toDate = LocalDate.of(2026, 5, 31);
+		Long storeId = 1L;
+		Integer limit = 10;
+		PeriodRange periodRange = PeriodRange.of(fromDate, toDate);
+
+		given(analyticsPeriodResolver.resolve(fromDate, toDate))
+			.willReturn(periodRange);
+		given(analyticsPeriodResolver.resolveLimit(limit))
+			.willReturn(limit);
+		given(productPerformanceSummaryRepository.findSummary(periodRange, storeId))
+			.willReturn(new ProductPerformanceSummaryQueryResult(
+				20L,
+				2L,
+				2L,
+				10L,
+				3L,
+				4L,
+				27000L
+			));
+		given(productPerformanceSummaryRepository.findTopProducts(periodRange, storeId, limit))
+			.willReturn(List.of(
+				new ProductPerformanceProductQueryResult(
+					10001L,
+					"시드_신라면",
+					"농심",
+					17L,
+					"라면",
+					6L,
+					2L,
+					3L,
+					18000L
+				),
+				new ProductPerformanceProductQueryResult(
+					10003L,
+					"시드_백미밥",
+					"햇반",
+					18L,
+					"즉석밥",
+					4L,
+					1L,
+					1L,
+					9000L
+				)
+			));
+
+		ProductPerformanceSummaryResponse response = productPerformanceSummaryService.getProductPerformanceSummary(
+			fromDate,
+			toDate,
+			storeId,
+			limit
+		);
+
+		assertThat(response.period().fromDate()).isEqualTo(fromDate);
+		assertThat(response.period().toDate()).isEqualTo(toDate);
+		assertThat(response.storeId()).isEqualTo(storeId);
+		assertThat(response.totalProductCount()).isEqualTo(20L);
+		assertThat(response.viewedProductCount()).isEqualTo(2L);
+		assertThat(response.orderedProductCount()).isEqualTo(2L);
+		assertThat(response.totalViewCount()).isEqualTo(10L);
+		assertThat(response.totalOrderCount()).isEqualTo(3L);
+		assertThat(response.totalOrderQuantity()).isEqualTo(4L);
+		assertThat(response.totalSalesAmount()).isEqualTo(27000L);
+		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("40.00");
+		assertThat(response.averageSalesAmountPerOrder()).isEqualByComparingTo("9000.00");
+		assertThat(response.products()).hasSize(2);
+		assertThat(response.products().get(0).rankNo()).isEqualTo(1);
+		assertThat(response.products().get(0).viewToPurchaseRate()).isEqualByComparingTo("50.00");
+		assertThat(response.products().get(0).salesShareRate()).isEqualByComparingTo("66.67");
+	}
+
+	@Test
+	@DisplayName("성과 데이터가 없으면 지표를 0으로 반환한다")
+	void getEmptyProductPerformanceSummary() {
+		LocalDate fromDate = LocalDate.of(2026, 5, 1);
+		LocalDate toDate = LocalDate.of(2026, 5, 1);
+		Integer limit = null;
+		int defaultLimit = 100;
+		PeriodRange periodRange = PeriodRange.of(fromDate, toDate);
+
+		given(analyticsPeriodResolver.resolve(fromDate, toDate))
+			.willReturn(periodRange);
+		given(analyticsPeriodResolver.resolveLimit(limit))
+			.willReturn(defaultLimit);
+		given(productPerformanceSummaryRepository.findSummary(periodRange, null))
+			.willReturn(new ProductPerformanceSummaryQueryResult(
+				0L,
+				0L,
+				0L,
+				0L,
+				0L,
+				0L,
+				0L
+			));
+		given(productPerformanceSummaryRepository.findTopProducts(periodRange, null, defaultLimit))
+			.willReturn(List.of());
+
+		ProductPerformanceSummaryResponse response = productPerformanceSummaryService.getProductPerformanceSummary(
+			fromDate,
+			toDate,
+			null,
+			limit
+		);
+
+		assertThat(response.totalProductCount()).isZero();
+		assertThat(response.totalViewCount()).isZero();
+		assertThat(response.totalOrderQuantity()).isZero();
+		assertThat(response.totalSalesAmount()).isZero();
+		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("0.00");
+		assertThat(response.averageSalesAmountPerOrder()).isEqualByComparingTo("0.00");
+		assertThat(response.limit()).isEqualTo(defaultLimit);
+		assertThat(response.products()).isEmpty();
+	}
+}
