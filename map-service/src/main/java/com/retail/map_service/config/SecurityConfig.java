@@ -22,13 +22,13 @@ public class SecurityConfig {
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		http
-				.cors(cors -> {})
+				.cors(cors -> {
+				})
 				.csrf(csrf -> csrf.disable())
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.authorizeHttpRequests(auth -> auth
-						.requestMatchers("/api/v1/path/**").permitAll()
-						.anyRequest().authenticated()
-				)
+						.requestMatchers("/api/v1/path/**", "/actuator/health", "/actuator/prometheus").permitAll()
+						.anyRequest().authenticated())
 				.addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 		return http.build();
 	}
