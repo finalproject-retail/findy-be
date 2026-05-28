@@ -43,3 +43,6 @@ management:
   endpoint:
     health:
       show-details: always
+
+analytics:
+  source-schema: ${ANALYTICS_SOURCE_SCHEMA:shopping_service}

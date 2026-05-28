@@ -184,6 +184,7 @@ services:
   analytics-service:
     build:
       context: ./analytics-service
+      dockerfile: Dockerfile
     container_name: findy-analytics-service
     restart: unless-stopped
     ports:
