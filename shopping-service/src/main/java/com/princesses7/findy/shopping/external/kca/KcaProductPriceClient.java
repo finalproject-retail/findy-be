@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
 
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceItemResponse;
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceResponse;
@@ -53,7 +52,7 @@ public class KcaProductPriceClient {
 			}
 
 			return response;
-		} catch (RestClientException exception) {
+		} catch (Exception exception) {
 			log.warn("KCA product price API request failed. message={}", exception.getMessage());
 
 			return new KcaProductPriceResponse(null, exception.getMessage(), List.of());
@@ -79,10 +78,16 @@ public class KcaProductPriceClient {
 		String entpId,
 		String goodId
 	) {
-		return kcaProductPriceRestClient.get()
-			.uri(buildProductPriceUri(goodInspectDay, entpId, goodId))
-			.retrieve()
-			.body(String.class);
+		try {
+			return kcaProductPriceRestClient.get()
+				.uri(buildProductPriceUri(goodInspectDay, entpId, goodId))
+				.retrieve()
+				.body(String.class);
+		} catch (Exception exception) {
+			log.warn("KCA raw product price API request failed. message={}", exception.getMessage());
+
+			return "KCA raw product price API request failed: " + exception.getMessage();
+		}
 	}
 
 	private URI buildProductPriceUri(
@@ -94,7 +99,8 @@ public class KcaProductPriceClient {
 			throw new IllegalStateException("KCA_PRODUCT_PRICE_SERVICE_KEY 환경변수가 설정되지 않았습니다.");
 		}
 
-		StringBuilder uri = new StringBuilder(PRODUCT_PRICE_PATH)
+		StringBuilder uri = new StringBuilder(removeTrailingSlash(properties.baseUrl()))
+			.append(PRODUCT_PRICE_PATH)
 			.append("?goodInspectDay=")
 			.append(goodInspectDay)
 			.append("&ServiceKey=")
@@ -109,5 +115,13 @@ public class KcaProductPriceClient {
 		}
 
 		return URI.create(uri.toString());
+	}
+
+	private String removeTrailingSlash(String value) {
+		if (value.endsWith("/")) {
+			return value.substring(0, value.length() - 1);
+		}
+
+		return value;
 	}
 }
