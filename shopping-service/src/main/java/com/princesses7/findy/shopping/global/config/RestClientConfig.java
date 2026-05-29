@@ -27,4 +27,11 @@ public class RestClientConfig {
 			.baseUrl(properties.baseUrl())
 			.build();
 	}
+
+	@Bean
+	public RestClient kcaProductPriceRestClient(KcaProductPriceProperties properties) {
+		return RestClient.builder()
+			.baseUrl(properties.baseUrl())
+			.build();
+	}
 }
