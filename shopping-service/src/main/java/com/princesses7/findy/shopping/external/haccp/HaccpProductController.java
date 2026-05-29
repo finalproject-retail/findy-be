@@ -16,6 +16,7 @@ public class HaccpProductController {
 
 	private final HaccpProductClient haccpProductClient;
 
+	// TODO: ApiResponse 사용?
 	@GetMapping("/api/v1/haccp/products")
 	public List<HaccpProductItemResponse> search(
 		@RequestParam String productName
