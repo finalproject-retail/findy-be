@@ -63,6 +63,11 @@ openai:
   api-key: ${OPENAI_API_KEY}
   model: gpt-4o-mini
 
+external:
+  haccp:
+    base-url: http://apis.data.go.kr/B553748/CertImgListServiceV3
+    service-key: ${HACCP_SERVICE_KEY}
+
 management:
   endpoints:
     web:
