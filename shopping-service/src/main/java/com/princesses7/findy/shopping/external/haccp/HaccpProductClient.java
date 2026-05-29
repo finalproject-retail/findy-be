@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductApiResponse;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
 
@@ -22,15 +23,18 @@ public class HaccpProductClient {
 
 	private final WebClient webClient;
 	private final HaccpProductProperties properties;
+	private final ObjectMapper objectMapper;
 
 	public HaccpProductClient(
 		WebClient.Builder webClientBuilder,
-		HaccpProductProperties properties
+		HaccpProductProperties properties,
+		ObjectMapper objectMapper
 	) {
 		this.webClient = webClientBuilder
 			.baseUrl(properties.baseUrl())
 			.build();
 		this.properties = properties;
+		this.objectMapper = objectMapper;
 	}
 
 	public List<HaccpProductItemResponse> searchByProductName(String productName) {
@@ -38,27 +42,65 @@ public class HaccpProductClient {
 			return List.of();
 		}
 
-		HaccpProductApiResponse response = webClient.get()
-			.uri(uriBuilder -> uriBuilder
-				.path("/getCertImgListServiceV3")
-				.queryParam("serviceKey", properties.serviceKey())
-				.queryParam("returnType", "json")
-				.queryParam("pageNo", DEFAULT_PAGE_NO)
-				.queryParam("numOfRows", DEFAULT_NUM_OF_ROWS)
-				.queryParam("prdlstNm", productName)
-				.build()
-			)
-			.retrieve()
-			.bodyToMono(HaccpProductApiResponse.class)
-			.block();
+		if (!StringUtils.hasText(properties.serviceKey())) {
+			log.warn("HACCP service key is empty.");
+			return List.of();
+		}
 
-		return extractItems(response);
+		try {
+			String rawResponse = webClient.get()
+				.uri(uriBuilder -> uriBuilder
+					.path("/getCertImgListServiceV3")
+					.queryParam("serviceKey", properties.serviceKey())
+					.queryParam("returnType", "json")
+					.queryParam("pageNo", DEFAULT_PAGE_NO)
+					.queryParam("numOfRows", DEFAULT_NUM_OF_ROWS)
+					.queryParam("prdlstNm", productName)
+					.build()
+				)
+				.retrieve()
+				.bodyToMono(String.class)
+				.block();
+
+			log.info("HACCP raw response={}", rawResponse);
+
+			return parseItems(rawResponse);
+		} catch (Exception exception) {
+			log.warn("HACCP API request failed. productName={}, message={}", productName, exception.getMessage());
+			return List.of();
+		}
 	}
 
 	public Optional<HaccpProductItemResponse> findFirstByProductName(String productName) {
 		return searchByProductName(productName)
 			.stream()
 			.findFirst();
+	}
+
+	private List<HaccpProductItemResponse> parseItems(String rawResponse) {
+		if (!StringUtils.hasText(rawResponse)) {
+			return List.of();
+		}
+
+		String trimmedResponse = rawResponse.trim();
+
+		if (!trimmedResponse.startsWith("{")) {
+			log.warn("HACCP API returned non-json response. response={}", trimmedResponse);
+			return List.of();
+		}
+
+		try {
+			HaccpProductApiResponse response = objectMapper.readValue(
+				trimmedResponse,
+				HaccpProductApiResponse.class
+			);
+
+			return extractItems(response);
+		} catch (Exception exception) {
+			log.warn("HACCP API response parse failed. message={}, response={}", exception.getMessage(),
+				trimmedResponse);
+			return List.of();
+		}
 	}
 
 	private List<HaccpProductItemResponse> extractItems(HaccpProductApiResponse response) {
