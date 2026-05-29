@@ -7,11 +7,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductApiResponse;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
 
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.databind.ObjectMapper;
 
 @Slf4j
 @Component
