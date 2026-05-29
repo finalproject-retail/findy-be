@@ -1,11 +1,14 @@
 package com.princesses7.findy.shopping.external.haccp;
 
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.util.UriUtils;
 
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductApiResponse;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
@@ -18,6 +21,7 @@ import tools.jackson.databind.ObjectMapper;
 public class HaccpProductClient {
 
 	private static final String SUCCESS_CODE = "00";
+	private static final String HACCP_PRODUCT_PATH = "/getCertImgListServiceV3";
 	private static final int DEFAULT_PAGE_NO = 1;
 	private static final int DEFAULT_NUM_OF_ROWS = 10;
 
@@ -49,32 +53,67 @@ public class HaccpProductClient {
 
 		try {
 			String rawResponse = webClient.get()
-				.uri(uriBuilder -> uriBuilder
-					.path("/getCertImgListServiceV3")
-					.queryParam("serviceKey", properties.serviceKey())
-					.queryParam("returnType", "json")
-					.queryParam("pageNo", DEFAULT_PAGE_NO)
-					.queryParam("numOfRows", DEFAULT_NUM_OF_ROWS)
-					.queryParam("prdlstNm", productName)
-					.build()
+				.uri(buildProductSearchUri(productName))
+				.exchangeToMono(response -> response.bodyToMono(String.class)
+					.map(body -> {
+						if (response.statusCode().isError()) {
+							log.warn(
+								"HACCP API returned error. status={}, body={}",
+								response.statusCode(),
+								body
+							);
+						}
+						return body;
+					})
 				)
-				.retrieve()
-				.bodyToMono(String.class)
 				.block();
 
 			log.info("HACCP raw response={}", rawResponse);
 
 			return parseItems(rawResponse);
 		} catch (Exception exception) {
-			log.warn("HACCP API request failed. productName={}, message={}", productName, exception.getMessage());
+			log.warn(
+				"HACCP API request failed. productName={}, message={}",
+				productName,
+				exception.getMessage()
+			);
 			return List.of();
 		}
+	}
+
+	public String getRawByProductName(String productName) {
+		if (!StringUtils.hasText(productName)) {
+			return "";
+		}
+
+		if (!StringUtils.hasText(properties.serviceKey())) {
+			return "HACCP_SERVICE_KEY is empty.";
+		}
+
+		return webClient.get()
+			.uri(buildProductSearchUri(productName))
+			.retrieve()
+			.bodyToMono(String.class)
+			.block();
 	}
 
 	public Optional<HaccpProductItemResponse> findFirstByProductName(String productName) {
 		return searchByProductName(productName)
 			.stream()
 			.findFirst();
+	}
+
+	private URI buildProductSearchUri(String productName) {
+		String encodedProductName = UriUtils.encodeQueryParam(productName, StandardCharsets.UTF_8);
+
+		String uri = HACCP_PRODUCT_PATH
+			+ "?serviceKey=" + properties.serviceKey()
+			+ "&returnType=json"
+			+ "&pageNo=" + DEFAULT_PAGE_NO
+			+ "&numOfRows=" + DEFAULT_NUM_OF_ROWS
+			+ "&prdlstNm=" + encodedProductName;
+
+		return URI.create(uri);
 	}
 
 	private List<HaccpProductItemResponse> parseItems(String rawResponse) {
@@ -97,8 +136,11 @@ public class HaccpProductClient {
 
 			return extractItems(response);
 		} catch (Exception exception) {
-			log.warn("HACCP API response parse failed. message={}, response={}", exception.getMessage(),
-				trimmedResponse);
+			log.warn(
+				"HACCP API response parse failed. message={}, response={}",
+				exception.getMessage(),
+				trimmedResponse
+			);
 			return List.of();
 		}
 	}
