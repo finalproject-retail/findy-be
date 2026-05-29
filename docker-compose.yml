@@ -63,6 +63,7 @@ services:
     environment:
       <<: [ *database-env, *redis-env ]
       CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000}
+      SHOPPING_SERVICE_URL: ${SHOPPING_SERVICE_URL:-http://shopping-service:8080}
     depends_on:
       postgres:
         condition: service_healthy
