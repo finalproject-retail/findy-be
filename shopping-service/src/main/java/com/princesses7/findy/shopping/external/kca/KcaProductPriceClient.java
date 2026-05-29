@@ -90,6 +90,10 @@ public class KcaProductPriceClient {
 		String entpId,
 		String goodId
 	) {
+		if (!StringUtils.hasText(properties.serviceKey())) {
+			throw new IllegalStateException("KCA_PRODUCT_PRICE_SERVICE_KEY 환경변수가 설정되지 않았습니다.");
+		}
+
 		StringBuilder uri = new StringBuilder(PRODUCT_PRICE_PATH)
 			.append("?goodInspectDay=")
 			.append(goodInspectDay)
