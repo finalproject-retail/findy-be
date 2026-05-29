@@ -27,4 +27,11 @@ public class HaccpProductController {
 
 		return ApiResponse.ok("HACCP 제품이미지 및 포장지표기정보 조회에 성공했습니다.", response);
 	}
+
+	@GetMapping("/raw")
+	public String searchRaw(
+		@RequestParam String productName
+	) {
+		return haccpProductClient.getRawByProductName(productName);
+	}
 }
