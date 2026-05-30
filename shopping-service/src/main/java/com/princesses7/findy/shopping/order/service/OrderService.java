@@ -22,6 +22,10 @@ import com.princesses7.findy.shopping.order.repository.OrderRepository;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountItemResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
 import com.princesses7.findy.shopping.purchase.service.PurchaseAmountService;
+import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
+import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
+import com.princesses7.findy.shopping.shoppinglist.repository.ShoppingListRepository;
+import com.princesses7.findy.shopping.shoppinglist.service.ShoppingListService;
 
 import lombok.RequiredArgsConstructor;
 
@@ -33,9 +37,11 @@ public class OrderService {
 
 	private final PurchaseAmountService purchaseAmountService;
 	private final OrderRepository orderRepository;
-	private final InventoryStockService inventoryStockService;
 	private final CartCleanupService cartCleanupService;
 	private final CouponService couponService;
+	private final ShoppingListService shoppingListService;
+	private final ShoppingListRepository shoppingListRepository;
+	private final InventoryStockService inventoryStockService;
 
 	@Transactional
 	public OrderCreateResponse createOrder(Long userId) {
@@ -79,13 +85,27 @@ public class OrderService {
 
 		Order savedOrder = orderRepository.save(order);
 
-		inventoryStockService.decreaseStocks(storeId, savedOrder.getOrderItems());
 		cartCleanupService.cleanupPurchasedCartItems(userId, savedOrder.getOrderItems());
 		couponService.useCoupon(userId, userCouponId);
+		shoppingListService.completeShopping(userId);
 
 		savedOrder.complete();
 
 		return toResponse(savedOrder);
+	}
+
+	@Transactional
+	public void completeShopping(Long userId) {
+		ShoppingList shoppingList = shoppingListRepository.findByUserId(userId)
+			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
+
+		inventoryStockService.increaseUnscannedStocksByShoppingListItems(
+			DEFAULT_STORE_ID,
+			shoppingList.getShoppingListItems()
+		);
+
+		shoppingList.cancel();
+		shoppingListRepository.delete(shoppingList);
 	}
 
 	private OrderItem createOrderItem(PurchaseAmountItemResponse item) {

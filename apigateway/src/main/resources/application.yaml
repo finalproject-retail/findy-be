@@ -17,3 +17,7 @@ management:
   endpoint:
     health:
       show-details: always
+
+services:
+  shopping:
+    base-url: ${SHOPPING_SERVICE_URL:http://localhost:8887}

@@ -57,23 +57,27 @@ public class ShoppingList extends BaseTimeEntity {
 			throw new ShoppingListException(SHOPPING_LIST_ALREADY_EXISTS);
 		}
 
+		ShoppingList shoppingList = new ShoppingList(cart.getUserId(), cart);
+		shoppingList.replaceItemsFromCart();
+		cart.assignShoppingList(shoppingList);
+
+		return shoppingList;
+	}
+
+	public void replaceItemsFromCart() {
 		List<CartItem> checkedItems = cart.getCheckedItems();
 
 		if (checkedItems.isEmpty()) {
 			throw new ShoppingListException(EMPTY_SHOPPING_LIST);
 		}
 
-		ShoppingList shoppingList = new ShoppingList(cart.getUserId(), cart);
+		shoppingListItems.clear();
 
 		checkedItems.forEach(cartItem ->
-			shoppingList.shoppingListItems.add(
-				ShoppingListItem.createFromCartItem(shoppingList, cartItem)
+			shoppingListItems.add(
+				ShoppingListItem.createFromCartItem(this, cartItem)
 			)
 		);
-
-		cart.assignShoppingList(shoppingList);
-
-		return shoppingList;
 	}
 
 	public void addSearchedItem(Long productId, int quantity) {

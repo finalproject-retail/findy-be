@@ -60,8 +60,6 @@ public class PurchaseTargetService {
 	private PurchaseTargetItemResponse toPurchaseTargetItem(ShoppingListItem item) {
 		Inventory inventory = getInventory(item.getProductId());
 
-		validateStock(item, inventory);
-
 		return new PurchaseTargetItemResponse(
 			item.getShoppingListItemId(),
 			item.getProductId(),
@@ -74,11 +72,5 @@ public class PurchaseTargetService {
 	private Inventory getInventory(Long productId) {
 		return inventoryRepository.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)
 			.orElseThrow(() -> new PurchaseException(PRODUCT_STOCK_NOT_FOUND));
-	}
-
-	private void validateStock(ShoppingListItem item, Inventory inventory) {
-		if (inventory.getStockQuantity() < item.getScannedQuantity()) {
-			throw new PurchaseException(PURCHASE_INSUFFICIENT_STOCK);
-		}
 	}
 }

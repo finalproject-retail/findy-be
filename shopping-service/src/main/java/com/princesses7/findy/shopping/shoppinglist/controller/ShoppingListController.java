@@ -35,7 +35,7 @@ public class ShoppingListController {
 		@RequestHeader("X-User-Id") Long userId
 	) {
 		return ApiResponse.ok(
-			"쇼핑리스트가 생성되었습니다.",
+			"쇼핑리스트가 새로 생성되었습니다.",
 			shoppingListService.createShoppingList(userId)
 		);
 	}
