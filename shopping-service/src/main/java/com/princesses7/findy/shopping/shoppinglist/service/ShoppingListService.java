@@ -162,6 +162,19 @@ public class ShoppingListService {
 		shoppingListRepository.delete(shoppingList);
 	}
 
+	@Transactional
+	public void completeShopping(Long userId) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		inventoryStockService.increaseUnscannedStocksByShoppingListItems(
+			DEFAULT_STORE_ID,
+			shoppingList.getShoppingListItems()
+		);
+
+		shoppingList.cancel();
+		shoppingListRepository.delete(shoppingList);
+	}
+
 	private Cart getCartByUserId(Long userId) {
 		return cartRepository.findByUserId(userId)
 			.orElseThrow(() -> new CartException(CART_NOT_FOUND));

@@ -78,7 +78,7 @@ public class Inventory extends BaseTimeEntity {
 	}
 
 	public void decreaseStock(int quantity) {
-		validateDecreaseQuantity(quantity);
+		validateQuantity(quantity);
 
 		if (stockQuantity == null || stockQuantity < quantity) {
 			throw new InventoryException(INVENTORY_INSUFFICIENT_STOCK);
@@ -88,20 +88,18 @@ public class Inventory extends BaseTimeEntity {
 		stockStatus = resolveStockStatus(stockQuantity);
 	}
 
-	private void validateDecreaseQuantity(int quantity) {
-		if (quantity < 1) {
-			throw new InventoryException(INVALID_STOCK_QUANTITY);
-		}
-	}
-
 	public void increaseStock(int quantity) {
-		validateIncreaseQuantity(quantity);
+		validateQuantity(quantity);
+
+		if (stockQuantity == null) {
+			stockQuantity = 0;
+		}
 
 		stockQuantity += quantity;
 		stockStatus = resolveStockStatus(stockQuantity);
 	}
 
-	private void validateIncreaseQuantity(int quantity) {
+	private void validateQuantity(int quantity) {
 		if (quantity < 1) {
 			throw new InventoryException(INVALID_STOCK_QUANTITY);
 		}
