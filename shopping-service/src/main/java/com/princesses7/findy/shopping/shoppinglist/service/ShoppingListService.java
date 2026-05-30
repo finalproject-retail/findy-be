@@ -41,10 +41,14 @@ public class ShoppingListService {
 
 		validateCheckedItemsPurchasable(cart);
 
-		ShoppingList shoppingList = ShoppingList.create(cart);
-		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
+		ShoppingList shoppingList = shoppingListRepository.findByUserId(userId)
+			.map(existingShoppingList -> {
+				existingShoppingList.replaceItemsFromCart();
+				return existingShoppingList;
+			})
+			.orElseGet(() -> shoppingListRepository.save(ShoppingList.create(cart)));
 
-		return toResponse(savedShoppingList);
+		return toResponse(shoppingList);
 	}
 
 	public ShoppingListResponse getShoppingList(Long userId) {
