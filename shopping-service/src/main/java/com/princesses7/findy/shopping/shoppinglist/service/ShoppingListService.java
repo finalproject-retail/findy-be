@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
+import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 import com.princesses7.findy.shopping.product.service.ProductBarcodeReader;
 import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
@@ -30,6 +31,9 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class ShoppingListService {
 
+	private static final Long DEFAULT_STORE_ID = 1L;
+
+	private final InventoryStockService inventoryStockService;
 	private final CartRepository cartRepository;
 	private final ShoppingListRepository shoppingListRepository;
 	private final ProductSummaryReader productSummaryReader;
@@ -148,6 +152,11 @@ public class ShoppingListService {
 	@Transactional
 	public void cancelShopping(Long userId) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		inventoryStockService.increaseStocks(
+			DEFAULT_STORE_ID,
+			shoppingList.getShoppingListItems()
+		);
 
 		shoppingList.cancel();
 		shoppingListRepository.delete(shoppingList);

@@ -93,4 +93,17 @@ public class Inventory extends BaseTimeEntity {
 			throw new InventoryException(INVALID_STOCK_QUANTITY);
 		}
 	}
+
+	public void increaseStock(int quantity) {
+		validateIncreaseQuantity(quantity);
+
+		stockQuantity += quantity;
+		stockStatus = resolveStockStatus(stockQuantity);
+	}
+
+	private void validateIncreaseQuantity(int quantity) {
+		if (quantity < 1) {
+			throw new InventoryException(INVALID_STOCK_QUANTITY);
+		}
+	}
 }
