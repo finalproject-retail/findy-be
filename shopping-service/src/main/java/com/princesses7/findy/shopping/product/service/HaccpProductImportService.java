@@ -13,10 +13,12 @@ import org.springframework.util.StringUtils;
 import com.princesses7.findy.shopping.external.haccp.HaccpProductClient;
 import com.princesses7.findy.shopping.external.haccp.HaccpProductMapper;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
+import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
 import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportItemResponse;
 import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
@@ -34,6 +36,7 @@ public class HaccpProductImportService {
 
 	private final HaccpProductClient haccpProductClient;
 	private final HaccpProductMapper haccpProductMapper;
+	private final OpenAiCategoryClassifierClient openAiCategoryClassifierClient;
 	private final ProductRepository productRepository;
 	private final InventoryService inventoryService;
 
@@ -63,18 +66,18 @@ public class HaccpProductImportService {
 					null,
 					null,
 					STATUS_SKIPPED,
-					List.of()
+					List.of("HACCP 상품명이 비어 있습니다.")
 				));
 				continue;
 			}
 
-			ProductImportCommand command = haccpProductMapper.toCommand(haccpItem);
-			Optional<Product> existingProduct = findExistingProduct(command);
+			ProductImportCommand enrichmentCommand = haccpProductMapper.toEnrichmentCommand(haccpItem);
+			Optional<Product> existingProduct = findExistingProduct(enrichmentCommand);
 
 			if (existingProduct.isPresent()) {
 				Product product = existingProduct.get();
-				boolean canApplyBarcode = canApplyBarcode(product, command.barcode());
-				List<String> updatedFields = product.enrichMissingFields(command, canApplyBarcode);
+				boolean canApplyBarcode = canApplyBarcode(product, enrichmentCommand.barcode());
+				List<String> updatedFields = product.enrichMissingFields(enrichmentCommand, canApplyBarcode);
 
 				if (updatedFields.isEmpty()) {
 					resultItems.add(toResponseItem(product, STATUS_UNCHANGED, updatedFields));
@@ -86,19 +89,35 @@ public class HaccpProductImportService {
 				continue;
 			}
 
-			if (isBarcodeDuplicated(command.barcode())) {
+			ProductCategoryClassificationResponse classification = classifyCategory(haccpItem);
+
+			if (!classification.isClassified()) {
 				skippedCount++;
 				resultItems.add(new HaccpProductImportItemResponse(
 					null,
-					command.productName(),
-					command.barcode(),
+					haccpItem.productName(),
+					haccpItem.barcode(),
 					STATUS_SKIPPED,
-					List.of()
+					List.of(classification.reason())
 				));
 				continue;
 			}
 
-			Product product = productRepository.save(Product.create(command));
+			ProductImportCommand createCommand = haccpProductMapper.toCreateCommand(haccpItem, classification);
+
+			if (isBarcodeDuplicated(createCommand.barcode())) {
+				skippedCount++;
+				resultItems.add(new HaccpProductImportItemResponse(
+					null,
+					createCommand.productName(),
+					createCommand.barcode(),
+					STATUS_SKIPPED,
+					List.of("이미 다른 상품에 등록된 바코드입니다.")
+				));
+				continue;
+			}
+
+			Product product = productRepository.save(Product.create(createCommand));
 			inventoryService.createDefaultInventory(product);
 
 			importedCount++;
@@ -110,6 +129,14 @@ public class HaccpProductImportService {
 			updatedCount,
 			skippedCount,
 			resultItems
+		);
+	}
+
+	private ProductCategoryClassificationResponse classifyCategory(HaccpProductItemResponse haccpItem) {
+		return openAiCategoryClassifierClient.classify(
+			haccpItem.productName(),
+			haccpProductMapper.extractBrandName(haccpItem),
+			haccpItem.productKind()
 		);
 	}
 

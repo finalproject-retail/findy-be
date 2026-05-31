@@ -15,9 +15,35 @@ public class HaccpProductMapper {
 
 	private static final String EXTERNAL_SOURCE = "HACCP";
 	private static final int DEFAULT_PRICE = 0;
-	private static final String CATEGORY_CLASSIFIED_BY = "OPENAI";
+	private static final String CATEGORY_CLASSIFIED_BY_OPENAI = "OPENAI";
+	private static final String CATEGORY_CLASSIFIED_BY_NONE = "NONE";
 
-	public ProductImportCommand toCommand(
+	public ProductImportCommand toEnrichmentCommand(HaccpProductItemResponse item) {
+		return new ProductImportCommand(
+			null,
+			extractBrandName(item),
+			clean(item.productName()),
+			clean(item.barcode()),
+			EXTERNAL_SOURCE,
+			clean(item.productReportNo()),
+			DEFAULT_PRICE,
+			DEFAULT_PRICE,
+			BigDecimal.ZERO,
+			createDescription(item),
+			getImageUrl(item),
+			toNullableInfo(item.productKindState()),
+			"1개",
+			toNullableInfo(item.capacity()),
+			toNullableAllergy(item.allergy()),
+			toNullableInfo(item.productKind()),
+			SaleStatus.ON_SALE,
+			null,
+			CATEGORY_CLASSIFIED_BY_NONE,
+			null
+		);
+	}
+
+	public ProductImportCommand toCreateCommand(
 		HaccpProductItemResponse item,
 		ProductCategoryClassificationResponse classification
 	) {
@@ -40,12 +66,12 @@ public class HaccpProductMapper {
 			toNullableInfo(item.productKind()),
 			SaleStatus.ON_SALE,
 			classification.confidence(),
-			CATEGORY_CLASSIFIED_BY,
+			CATEGORY_CLASSIFIED_BY_OPENAI,
 			classification.reviewRequired()
 		);
 	}
 
-	private String extractBrandName(HaccpProductItemResponse item) {
+	public String extractBrandName(HaccpProductItemResponse item) {
 		String seller = firstText(item.seller(), item.manufacture());
 
 		if (!StringUtils.hasText(seller)) {
