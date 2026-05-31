@@ -6,7 +6,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.global.response.ApiResponse;
+import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductImportResultResponse;
+import com.princesses7.findy.shopping.product.service.HaccpProductImportService;
 import com.princesses7.findy.shopping.product.service.NaverProductImportService;
 import com.princesses7.findy.shopping.product.service.ProductImportService;
 
@@ -19,6 +21,7 @@ public class ProductImportController {
 
 	private final NaverProductImportService naverProductImportService;
 	private final ProductImportService productImportService;
+	private final HaccpProductImportService haccpProductImportService;
 
 	@PostMapping("/naver")
 	public ProductImportResultResponse importByKeyword(
@@ -35,12 +38,10 @@ public class ProductImportController {
 	}
 
 	@PostMapping("/haccp")
-	public ApiResponse<HaccpProductUpsertResponse> importHaccpProduct(
+	public ApiResponse<HaccpProductImportResponse> importProductFromHaccp(
 		@RequestParam String productName
 	) {
-		return ApiResponse.ok(
-			"HACCP 상품 정보 동기화에 성공했습니다.",
-			haccpProductUpsertService.upsertByProductName(productName)
-		);
+		HaccpProductImportResponse response = haccpProductImportService.importByProductName(productName);
+		return ApiResponse.ok("HACCP 상품 import에 성공했습니다.", response);
 	}
 }
