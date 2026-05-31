@@ -28,6 +28,7 @@ public enum ErrorCode {
 	SEARCH_LOG_SAVE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "PRODUCT_010", "검색 로그 저장에 실패했습니다."),
 	PRODUCT_NOT_REGISTERED(HttpStatus.NOT_FOUND, "PRODUCT_011", "매장에 등록되지 않은 상품입니다."),
 	CATEGORY_CLASSIFICATION_FAILED(HttpStatus.BAD_REQUEST, "PRODUCT_012", "상품 카테고리 분류에 실패했습니다."),
+	HACCP_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT_013", "HACCP에서 상품 정보를 찾을 수 없습니다."),
 
 	// Inventory
 	INVENTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "INVENTORY_001", "재고 정보를 찾을 수 없습니다."),
