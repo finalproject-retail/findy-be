@@ -38,6 +38,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	Optional<Product> findByBarcodeAndIsDeletedFalse(String barcode);
 
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.isDeleted = false
+		  AND REPLACE(LOWER(p.productName), ' ', '') = :normalizedProductName
+		ORDER BY p.productId ASC
+		""")
+	List<Product> findAllByNormalizedProductName(
+		@Param("normalizedProductName") String normalizedProductName
+	);
+
 	boolean existsByExternalSourceAndExternalProductIdAndIsDeletedFalse(
 		String externalSource,
 		String externalProductId

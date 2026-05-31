@@ -1,6 +1,8 @@
 package com.princesses7.findy.shopping.product.entity;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
@@ -115,8 +117,92 @@ public class Product extends BaseTimeEntity {
 		product.categoryConfidence = command.categoryConfidence();
 		product.categoryClassifiedBy = command.categoryClassifiedBy();
 		product.categoryReviewRequired = command.categoryReviewRequired();
-		
+
 		product.isDeleted = false;
 		return product;
+	}
+
+	public List<String> enrichMissingFields(ProductImportCommand command, boolean canApplyBarcode) {
+		List<String> updatedFields = new ArrayList<>();
+
+		if (canApplyBarcode && isBlank(this.barcode) && hasText(command.barcode())) {
+			this.barcode = command.barcode();
+			updatedFields.add("barcode");
+		}
+
+		if (isBlank(this.externalSource) && hasText(command.externalSource())) {
+			this.externalSource = command.externalSource();
+			updatedFields.add("externalSource");
+		}
+
+		if (isBlank(this.externalProductId) && hasText(command.externalProductId())) {
+			this.externalProductId = command.externalProductId();
+			updatedFields.add("externalProductId");
+		}
+
+		if (isBlank(this.brandName) && hasText(command.brandName())) {
+			this.brandName = command.brandName();
+			updatedFields.add("brandName");
+		}
+
+		if (isBlank(this.description) && hasText(command.description())) {
+			this.description = command.description();
+			updatedFields.add("description");
+		}
+
+		if (isBlank(this.imageUrl) && hasText(command.imageUrl())) {
+			this.imageUrl = command.imageUrl();
+			updatedFields.add("imageUrl");
+		}
+
+		if (isBlank(this.packagingType) && hasText(command.packagingType())) {
+			this.packagingType = command.packagingType();
+			updatedFields.add("packagingType");
+		}
+
+		if (isBlank(this.salesUnit) && hasText(command.salesUnit())) {
+			this.salesUnit = command.salesUnit();
+			updatedFields.add("salesUnit");
+		}
+
+		if (isBlank(this.volume) && hasText(command.volume())) {
+			this.volume = command.volume();
+			updatedFields.add("volume");
+		}
+
+		if (isBlank(this.allergyInfo) && hasText(command.allergyInfo())) {
+			this.allergyInfo = command.allergyInfo();
+			updatedFields.add("allergyInfo");
+		}
+
+		if (isBlank(this.badgeText) && hasText(command.badgeText())) {
+			this.badgeText = command.badgeText();
+			updatedFields.add("badgeText");
+		}
+
+		if (this.categoryConfidence == null && command.categoryConfidence() != null) {
+			this.categoryConfidence = command.categoryConfidence();
+			updatedFields.add("categoryConfidence");
+		}
+
+		if (isBlank(this.categoryClassifiedBy) && hasText(command.categoryClassifiedBy())) {
+			this.categoryClassifiedBy = command.categoryClassifiedBy();
+			updatedFields.add("categoryClassifiedBy");
+		}
+
+		if (this.categoryReviewRequired == null && command.categoryReviewRequired() != null) {
+			this.categoryReviewRequired = command.categoryReviewRequired();
+			updatedFields.add("categoryReviewRequired");
+		}
+
+		return updatedFields;
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
+	}
+
+	private boolean isBlank(String value) {
+		return value == null || value.isBlank();
 	}
 }
