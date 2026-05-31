@@ -33,4 +33,14 @@ public class ProductImportController {
 		Long productId = productImportService.importByBarcode(barcode);
 		return ApiResponse.ok(productId);
 	}
+
+	@PostMapping("/haccp")
+	public ApiResponse<HaccpProductUpsertResponse> importHaccpProduct(
+		@RequestParam String productName
+	) {
+		return ApiResponse.ok(
+			"HACCP 상품 정보 동기화에 성공했습니다.",
+			haccpProductUpsertService.upsertByProductName(productName)
+		);
+	}
 }
