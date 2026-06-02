@@ -78,8 +78,8 @@ public class ProductController {
 
 	@GetMapping("/{productId}")
 	public ApiResponse<ProductDetailResponse> getProductDetail(
-		@RequestHeader(value = "X-User-Id", required = false) Long userId,
-		@PathVariable Long productId
+		@PathVariable Long productId,
+		@RequestHeader(value = "X-User-Id", required = false) Long userId
 	) {
 		ProductDetailResponse response = productService.getProductDetail(userId, productId);
 
