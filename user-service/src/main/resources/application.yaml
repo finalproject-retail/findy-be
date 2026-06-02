@@ -39,6 +39,10 @@ jwt:
   secret: ${JWT_SECRET_KEY}
   expiration_time: 3600000 # 1시간 (밀리초 단위)
 
+services:
+  shopping:
+    base-url: ${SHOPPING_SERVICE_URL:http://localhost:8887}
+
 management:
   endpoints:
     web:
