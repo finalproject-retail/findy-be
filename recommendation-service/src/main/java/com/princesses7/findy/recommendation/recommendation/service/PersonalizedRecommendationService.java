@@ -15,8 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
-import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
-import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
+import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
 import com.princesses7.findy.recommendation.preference.dto.response.UserPreferenceResponse;
 import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
 import com.princesses7.findy.recommendation.preference.repository.CategorySnapshotRepository;
@@ -45,8 +44,7 @@ public class PersonalizedRecommendationService {
 	private static final int POPULAR_LOOKBACK_DAYS = 14;
 
 	private final UserPreferenceQueryService userPreferenceQueryService;
-	private final OpenAiEmbeddingClient openAiEmbeddingClient;
-	private final OpenAiProperties openAiProperties;
+	private final ProductEmbeddingClient productEmbeddingClient;
 	private final ProductEmbeddingRepository productEmbeddingRepository;
 	private final ProductSnapshotRepository productRepository;
 	private final CategorySnapshotRepository categoryRepository;
@@ -74,8 +72,8 @@ public class PersonalizedRecommendationService {
 		}
 
 		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findByModelAndDimensions(
-			openAiProperties.embeddingModel(),
-			openAiProperties.embeddingDimensions()
+			productEmbeddingClient.model(),
+			productEmbeddingClient.dimensions()
 		);
 
 		if (candidateEmbeddings.isEmpty()) {
@@ -87,7 +85,7 @@ public class PersonalizedRecommendationService {
 			);
 		}
 
-		List<Double> userPreferenceEmbedding = openAiEmbeddingClient.createEmbedding(
+		List<Double> userPreferenceEmbedding = productEmbeddingClient.createEmbedding(
 			userPreference.preferenceText()
 		);
 

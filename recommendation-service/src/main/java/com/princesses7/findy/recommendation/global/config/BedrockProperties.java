@@ -6,6 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record BedrockProperties(
 	String region,
 	String chatModelId,
+	String embeddingModelId,
+	Integer embeddingDimensions,
 	Integer maxTokens,
 	Float temperature
 ) {
@@ -16,6 +18,14 @@ public record BedrockProperties(
 
 	public String chatModelId() {
 		return chatModelId == null ? "anthropic.claude-3-haiku-20240307-v1:0" : chatModelId;
+	}
+
+	public String embeddingModelId() {
+		return embeddingModelId == null ? "amazon.titan-embed-text-v2:0" : embeddingModelId;
+	}
+
+	public Integer embeddingDimensions() {
+		return embeddingDimensions == null ? 512 : embeddingDimensions;
 	}
 
 	public Integer maxTokens() {

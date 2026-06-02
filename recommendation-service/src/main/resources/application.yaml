@@ -42,6 +42,8 @@ ai:
 bedrock:
   region: ${AWS_REGION:ap-northeast-2}
   chat-model-id: ${BEDROCK_CHAT_MODEL_ID:anthropic.claude-3-haiku-20240307-v1:0}
+  embedding-model-id: ${BEDROCK_EMBEDDING_MODEL_ID:amazon.titan-embed-text-v2:0}
+  embedding-dimensions: ${BEDROCK_EMBEDDING_DIMENSIONS:512}
   max-tokens: ${BEDROCK_MAX_TOKENS:1200}
   temperature: ${BEDROCK_TEMPERATURE:0.0}
 

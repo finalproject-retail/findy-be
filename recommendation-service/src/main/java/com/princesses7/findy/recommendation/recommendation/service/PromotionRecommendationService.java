@@ -13,8 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
-import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
-import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
+import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
 import com.princesses7.findy.recommendation.inventory.repository.InventorySnapshotRepository;
@@ -49,8 +48,7 @@ public class PromotionRecommendationService {
 	private final InventorySnapshotRepository inventoryRepository;
 	private final CategorySnapshotRepository categoryRepository;
 	private final UserPreferenceQueryService userPreferenceQueryService;
-	private final OpenAiEmbeddingClient openAiEmbeddingClient;
-	private final OpenAiProperties openAiProperties;
+	private final ProductEmbeddingClient productEmbeddingClient;
 	private final PromotionRecommendationIntentBuilder intentBuilder;
 	private final PromotionRecommendationScoreCalculator scoreCalculator;
 	private final RecommendationRequestValidator requestValidator;
@@ -208,7 +206,7 @@ public class PromotionRecommendationService {
 
 	private List<Double> createPromotionIntentEmbedding(UserPreferenceResponse userPreference) {
 		try {
-			return openAiEmbeddingClient.createEmbedding(
+			return productEmbeddingClient.createEmbedding(
 				intentBuilder.build(userPreference)
 			);
 		} catch (BaseException exception) {
@@ -311,8 +309,8 @@ public class PromotionRecommendationService {
 
 		return productEmbeddingRepository.findByProductIdIn(productIds)
 			.stream()
-			.filter(productEmbedding -> openAiProperties.embeddingModel().equals(productEmbedding.getModel()))
-			.filter(productEmbedding -> openAiProperties.embeddingDimensions() == productEmbedding.getDimensions())
+			.filter(productEmbedding -> productEmbeddingClient.model().equals(productEmbedding.getModel()))
+			.filter(productEmbedding -> productEmbeddingClient.dimensions() == productEmbedding.getDimensions())
 			.collect(Collectors.toMap(
 				ProductEmbedding::getProductId,
 				productEmbedding -> productEmbedding,
