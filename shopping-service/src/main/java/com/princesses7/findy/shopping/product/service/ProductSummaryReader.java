@@ -3,7 +3,9 @@ package com.princesses7.findy.shopping.product.service;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -89,5 +91,47 @@ public class ProductSummaryReader {
 		}
 
 		return product;
+	}
+
+	public List<ProductSummaryResponse> getExistingProductSummaries(Collection<Long> productIds) {
+		if (productIds == null || productIds.isEmpty()) {
+			return List.of();
+		}
+
+		List<Long> distinctProductIds = productIds.stream()
+			.filter(Objects::nonNull)
+			.distinct()
+			.toList();
+
+		if (distinctProductIds.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, Product> productById = productRepository
+			.findAllByProductIdInAndIsDeletedFalse(distinctProductIds)
+			.stream()
+			.collect(Collectors.toMap(
+				Product::getProductId,
+				Function.identity(),
+				(existingProduct, replacementProduct) -> existingProduct
+			));
+
+		Map<Long, Inventory> inventoryByProductId = inventoryRepository
+			.findAllByProductIdsAndStoreId(distinctProductIds, DEFAULT_STORE_ID)
+			.stream()
+			.collect(Collectors.toMap(
+				Inventory::getProductId,
+				Function.identity(),
+				(existingInventory, replacementInventory) -> existingInventory
+			));
+
+		return distinctProductIds.stream()
+			.map(productById::get)
+			.filter(Objects::nonNull)
+			.map(product -> ProductSummaryResponse.from(
+				product,
+				inventoryByProductId.get(product.getProductId())
+			))
+			.toList();
 	}
 }
