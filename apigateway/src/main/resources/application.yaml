@@ -5,9 +5,29 @@ spring:
   application:
     name: apigateway
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
 app:
   cors:
-    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:8081}
+
+jwt:
+  secret: ${JWT_SECRET_KEY}
+
+services:
+  user:
+    base-url: ${USER_SERVICE_URL:http://localhost:8889}
+  shopping:
+    base-url: ${SHOPPING_SERVICE_URL:http://localhost:8887}
+  map:
+    base-url: ${MAP_SERVICE_URL:http://localhost:8888}
+  recommendation:
+    base-url: ${RECOMMENDATION_SERVICE_URL:http://localhost:8886}
+  analytics:
+    base-url: ${ANALYTICS_SERVICE_URL:http://localhost:8885}
 
 management:
   endpoints:
@@ -17,7 +37,3 @@ management:
   endpoint:
     health:
       show-details: always
-
-services:
-  shopping:
-    base-url: ${SHOPPING_SERVICE_URL:http://localhost:8887}

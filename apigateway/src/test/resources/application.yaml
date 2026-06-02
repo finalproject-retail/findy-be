@@ -1,0 +1,19 @@
+spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+
+jwt:
+  secret: test-jwt-secret-key-must-be-long-enough-for-hs256-signing
+
+services:
+  user:
+    base-url: http://localhost:8889
+  shopping:
+    base-url: http://localhost:8887
+  map:
+    base-url: http://localhost:8888
+  recommendation:
+    base-url: http://localhost:8886
+  analytics:
+    base-url: http://localhost:8885

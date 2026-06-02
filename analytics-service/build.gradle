@@ -42,6 +42,9 @@ dependencies {
     // Prometheus Actuator 설정
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     runtimeOnly 'io.micrometer:micrometer-registry-prometheus'
+
+    // Kafka
+    implementation 'org.springframework.boot:spring-boot-starter-kafka'
 }
 
 tasks.named('test') {
