@@ -36,17 +36,18 @@ public class CartService {
 	public CartResponse addCartItem(Long userId, AddCartItemRequest request) {
 		Cart cart = getOrCreateCart(userId);
 		int quantity = request.quantityOrDefault();
-		int targetQuantity = getCartItemQuantity(cart, request.productId()) + quantity;
 
+		int targetQuantity = getCartItemQuantity(cart, request.productId()) + quantity;
 		productSummaryReader.validatePurchasable(request.productId(), targetQuantity);
+
 		cart.addItem(request.productId(), quantity);
 
 		shoppingAnalyticsEventService.publishCartItemAdded(
 			userId,
 			request.productId(),
 			quantity,
-			RecommendationSource.fromNullable(request.recommendationSource()),
-			request.originalProductId()
+			RecommendationSource.DIRECT,
+			null
 		);
 
 		return toResponse(cart);
