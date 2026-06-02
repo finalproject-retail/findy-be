@@ -16,6 +16,9 @@ import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductIt
 import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
 import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
+import com.princesses7.findy.shopping.product.dto.request.HaccpProductBulkImportRequest;
+import com.princesses7.findy.shopping.product.dto.response.HaccpProductBulkImportItemResponse;
+import com.princesses7.findy.shopping.product.dto.response.HaccpProductBulkImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportItemResponse;
 import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
@@ -42,6 +45,16 @@ public class HaccpProductImportService {
 
 	@Transactional
 	public HaccpProductImportResponse importByProductName(String productName) {
+		return importByProductName(productName, 10, false, true);
+	}
+
+	@Transactional
+	public HaccpProductImportResponse importByProductName(
+		String productName,
+		int limit,
+		boolean onlyBarcodeExists,
+		boolean createIfMissing
+	) {
 		if (!StringUtils.hasText(productName)) {
 			throw new ProductException(INVALID_SEARCH_KEYWORD);
 		}
@@ -52,13 +65,29 @@ public class HaccpProductImportService {
 			throw new ProductException(HACCP_PRODUCT_NOT_FOUND);
 		}
 
+		return importItems(
+			productName,
+			haccpItems,
+			limit,
+			onlyBarcodeExists,
+			createIfMissing
+		);
+	}
+
+	private HaccpProductImportResponse importItems(
+		String keyword,
+		List<HaccpProductItemResponse> haccpItems,
+		int limit,
+		boolean onlyBarcodeExists,
+		boolean createIfMissing
+	) {
 		int importedCount = 0;
 		int updatedCount = 0;
 		int skippedCount = 0;
 
 		List<HaccpProductImportItemResponse> resultItems = new ArrayList<>();
 
-		for (HaccpProductItemResponse haccpItem : haccpItems) {
+		for (HaccpProductItemResponse haccpItem : haccpItems.stream().limit(limit).toList()) {
 			if (isInvalid(haccpItem)) {
 				skippedCount++;
 				resultItems.add(new HaccpProductImportItemResponse(
@@ -67,6 +96,18 @@ public class HaccpProductImportService {
 					null,
 					STATUS_SKIPPED,
 					List.of("HACCP 상품명이 비어 있습니다.")
+				));
+				continue;
+			}
+
+			if (onlyBarcodeExists && !hasUsableBarcode(haccpItem.barcode())) {
+				skippedCount++;
+				resultItems.add(new HaccpProductImportItemResponse(
+					null,
+					haccpItem.productName(),
+					haccpItem.barcode(),
+					STATUS_SKIPPED,
+					List.of("바코드가 없어 자동 등록에서 제외했습니다.")
 				));
 				continue;
 			}
@@ -86,6 +127,18 @@ public class HaccpProductImportService {
 					resultItems.add(toResponseItem(product, STATUS_UPDATED, updatedFields));
 				}
 
+				continue;
+			}
+
+			if (!createIfMissing) {
+				skippedCount++;
+				resultItems.add(new HaccpProductImportItemResponse(
+					null,
+					enrichmentCommand.productName(),
+					enrichmentCommand.barcode(),
+					STATUS_SKIPPED,
+					List.of("신규 상품 생성 옵션이 꺼져 있어 제외했습니다.")
+				));
 				continue;
 			}
 
@@ -130,6 +183,18 @@ public class HaccpProductImportService {
 			skippedCount,
 			resultItems
 		);
+	}
+
+	private boolean hasUsableBarcode(String barcode) {
+		if (!StringUtils.hasText(barcode)) {
+			return false;
+		}
+
+		String trimmedBarcode = barcode.trim();
+
+		return !"알수없음".equals(trimmedBarcode)
+			&& !"알 수 없음".equals(trimmedBarcode)
+			&& !"UNKNOWN".equalsIgnoreCase(trimmedBarcode);
 	}
 
 	private ProductCategoryClassificationResponse classifyCategory(HaccpProductItemResponse haccpItem) {
@@ -202,6 +267,73 @@ public class HaccpProductImportService {
 			product.getBarcode(),
 			importStatus,
 			updatedFields
+		);
+	}
+
+	@Transactional
+	public HaccpProductBulkImportResponse bulkImport(HaccpProductBulkImportRequest request) {
+		if (request == null || request.keywords() == null || request.keywords().isEmpty()) {
+			throw new ProductException(INVALID_SEARCH_KEYWORD);
+		}
+
+		int createdCount = 0;
+		int updatedCount = 0;
+		int skippedCount = 0;
+
+		List<HaccpProductBulkImportItemResponse> bulkItems = new ArrayList<>();
+
+		for (String keyword : request.keywords()) {
+			if (!StringUtils.hasText(keyword)) {
+				skippedCount++;
+				bulkItems.add(new HaccpProductBulkImportItemResponse(
+					keyword,
+					null,
+					null,
+					null,
+					STATUS_SKIPPED,
+					List.of("검색어가 비어 있습니다.")
+				));
+				continue;
+			}
+
+			List<HaccpProductItemResponse> haccpItems = haccpProductClient.searchByProductName(keyword);
+
+			if (haccpItems.isEmpty()) {
+				skippedCount++;
+				bulkItems.add(new HaccpProductBulkImportItemResponse(
+					keyword,
+					null,
+					null,
+					null,
+					STATUS_SKIPPED,
+					List.of("HACCP 조회 결과가 없습니다.")
+				));
+				continue;
+			}
+
+			HaccpProductImportResponse response = importItems(
+				keyword,
+				haccpItems,
+				request.resolvedLimitPerKeyword(),
+				request.resolvedOnlyBarcodeExists(),
+				request.resolvedCreateIfMissing()
+			);
+
+			createdCount += response.importedCount();
+			updatedCount += response.updatedCount();
+			skippedCount += response.skippedCount();
+
+			for (HaccpProductImportItemResponse item : response.items()) {
+				bulkItems.add(HaccpProductBulkImportItemResponse.from(keyword, item));
+			}
+		}
+
+		return new HaccpProductBulkImportResponse(
+			request.keywords().size(),
+			createdCount,
+			updatedCount,
+			skippedCount,
+			bulkItems
 		);
 	}
 }
