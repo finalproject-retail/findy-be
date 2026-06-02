@@ -9,7 +9,11 @@ public record AddShoppingListItemRequest(
 	Long productId,
 
 	@Min(value = 1, message = "수량은 1개 이상이어야 합니다.")
-	Integer quantity
+	Integer quantity,
+
+	String recommendationSource,
+
+	Long originalProductId
 ) {
 
 	public int quantityOrDefault() {
