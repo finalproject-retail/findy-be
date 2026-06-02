@@ -1,7 +1,5 @@
 package com.princesses7.findy.shopping.product.dto.response;
 
-import java.math.BigDecimal;
-
 import com.princesses7.findy.shopping.inventory.entity.Inventory;
 import com.princesses7.findy.shopping.product.entity.Product;
 
@@ -12,15 +10,13 @@ public record ProductDetailResponse(
 	String productName,
 	String barcode,
 	Integer originalPrice,
-	Integer salePrice,
-	BigDecimal discountRate,
 	String description,
 	String imageUrl,
-	String packagingType,
 	String salesUnit,
 	String volume,
 	String allergyInfo,
 	com.princesses7.findy.shopping.product.entity.SaleStatus saleStatus,
+	Long gridId,
 	Integer stockQuantity,
 	String stockStatus,
 	String stockUnit
@@ -34,15 +30,13 @@ public record ProductDetailResponse(
 			product.getProductName(),
 			product.getBarcode(),
 			product.getOriginalPrice(),
-			product.getSalePrice(),
-			product.getDiscountRate(),
 			product.getDescription(),
 			product.getImageUrl(),
-			product.getPackagingType(),
 			product.getSalesUnit(),
 			product.getVolume(),
 			product.getAllergyInfo(),
 			product.getSaleStatus(),
+			product.getGridId(),
 			inventory == null ? null : inventory.getStockQuantity(),
 			inventory == null ? null : inventory.getStockStatus().name(),
 			inventory == null ? null : inventory.getUnit()

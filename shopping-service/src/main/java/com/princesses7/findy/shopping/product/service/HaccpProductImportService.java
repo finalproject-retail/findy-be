@@ -211,7 +211,7 @@ public class HaccpProductImportService {
 
 	private Optional<Product> findExistingProduct(ProductImportCommand command) {
 		if (StringUtils.hasText(command.barcode())) {
-			Optional<Product> product = productRepository.findByBarcodeAndIsDeletedFalse(command.barcode());
+			Optional<Product> product = productRepository.findByBarcodeAndDeletedAtIsNull(command.barcode());
 
 			if (product.isPresent()) {
 				return product;
@@ -238,12 +238,12 @@ public class HaccpProductImportService {
 			return true;
 		}
 
-		return !productRepository.existsByBarcodeAndIsDeletedFalse(barcode);
+		return !productRepository.existsByBarcodeAndDeletedAtIsNull(barcode);
 	}
 
 	private boolean isBarcodeDuplicated(String barcode) {
 		return StringUtils.hasText(barcode)
-			&& productRepository.existsByBarcodeAndIsDeletedFalse(barcode);
+			&& productRepository.existsByBarcodeAndDeletedAtIsNull(barcode);
 	}
 
 	private String normalizeProductName(String productName) {

@@ -39,7 +39,7 @@ public class ProductSummaryReader {
 		}
 
 		Map<Long, Product> productById = productRepository
-			.findAllByProductIdInAndIsDeletedFalse(productIds)
+			.findAllByProductIdInAndDeletedAtIsNull(productIds)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,
@@ -66,7 +66,7 @@ public class ProductSummaryReader {
 	}
 
 	public void validatePurchasable(Long productId, int quantity) {
-		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
+		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
 		if (product.getSaleStatus() != SaleStatus.ON_SALE) {
@@ -108,7 +108,7 @@ public class ProductSummaryReader {
 		}
 
 		Map<Long, Product> productById = productRepository
-			.findAllByProductIdInAndIsDeletedFalse(distinctProductIds)
+			.findAllByProductIdInAndDeletedAtIsNull(distinctProductIds)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,

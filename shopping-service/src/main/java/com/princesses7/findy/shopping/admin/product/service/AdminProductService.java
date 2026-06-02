@@ -42,8 +42,6 @@ public class AdminProductService {
 		"brandName",
 		"categoryId",
 		"originalPrice",
-		"salePrice",
-		"discountRate",
 		"saleStatus",
 		"createdAt",
 		"updatedAt"
@@ -104,7 +102,7 @@ public class AdminProductService {
 	}
 
 	public AdminProductDetailResponse getProductDetail(Long productId) {
-		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
+		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
 		Inventory inventory = inventoryRepository.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)

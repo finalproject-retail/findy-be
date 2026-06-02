@@ -27,7 +27,7 @@ public class ProductBarcodeReader {
 	public Long getProductIdByBarcode(String barcode) {
 		validateBarcode(barcode);
 
-		return productRepository.findByBarcodeAndIsDeletedFalse(barcode)
+		return productRepository.findByBarcodeAndDeletedAtIsNull(barcode)
 			.map(Product::getProductId)
 			.orElseGet(() -> getExternalMatchedProductId(barcode));
 	}

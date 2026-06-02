@@ -193,7 +193,7 @@ public class PromotionAdminService {
 	}
 
 	private void validateProductExists(Long productId) {
-		productRepository.findByProductIdAndIsDeletedFalse(productId)
+		productRepository.findByProductIdAndDeletedAtIsNull(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 	}
 

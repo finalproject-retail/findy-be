@@ -67,7 +67,7 @@ public class NaverProductImportService {
 	}
 
 	private boolean isDuplicated(NaverShoppingItemResponse item) {
-		return productRepository.existsByExternalSourceAndExternalProductIdAndIsDeletedFalse(
+		return productRepository.existsByExternalSourceAndExternalProductIdAndDeletedAtIsNull(
 			EXTERNAL_SOURCE,
 			item.productId()
 		);

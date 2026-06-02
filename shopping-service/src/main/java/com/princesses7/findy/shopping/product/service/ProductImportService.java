@@ -31,7 +31,7 @@ public class ProductImportService {
 
 	@Transactional
 	public Long importByBarcode(String barcode) {
-		if (productRepository.existsByBarcodeAndIsDeletedFalse(barcode)) {
+		if (productRepository.existsByBarcodeAndDeletedAtIsNull(barcode)) {
 			throw new ProductException(ErrorCode.DUPLICATE_BARCODE);
 		}
 

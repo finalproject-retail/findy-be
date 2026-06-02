@@ -58,10 +58,10 @@ public class PurchaseAmountService {
 	}
 
 	private PurchaseAmountItemResponse calculateItem(PurchaseTargetItemResponse item) {
-		Product product = productRepository.findByProductIdAndIsDeletedFalse(item.productId())
+		Product product = productRepository.findByProductIdAndDeletedAtIsNull(item.productId())
 			.orElseThrow(() -> new PurchaseException(PRODUCT_NOT_FOUND));
 
-		int productPrice = product.getSalePrice();
+		int productPrice = product.getOriginalPrice();
 		int totalAmount = productPrice * item.purchaseQuantity();
 
 		PromotionDiscountResult promotionDiscount = promotionDiscountService.calculateBestDiscount(

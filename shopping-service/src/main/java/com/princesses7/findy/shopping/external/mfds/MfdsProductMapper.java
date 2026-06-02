@@ -2,7 +2,6 @@ package com.princesses7.findy.shopping.external.mfds;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
-import java.math.BigDecimal;
 import java.util.Optional;
 
 import org.springframework.stereotype.Component;
@@ -50,10 +49,7 @@ public class MfdsProductMapper {
 			EXTERNAL_SOURCE,
 			getReportNo(barcodeItem, linkedItem),
 			DEFAULT_PRICE,
-			DEFAULT_PRICE,
-			BigDecimal.ZERO,
 			createDescription(barcodeItem, linkedItem),
-			null,
 			null,
 			null,
 			null,

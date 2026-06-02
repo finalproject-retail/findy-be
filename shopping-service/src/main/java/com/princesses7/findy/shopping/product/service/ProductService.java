@@ -42,8 +42,6 @@ public class ProductService {
 		"productId",
 		"productName",
 		"originalPrice",
-		"salePrice",
-		"discountRate",
 		"createdAt"
 	);
 
@@ -87,7 +85,7 @@ public class ProductService {
 		);
 
 		return toProductResponses(
-			productRepository.findByIsDeletedFalse(pageable).getContent()
+			productRepository.findByDeletedAtIsNull(pageable).getContent()
 		);
 	}
 
@@ -120,7 +118,7 @@ public class ProductService {
 	}
 
 	public ProductDetailResponse getProductDetail(Long productId) {
-		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
+		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
 		Inventory inventory = inventoryRepository.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)
@@ -137,7 +135,7 @@ public class ProductService {
 		Pageable pageable
 	) {
 		if (categoryId != null && keyword != null) {
-			return productRepository.findByCategoryIdAndProductNameContainingIgnoreCaseAndIsDeletedFalse(
+			return productRepository.findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 				categoryId,
 				keyword,
 				pageable
@@ -145,24 +143,24 @@ public class ProductService {
 		}
 
 		if (categoryId != null) {
-			return productRepository.findByCategoryIdAndIsDeletedFalse(categoryId, pageable);
+			return productRepository.findByCategoryIdAndDeletedAtIsNull(categoryId, pageable);
 		}
 
 		if (keyword != null) {
-			return productRepository.findByProductNameContainingIgnoreCaseAndIsDeletedFalse(
+			return productRepository.findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 				keyword,
 				pageable
 			);
 		}
 
-		return productRepository.findByIsDeletedFalse(pageable);
+		return productRepository.findByDeletedAtIsNull(pageable);
 	}
 
 	private List<Product> findProductsByRanking(
 		List<Long> productIds,
 		int size
 	) {
-		Map<Long, Product> productMap = productRepository.findAllByProductIdInAndIsDeletedFalse(productIds)
+		Map<Long, Product> productMap = productRepository.findAllByProductIdInAndDeletedAtIsNull(productIds)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,

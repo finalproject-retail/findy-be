@@ -2,8 +2,6 @@ package com.princesses7.findy.shopping.external.naver;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
-import java.math.BigDecimal;
-
 import org.springframework.stereotype.Component;
 
 import com.princesses7.findy.shopping.external.naver.dto.response.NaverShoppingItemResponse;
@@ -46,11 +44,8 @@ public class NaverProductMapper {
 			EXTERNAL_SOURCE,
 			item.productId(),
 			originalPrice,
-			salePrice,
-			calculateDiscountRate(originalPrice, salePrice),
 			null,
 			item.image(),
-			null,
 			null,
 			null,
 			null,
@@ -120,17 +115,4 @@ public class NaverProductMapper {
 		return salePrice;
 	}
 
-	private BigDecimal calculateDiscountRate(Integer originalPrice, Integer salePrice) {
-		if (originalPrice == null || originalPrice == 0 || salePrice == null) {
-			return BigDecimal.ZERO;
-		}
-
-		if (originalPrice <= salePrice) {
-			return BigDecimal.ZERO;
-		}
-
-		return BigDecimal.valueOf(originalPrice - salePrice)
-			.multiply(BigDecimal.valueOf(100))
-			.divide(BigDecimal.valueOf(originalPrice), 2, java.math.RoundingMode.HALF_UP);
-	}
 }
