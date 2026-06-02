@@ -36,6 +36,25 @@ spring:
         default_schema: ${DB_SCHEMA:shopping_service}
         format_sql: true
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9094}
+    consumer:
+      group-id: ${spring.application.name}
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+shopping:
+  kafka:
+    enabled: ${SHOPPING_KAFKA_ENABLED:true}
+    topic: ${SHOPPING_KAFKA_TOPIC:shopping.analytics.events}
+    default-store-id: ${SHOPPING_DEFAULT_STORE_ID:1}
+
 logging:
   level:
     org.hibernate.SQL: debug

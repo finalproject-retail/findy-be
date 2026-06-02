@@ -13,6 +13,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEventService;
 import com.princesses7.findy.shopping.inventory.repository.InventoryRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
@@ -29,6 +30,12 @@ class ProductServiceTest {
 
 	@Mock
 	private SearchKeywordRankingService searchKeywordRankingService;
+
+	@Mock
+	private ProductRankingService productRankingService;
+
+	@Mock
+	private ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	@InjectMocks
 	private ProductService productService;

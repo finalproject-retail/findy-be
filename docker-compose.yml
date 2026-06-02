@@ -11,6 +11,11 @@ x-redis-env: &redis-env
   REDIS_HOST: redis
   REDIS_PORT: "6379"
 
+# Compose 내부 서비스 → kafka:9092 / 호스트·IDE → localhost:9094 (EXTERNAL 리스너)
+x-kafka-env: &kafka-env
+  KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+  SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -50,6 +55,39 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    networks:
+      - findy-network
+
+  kafka:
+    image: apache/kafka:3.9.0
+    container_name: findy-kafka
+    restart: unless-stopped
+    ports:
+      - "${KAFKA_PORT:-9094}:9094"
+    environment:
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,EXTERNAL://:9094,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,EXTERNAL://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:9092 >/dev/null 2>&1",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
     networks:
       - findy-network
 
@@ -133,8 +171,11 @@ services:
     ports:
       - "${SHOPPING_SERVICE_PORT:-8887}:8080"
     environment:
-      <<: *database-env
+      <<: [ *database-env, *kafka-env ]
       SERVER_PORT: 8080
+      SHOPPING_KAFKA_ENABLED: "true"
+      SHOPPING_KAFKA_TOPIC: shopping.analytics.events
+      SHOPPING_KAFKA_DEFAULT_STORE_ID: "1"
       NAVER_CLIENT_ID: ${NAVER_CLIENT_ID:-}
       NAVER_CLIENT_SECRET: ${NAVER_CLIENT_SECRET:-}
       MFDS_API_KEY: ${MFDS_API_KEY:-}
@@ -145,6 +186,10 @@ services:
       REDIS_PORT: 6379
     depends_on:
       postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - findy-network
@@ -196,12 +241,14 @@ services:
     ports:
       - "${ANALYTICS_SERVICE_PORT:-8885}:8080"
     environment:
-      <<: *database-env
+      <<: [ *database-env, *kafka-env ]
       SERVER_PORT: 8080
       TZ: Asia/Seoul
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
     depends_on:
       postgres:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - findy-network

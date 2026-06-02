@@ -8,6 +8,8 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.analytics.event.RecommendationSource;
+import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEventService;
 import com.princesses7.findy.shopping.cart.dto.request.AddCartItemRequest;
 import com.princesses7.findy.shopping.cart.dto.request.ChangeCartItemCheckedRequest;
 import com.princesses7.findy.shopping.cart.dto.request.ChangeCartItemQuantityRequest;
@@ -28,15 +30,25 @@ public class CartService {
 
 	private final CartRepository cartRepository;
 	private final ProductSummaryReader productSummaryReader;
+	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	@Transactional
 	public CartResponse addCartItem(Long userId, AddCartItemRequest request) {
 		Cart cart = getOrCreateCart(userId);
 		int quantity = request.quantityOrDefault();
-		int targetQuantity = getCartItemQuantity(cart, request.productId()) + quantity;
 
+		int targetQuantity = getCartItemQuantity(cart, request.productId()) + quantity;
 		productSummaryReader.validatePurchasable(request.productId(), targetQuantity);
+
 		cart.addItem(request.productId(), quantity);
+
+		shoppingAnalyticsEventService.publishCartItemAdded(
+			userId,
+			request.productId(),
+			quantity,
+			RecommendationSource.DIRECT,
+			null
+		);
 
 		return toResponse(cart);
 	}

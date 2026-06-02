@@ -8,6 +8,8 @@ import java.util.Map;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.analytics.event.RecommendationSource;
+import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEventService;
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
@@ -38,6 +40,7 @@ public class ShoppingListService {
 	private final ShoppingListRepository shoppingListRepository;
 	private final ProductSummaryReader productSummaryReader;
 	private final ProductBarcodeReader productBarcodeReader;
+	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	@Transactional
 	public ShoppingListResponse createShoppingList(Long userId) {
@@ -45,14 +48,16 @@ public class ShoppingListService {
 
 		validateCheckedItemsPurchasable(cart);
 
-		ShoppingList shoppingList = shoppingListRepository.findByUserId(userId)
-			.map(existingShoppingList -> {
-				existingShoppingList.replaceItemsFromCart();
-				return existingShoppingList;
-			})
-			.orElseGet(() -> shoppingListRepository.save(ShoppingList.create(cart)));
+		ShoppingList shoppingList = ShoppingList.create(cart);
+		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
 
-		return toResponse(shoppingList);
+		shoppingAnalyticsEventService.publishShoppingListItemsFromCart(
+			userId,
+			savedShoppingList,
+			RecommendationSource.DIRECT
+		);
+
+		return toResponse(savedShoppingList);
 	}
 
 	public ShoppingListResponse getShoppingList(Long userId) {
@@ -75,6 +80,13 @@ public class ShoppingListService {
 		shoppingList.addSearchedItem(
 			request.productId(),
 			quantity
+		);
+
+		shoppingAnalyticsEventService.publishShoppingListItemAdded(
+			userId,
+			List.of(request.productId()),
+			RecommendationSource.fromNullable(request.recommendationSource()),
+			request.originalProductId()
 		);
 
 		return toResponse(shoppingList);
