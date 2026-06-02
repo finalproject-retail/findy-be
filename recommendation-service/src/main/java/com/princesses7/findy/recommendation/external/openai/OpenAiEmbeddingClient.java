@@ -2,9 +2,11 @@ package com.princesses7.findy.recommendation.external.openai;
 
 import java.util.List;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
 import com.princesses7.findy.recommendation.external.openai.dto.request.OpenAiEmbeddingRequest;
 import com.princesses7.findy.recommendation.external.openai.dto.response.OpenAiEmbeddingResponse;
 import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
@@ -17,11 +19,13 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OpenAiEmbeddingClient {
+@ConditionalOnProperty(prefix = "ai", name = "provider", havingValue = "openai", matchIfMissing = true)
+public class OpenAiEmbeddingClient implements ProductEmbeddingClient {
 
 	private final RestClient openAiRestClient;
 	private final OpenAiProperties properties;
 
+	@Override
 	public List<Double> createEmbedding(String text) {
 		try {
 			OpenAiEmbeddingRequest request = OpenAiEmbeddingRequest.of(
@@ -49,5 +53,15 @@ public class OpenAiEmbeddingClient {
 			log.error("OpenAI embedding request failed. message={}", exception.getMessage(), exception);
 			throw new BaseException(ErrorCode.RECOMMENDATION_EMBEDDING_FAILED);
 		}
+	}
+
+	@Override
+	public String model() {
+		return properties.embeddingModel();
+	}
+
+	@Override
+	public int dimensions() {
+		return properties.embeddingDimensions();
 	}
 }
