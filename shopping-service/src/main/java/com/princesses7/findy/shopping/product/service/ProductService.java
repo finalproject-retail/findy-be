@@ -16,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEventService;
 import com.princesses7.findy.shopping.inventory.entity.Inventory;
 import com.princesses7.findy.shopping.inventory.repository.InventoryRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
@@ -51,6 +52,7 @@ public class ProductService {
 	private final InventoryRepository inventoryRepository;
 	private final SearchKeywordRankingService searchKeywordRankingService;
 	private final ProductRankingService productRankingService;
+	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	public ProductPageResponse getProducts(
 		Long categoryId,
@@ -119,7 +121,7 @@ public class ProductService {
 		);
 	}
 
-	public ProductDetailResponse getProductDetail(Long productId) {
+	public ProductDetailResponse getProductDetail(Long userId, Long productId) {
 		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
@@ -127,6 +129,7 @@ public class ProductService {
 			.orElse(null);
 
 		productRankingService.recordView(productId);
+		shoppingAnalyticsEventService.publishProductViewed(userId, productId);
 
 		return ProductDetailResponse.from(product, inventory);
 	}
