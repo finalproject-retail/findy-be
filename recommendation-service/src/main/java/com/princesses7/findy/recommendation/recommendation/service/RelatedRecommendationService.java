@@ -14,9 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
-import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
+import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
 import com.princesses7.findy.recommendation.external.rerank.RelatedProductRerankClient;
-import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.global.exception.ErrorCode;
 import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
@@ -48,9 +47,8 @@ public class RelatedRecommendationService {
 	private final ProductSnapshotRepository productRepository;
 	private final ProductEmbeddingRepository productEmbeddingRepository;
 	private final CategorySnapshotRepository categoryRepository;
-	private final OpenAiEmbeddingClient openAiEmbeddingClient;
+	private final ProductEmbeddingClient productEmbeddingClient;
 	private final RelatedProductRerankClient rerankClient;
-	private final OpenAiProperties openAiProperties;
 	private final RecommendationRequestValidator requestValidator;
 
 	public ProductRecommendationListResponse getRelatedRecommendations(
@@ -70,8 +68,8 @@ public class RelatedRecommendationService {
 			.orElse("");
 
 		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findByModelAndDimensions(
-			openAiProperties.embeddingModel(),
-			openAiProperties.embeddingDimensions()
+			productEmbeddingClient.model(),
+			productEmbeddingClient.dimensions()
 		);
 
 		if (candidateEmbeddings.isEmpty()) {
@@ -95,7 +93,7 @@ public class RelatedRecommendationService {
 				.toList()
 		);
 
-		List<Double> relatedIntentEmbedding = openAiEmbeddingClient.createEmbedding(
+		List<Double> relatedIntentEmbedding = productEmbeddingClient.createEmbedding(
 			sourceProduct.toRelatedRecommendationText(sourceCategoryName)
 		);
 

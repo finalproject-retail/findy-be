@@ -10,8 +10,7 @@ import com.princesses7.findy.recommendation.embedding.dto.response.ProductEmbedd
 import com.princesses7.findy.recommendation.embedding.dto.response.ProductEmbeddingResponse;
 import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
-import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
-import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
+import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.global.exception.ErrorCode;
 import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
@@ -32,8 +31,7 @@ public class ProductEmbeddingService {
 	private final ProductSnapshotRepository productRepository;
 	private final CategorySnapshotRepository categoryRepository;
 	private final ProductEmbeddingRepository productEmbeddingRepository;
-	private final OpenAiEmbeddingClient openAiEmbeddingClient;
-	private final OpenAiProperties openAiProperties;
+	private final ProductEmbeddingClient productEmbeddingClient;
 	private final RecommendationRequestValidator requestValidator;
 
 	@Transactional
@@ -82,21 +80,21 @@ public class ProductEmbeddingService {
 			.map(CategorySnapshot::getCategoryName)
 			.orElse("");
 
-		List<Double> embedding = openAiEmbeddingClient.createEmbedding(
+		List<Double> embedding = productEmbeddingClient.createEmbedding(
 			product.toEmbeddingText(categoryName)
 		);
 
 		ProductEmbedding productEmbedding = productEmbeddingRepository.findByProductId(product.getProductId())
 			.orElseGet(() -> ProductEmbedding.create(
 				product.getProductId(),
-				openAiProperties.embeddingModel(),
-				openAiProperties.embeddingDimensions(),
+				productEmbeddingClient.model(),
+				productEmbeddingClient.dimensions(),
 				embedding
 			));
 
 		productEmbedding.update(
-			openAiProperties.embeddingModel(),
-			openAiProperties.embeddingDimensions(),
+			productEmbeddingClient.model(),
+			productEmbeddingClient.dimensions(),
 			embedding
 		);
 
