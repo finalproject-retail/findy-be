@@ -15,7 +15,7 @@ import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
 import com.princesses7.findy.recommendation.external.openai.OpenAiEmbeddingClient;
-import com.princesses7.findy.recommendation.external.openai.OpenAiRelatedProductRerankClient;
+import com.princesses7.findy.recommendation.external.rerank.RelatedProductRerankClient;
 import com.princesses7.findy.recommendation.global.config.OpenAiProperties;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.global.exception.ErrorCode;
@@ -49,7 +49,7 @@ public class RelatedRecommendationService {
 	private final ProductEmbeddingRepository productEmbeddingRepository;
 	private final CategorySnapshotRepository categoryRepository;
 	private final OpenAiEmbeddingClient openAiEmbeddingClient;
-	private final OpenAiRelatedProductRerankClient rerankClient;
+	private final RelatedProductRerankClient rerankClient;
 	private final OpenAiProperties openAiProperties;
 	private final RecommendationRequestValidator requestValidator;
 
