@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEventService;
 import com.princesses7.findy.shopping.cart.service.CartCleanupService;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.service.CouponService;
@@ -42,6 +43,7 @@ public class OrderService {
 	private final ShoppingListService shoppingListService;
 	private final ShoppingListRepository shoppingListRepository;
 	private final InventoryStockService inventoryStockService;
+	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	@Transactional
 	public OrderCreateResponse createOrder(Long userId) {
@@ -90,6 +92,8 @@ public class OrderService {
 		shoppingListService.completeShopping(userId);
 
 		savedOrder.complete();
+
+		shoppingAnalyticsEventService.publishOrderCompleted(userId, savedOrder);
 
 		return toResponse(savedOrder);
 	}
