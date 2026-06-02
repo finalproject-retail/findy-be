@@ -3,9 +3,11 @@ package com.princesses7.findy.recommendation.external.openai;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.princesses7.findy.recommendation.external.rerank.RelatedProductRerankClient;
 import com.princesses7.findy.recommendation.external.openai.dto.request.OpenAiChatMessage;
 import com.princesses7.findy.recommendation.external.openai.dto.request.OpenAiChatRequest;
 import com.princesses7.findy.recommendation.external.openai.dto.response.OpenAiChatResponse;
@@ -19,12 +21,14 @@ import tools.jackson.databind.ObjectMapper;
 
 @Component
 @RequiredArgsConstructor
-public class OpenAiRelatedProductRerankClient {
+@ConditionalOnProperty(prefix = "ai", name = "provider", havingValue = "openai", matchIfMissing = true)
+public class OpenAiRelatedProductRerankClient implements RelatedProductRerankClient {
 
 	private final RestClient openAiRestClient;
 	private final OpenAiProperties properties;
 	private final ObjectMapper objectMapper;
 
+	@Override
 	public List<RelatedProductRerankItem> rerank(
 		ProductSnapshot sourceProduct,
 		String sourceCategoryName,
