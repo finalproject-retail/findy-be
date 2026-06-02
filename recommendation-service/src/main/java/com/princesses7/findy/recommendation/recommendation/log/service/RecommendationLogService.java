@@ -14,6 +14,7 @@ import com.princesses7.findy.recommendation.recommendation.log.dto.request.Recom
 import com.princesses7.findy.recommendation.recommendation.log.dto.response.RecommendationLogResponse;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.PromotionRecommendationImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.RecommendationImpressionLogCommand;
+import com.princesses7.findy.recommendation.recommendation.log.dto.service.RecommendationSingleImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.entity.RecommendationLog;
 import com.princesses7.findy.recommendation.recommendation.log.repository.RecommendationLogRepository;
 
@@ -49,6 +50,25 @@ public class RecommendationLogService {
 			.toList();
 
 		recommendationLogRepository.saveAll(logs);
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public RecommendationLogResponse saveSingleImpressionLog(RecommendationSingleImpressionLogCommand command) {
+		RecommendationLog log = RecommendationLog.impression(
+			command.userId(),
+			command.productId(),
+			command.sourceProductId(),
+			command.storeId(),
+			command.recommendationType(),
+			command.displayLocation(),
+			command.recommendationRank(),
+			command.score(),
+			command.reason()
+		);
+
+		RecommendationLog savedLog = recommendationLogRepository.save(log);
+
+		return RecommendationLogResponse.from(savedLog);
 	}
 
 	@Transactional
