@@ -64,7 +64,7 @@ class HaccpProductImportServiceTest {
 			.thenReturn(List.of(haccpItem));
 		when(haccpProductMapper.toEnrichmentCommand(haccpItem))
 			.thenReturn(enrichmentCommand);
-		when(productRepository.findByBarcodeAndIsDeletedFalse("8801111187978"))
+		when(productRepository.findByBarcodeAndDeletedAtIsNull("8801111187978"))
 			.thenReturn(Optional.empty());
 		when(productRepository.findAllByNormalizedProductName("마이쮸사과"))
 			.thenReturn(List.of());
@@ -74,7 +74,7 @@ class HaccpProductImportServiceTest {
 			.thenReturn(classification);
 		when(haccpProductMapper.toCreateCommand(haccpItem, classification))
 			.thenReturn(createCommand);
-		when(productRepository.existsByBarcodeAndIsDeletedFalse("8801111187978"))
+		when(productRepository.existsByBarcodeAndDeletedAtIsNull("8801111187978"))
 			.thenReturn(false);
 		when(productRepository.save(any(Product.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
@@ -106,9 +106,6 @@ class HaccpProductImportServiceTest {
 			null,
 			null,
 			1200,
-			1200,
-			BigDecimal.ZERO,
-			null,
 			null,
 			null,
 			null,
@@ -125,11 +122,11 @@ class HaccpProductImportServiceTest {
 			.thenReturn(List.of(haccpItem));
 		when(haccpProductMapper.toEnrichmentCommand(haccpItem))
 			.thenReturn(enrichmentCommand);
-		when(productRepository.findByBarcodeAndIsDeletedFalse("8801111187978"))
+		when(productRepository.findByBarcodeAndDeletedAtIsNull("8801111187978"))
 			.thenReturn(Optional.empty());
 		when(productRepository.findAllByNormalizedProductName("마이쮸사과"))
 			.thenReturn(List.of(existingProduct));
-		when(productRepository.existsByBarcodeAndIsDeletedFalse("8801111187978"))
+		when(productRepository.existsByBarcodeAndDeletedAtIsNull("8801111187978"))
 			.thenReturn(false);
 
 		HaccpProductImportResponse response =
@@ -187,11 +184,8 @@ class HaccpProductImportServiceTest {
 			"HACCP",
 			"19970443119140",
 			0,
-			0,
-			BigDecimal.ZERO,
 			"HACCP 제품이미지 및 포장지표기정보 연동 상품",
 			"http://www.haccp.or.kr/fresh/prdimg/1997/19970443119140/19970443119140-1.jpg",
-			null,
 			"1개",
 			"132g",
 			null,
@@ -212,11 +206,8 @@ class HaccpProductImportServiceTest {
 			"HACCP",
 			"19970443119140",
 			0,
-			0,
-			BigDecimal.ZERO,
 			"HACCP 제품이미지 및 포장지표기정보 연동 상품",
 			"http://www.haccp.or.kr/fresh/prdimg/1997/19970443119140/19970443119140-1.jpg",
-			null,
 			"1개",
 			"132g",
 			null,
@@ -250,7 +241,7 @@ class HaccpProductImportServiceTest {
 			.thenReturn(List.of(haccpItem));
 		when(haccpProductMapper.toEnrichmentCommand(haccpItem))
 			.thenReturn(enrichmentCommand);
-		when(productRepository.findByBarcodeAndIsDeletedFalse("8801128508346"))
+		when(productRepository.findByBarcodeAndDeletedAtIsNull("8801128508346"))
 			.thenReturn(Optional.empty());
 		when(productRepository.findAllByNormalizedProductName("틈새라면왕컵"))
 			.thenReturn(List.of());
@@ -260,7 +251,7 @@ class HaccpProductImportServiceTest {
 			.thenReturn(classification);
 		when(haccpProductMapper.toCreateCommand(haccpItem, classification))
 			.thenReturn(createCommand);
-		when(productRepository.existsByBarcodeAndIsDeletedFalse("8801128508346"))
+		when(productRepository.existsByBarcodeAndDeletedAtIsNull("8801128508346"))
 			.thenReturn(false);
 		when(productRepository.save(any(Product.class)))
 			.thenAnswer(invocation -> invocation.getArgument(0));
@@ -313,11 +304,8 @@ class HaccpProductImportServiceTest {
 			"HACCP",
 			"2012051205563",
 			0,
-			0,
-			BigDecimal.ZERO,
 			"HACCP 제품이미지 및 포장지표기정보 연동 상품",
 			"http://www.haccp.or.kr/fresh/prdimg/2012/2012051205563/2012051205563-1.jpg",
-			null,
 			"1개",
 			"110g",
 			"난류,우유,대두,밀,돼지고기,닭고기,쇠고기,오징어,조개류 함유",
@@ -338,11 +326,8 @@ class HaccpProductImportServiceTest {
 			"HACCP",
 			"2012051205563",
 			0,
-			0,
-			BigDecimal.ZERO,
 			"HACCP 제품이미지 및 포장지표기정보 연동 상품",
 			"http://www.haccp.or.kr/fresh/prdimg/2012/2012051205563/2012051205563-1.jpg",
-			null,
 			"1개",
 			"110g",
 			"난류,우유,대두,밀,돼지고기,닭고기,쇠고기,오징어,조개류 함유",

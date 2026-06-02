@@ -43,7 +43,7 @@ class ProductServiceTest {
 	@Test
 	@DisplayName("상품 검색 시 keyword 조건을 적용하고 검색어를 기록한다")
 	void getProductsWithKeyword() {
-		when(productRepository.findByProductNameContainingIgnoreCaseAndIsDeletedFalse(
+		when(productRepository.findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 			eq("우유"),
 			any(Pageable.class)
 		)).thenReturn(Page.empty());
@@ -60,7 +60,7 @@ class ProductServiceTest {
 		assertThat(response).isNotNull();
 
 		verify(searchKeywordRankingService).record("우유");
-		verify(productRepository).findByProductNameContainingIgnoreCaseAndIsDeletedFalse(
+		verify(productRepository).findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 			eq("우유"),
 			any(Pageable.class)
 		);
@@ -69,7 +69,7 @@ class ProductServiceTest {
 	@Test
 	@DisplayName("카테고리와 keyword가 함께 있으면 카테고리 내 상품명 검색을 수행한다")
 	void getProductsWithCategoryAndKeyword() {
-		when(productRepository.findByCategoryIdAndProductNameContainingIgnoreCaseAndIsDeletedFalse(
+		when(productRepository.findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 			eq(10L),
 			eq("우유"),
 			any(Pageable.class)
@@ -87,7 +87,7 @@ class ProductServiceTest {
 		assertThat(response).isNotNull();
 
 		verify(searchKeywordRankingService).record("우유");
-		verify(productRepository).findByCategoryIdAndProductNameContainingIgnoreCaseAndIsDeletedFalse(
+		verify(productRepository).findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 			eq(10L),
 			eq("우유"),
 			any(Pageable.class)
@@ -97,7 +97,7 @@ class ProductServiceTest {
 	@Test
 	@DisplayName("keyword가 없으면 검색어를 기록하지 않고 전체 상품을 조회한다")
 	void getProductsWithoutKeyword() {
-		when(productRepository.findByIsDeletedFalse(any(Pageable.class)))
+		when(productRepository.findByDeletedAtIsNull(any(Pageable.class)))
 			.thenReturn(Page.empty());
 
 		ProductPageResponse response = productService.getProducts(
@@ -112,13 +112,13 @@ class ProductServiceTest {
 		assertThat(response).isNotNull();
 
 		verify(searchKeywordRankingService, never()).record(anyString());
-		verify(productRepository).findByIsDeletedFalse(any(Pageable.class));
+		verify(productRepository).findByDeletedAtIsNull(any(Pageable.class));
 	}
 
 	@Test
 	@DisplayName("categoryId만 있으면 카테고리 기준으로 상품을 조회한다")
 	void getProductsWithCategoryOnly() {
-		when(productRepository.findByCategoryIdAndIsDeletedFalse(
+		when(productRepository.findByCategoryIdAndDeletedAtIsNull(
 			eq(10L),
 			any(Pageable.class)
 		)).thenReturn(Page.empty());
@@ -135,7 +135,7 @@ class ProductServiceTest {
 		assertThat(response).isNotNull();
 
 		verify(searchKeywordRankingService, never()).record(anyString());
-		verify(productRepository).findByCategoryIdAndIsDeletedFalse(
+		verify(productRepository).findByCategoryIdAndDeletedAtIsNull(
 			eq(10L),
 			any(Pageable.class)
 		);

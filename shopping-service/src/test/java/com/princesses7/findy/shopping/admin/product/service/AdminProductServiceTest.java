@@ -103,7 +103,7 @@ class AdminProductServiceTest {
 	void getProductDetail() {
 		Product product = createProduct();
 
-		when(productRepository.findByProductIdAndIsDeletedFalse(1L))
+		when(productRepository.findByProductIdAndDeletedAtIsNull(1L))
 			.thenReturn(Optional.of(product));
 		when(inventoryRepository.findByProductProductIdAndStoreId(1L, 1L))
 			.thenReturn(Optional.empty());
@@ -118,7 +118,7 @@ class AdminProductServiceTest {
 	@Test
 	@DisplayName("관리자 상품 상세 조회 시 상품이 없으면 예외가 발생한다")
 	void throwExceptionWhenProductNotFound() {
-		when(productRepository.findByProductIdAndIsDeletedFalse(999L))
+		when(productRepository.findByProductIdAndDeletedAtIsNull(999L))
 			.thenReturn(Optional.empty());
 
 		assertThatThrownBy(() -> adminProductService.getProductDetail(999L))
@@ -167,10 +167,7 @@ class AdminProductServiceTest {
 			"NAVER",
 			"naver-product-1",
 			3000,
-			2500,
-			new BigDecimal("16.67"),
 			"관리자 상품 상세 조회 테스트 상품",
-			null,
 			null,
 			null,
 			null,
