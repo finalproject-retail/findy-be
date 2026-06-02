@@ -13,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class NotificationDuplicateGuard {
 
+	// TODO: 기본 5분으로 설정, 추후 논의 필요
 	private static final long POPUP_COOLDOWN_MINUTES = 5;
 	private static final long PRODUCT_COOLDOWN_MINUTES = 5;
 
