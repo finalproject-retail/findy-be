@@ -2,10 +2,12 @@ package com.princesses7.findy.user.user.service;
 
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.user.global.exception.BaseException;
 import com.princesses7.findy.user.global.exception.ErrorCode;
 import com.princesses7.findy.user.user.dto.request.SignupRequestDTO;
+import com.princesses7.findy.user.user.dto.response.MyPageResponse;
 import com.princesses7.findy.user.user.entity.Grade;
 import com.princesses7.findy.user.user.entity.Role;
 import com.princesses7.findy.user.user.entity.UserEntity;
@@ -13,7 +15,6 @@ import com.princesses7.findy.user.user.entity.UserGradeEntity;
 import com.princesses7.findy.user.user.repository.UserGradeRepository;
 import com.princesses7.findy.user.user.repository.UserRepository;
 
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -22,6 +23,18 @@ public class UserService {
 	private final UserRepository userRepository;
 	private final UserGradeRepository userGradeRepository;
 	private final BCryptPasswordEncoder passwordEncoder;
+
+	@Transactional(readOnly = true)
+	public MyPageResponse getMyPage(Long userId) {
+		UserEntity user = userRepository.findById(userId)
+			.orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND));
+
+		if (user.getDeletedAt() != null) {
+			throw new BaseException(ErrorCode.DELETED_USER);
+		}
+
+		return MyPageResponse.from(user);
+	}
 
 	@Transactional
 	public Long signup(SignupRequestDTO request) {
