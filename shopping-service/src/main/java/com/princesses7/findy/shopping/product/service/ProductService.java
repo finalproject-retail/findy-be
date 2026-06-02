@@ -16,7 +16,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEventService;
 import com.princesses7.findy.shopping.inventory.entity.Inventory;
 import com.princesses7.findy.shopping.inventory.repository.InventoryRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
@@ -25,7 +24,6 @@ import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
-import com.princesses7.findy.shopping.recentview.service.RecentViewProductService;
 import com.princesses7.findy.shopping.search.service.SearchKeywordRankingService;
 
 import lombok.RequiredArgsConstructor;
@@ -53,8 +51,6 @@ public class ProductService {
 	private final InventoryRepository inventoryRepository;
 	private final SearchKeywordRankingService searchKeywordRankingService;
 	private final ProductRankingService productRankingService;
-	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
-	private final RecentViewProductService recentViewProductService;
 
 	public ProductPageResponse getProducts(
 		Long categoryId,
@@ -124,11 +120,6 @@ public class ProductService {
 	}
 
 	public ProductDetailResponse getProductDetail(Long productId) {
-		return getProductDetail(null, productId);
-	}
-
-	@Transactional
-	public ProductDetailResponse getProductDetail(Long userId, Long productId) {
 		Product product = productRepository.findByProductIdAndIsDeletedFalse(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
@@ -136,17 +127,8 @@ public class ProductService {
 			.orElse(null);
 
 		productRankingService.recordView(productId);
-		recordRecentViewIfUserExists(userId, productId);
 
 		return ProductDetailResponse.from(product, inventory);
-	}
-
-	private void recordRecentViewIfUserExists(Long userId, Long productId) {
-		if (userId == null) {
-			return;
-		}
-
-		recentViewProductService.recordRecentView(userId, productId);
 	}
 
 	private Page<Product> findProducts(
