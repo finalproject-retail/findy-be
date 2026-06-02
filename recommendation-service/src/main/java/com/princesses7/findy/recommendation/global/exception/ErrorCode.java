@@ -20,8 +20,11 @@ public enum ErrorCode {
 	RECOMMENDATION_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "RECOMMENDATION_002", "상품 카테고리를 찾을 수 없습니다."),
 	RECOMMENDATION_EMBEDDING_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_003", "임베딩 생성에 실패했습니다."),
 	RECOMMENDATION_EMPTY_EMBEDDING(HttpStatus.SERVICE_UNAVAILABLE, "RECOMMENDATION_004", "생성된 임베딩 값이 비어 있습니다."),
-	RECOMMENDATION_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "RECOMMENDATION_005", "추천 요청 값이 올바르지 않습니다.");
+	RECOMMENDATION_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "RECOMMENDATION_005", "추천 요청 값이 올바르지 않습니다."),
 
+	// Notification
+	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "알림을 찾을 수 없습니다.");
+	
 	private final HttpStatus status;
 	private final String code;
 	private final String message;
