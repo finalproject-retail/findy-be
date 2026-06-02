@@ -1,0 +1,17 @@
+﻿{
+  "keywords": [
+    "라면",
+    "우유",
+    "과자",
+    "젤리",
+    "생수",
+    "커피",
+    "즉석밥",
+    "치즈",
+    "요거트",
+    "탄산음료"
+  ],
+  "limitPerKeyword": 10,
+  "onlyBarcodeExists": true,
+  "createIfMissing": true
+}

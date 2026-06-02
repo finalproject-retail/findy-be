@@ -22,6 +22,8 @@ import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierCl
 import com.princesses7.findy.shopping.global.exception.ErrorCode;
 import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
+import com.princesses7.findy.shopping.product.dto.request.HaccpProductBulkImportRequest;
+import com.princesses7.findy.shopping.product.dto.response.HaccpProductBulkImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
@@ -233,6 +235,132 @@ class HaccpProductImportServiceTest {
 			new BigDecimal("0.90"),
 			false,
 			"캔디류 상품으로 판단했습니다."
+		);
+	}
+
+	@Test
+	@DisplayName("HACCP bulk import는 여러 키워드의 import 결과를 합산한다")
+	void bulkImportProducts() {
+		HaccpProductItemResponse haccpItem = createRamenHaccpItem();
+		ProductImportCommand enrichmentCommand = createRamenEnrichmentCommand();
+		ProductImportCommand createCommand = createRamenCreateCommand();
+		ProductCategoryClassificationResponse classification = createRamenClassification();
+
+		when(haccpProductClient.searchByProductName("라면"))
+			.thenReturn(List.of(haccpItem));
+		when(haccpProductMapper.toEnrichmentCommand(haccpItem))
+			.thenReturn(enrichmentCommand);
+		when(productRepository.findByBarcodeAndIsDeletedFalse("8801128508346"))
+			.thenReturn(Optional.empty());
+		when(productRepository.findAllByNormalizedProductName("틈새라면왕컵"))
+			.thenReturn(List.of());
+		when(haccpProductMapper.extractBrandName(haccpItem))
+			.thenReturn("팔도");
+		when(openAiCategoryClassifierClient.classify("틈새라면왕컵", "팔도", "유탕면류(용기면)"))
+			.thenReturn(classification);
+		when(haccpProductMapper.toCreateCommand(haccpItem, classification))
+			.thenReturn(createCommand);
+		when(productRepository.existsByBarcodeAndIsDeletedFalse("8801128508346"))
+			.thenReturn(false);
+		when(productRepository.save(any(Product.class)))
+			.thenAnswer(invocation -> invocation.getArgument(0));
+
+		HaccpProductBulkImportRequest request = new HaccpProductBulkImportRequest(
+			List.of("라면"),
+			10,
+			true,
+			true
+		);
+
+		HaccpProductBulkImportResponse response = haccpProductImportService.bulkImport(request);
+
+		assertThat(response.keywordCount()).isEqualTo(1);
+		assertThat(response.createdCount()).isEqualTo(1);
+		assertThat(response.updatedCount()).isZero();
+		assertThat(response.skippedCount()).isZero();
+		assertThat(response.items()).hasSize(1);
+		assertThat(response.items().get(0).keyword()).isEqualTo("라면");
+		assertThat(response.items().get(0).productName()).isEqualTo("틈새라면왕컵");
+		assertThat(response.items().get(0).barcode()).isEqualTo("8801128508346");
+		assertThat(response.items().get(0).importStatus()).isEqualTo("CREATED");
+	}
+
+	private HaccpProductItemResponse createRamenHaccpItem() {
+		return new HaccpProductItemResponse(
+			"2012051205563",
+			null,
+			"틈새라면왕컵",
+			"면/소맥분, 팜유, 감자전분",
+			"난류,우유,대두,밀,돼지고기,닭고기,쇠고기,오징어,조개류 함유",
+			"1회 제공량 1개(110g) 열량 490kcal",
+			"8801128508346",
+			"유탕면류(용기면)",
+			"알수없음",
+			"㈜팔도/본사:서울특별시 서초구 강남대로 577",
+			"㈜GS리테일:경기도 용인시 처인구 포곡읍 포곡로 100",
+			"110g",
+			"http://www.haccp.or.kr/fresh/prdimg/2012/2012051205563/2012051205563-1.jpg",
+			"http://www.haccp.or.kr/fresh/prdimg/2012/2012051205563/2012051205563-2.jpg"
+		);
+	}
+
+	private ProductImportCommand createRamenEnrichmentCommand() {
+		return new ProductImportCommand(
+			null,
+			"팔도",
+			"틈새라면왕컵",
+			"8801128508346",
+			"HACCP",
+			"2012051205563",
+			0,
+			0,
+			BigDecimal.ZERO,
+			"HACCP 제품이미지 및 포장지표기정보 연동 상품",
+			"http://www.haccp.or.kr/fresh/prdimg/2012/2012051205563/2012051205563-1.jpg",
+			null,
+			"1개",
+			"110g",
+			"난류,우유,대두,밀,돼지고기,닭고기,쇠고기,오징어,조개류 함유",
+			"유탕면류(용기면)",
+			SaleStatus.ON_SALE,
+			null,
+			"NONE",
+			null
+		);
+	}
+
+	private ProductImportCommand createRamenCreateCommand() {
+		return new ProductImportCommand(
+			17L,
+			"팔도",
+			"틈새라면왕컵",
+			"8801128508346",
+			"HACCP",
+			"2012051205563",
+			0,
+			0,
+			BigDecimal.ZERO,
+			"HACCP 제품이미지 및 포장지표기정보 연동 상품",
+			"http://www.haccp.or.kr/fresh/prdimg/2012/2012051205563/2012051205563-1.jpg",
+			null,
+			"1개",
+			"110g",
+			"난류,우유,대두,밀,돼지고기,닭고기,쇠고기,오징어,조개류 함유",
+			"유탕면류(용기면)",
+			SaleStatus.ON_SALE,
+			new BigDecimal("0.90"),
+			"OPENAI",
+			false
+		);
+	}
+
+	private ProductCategoryClassificationResponse createRamenClassification() {
+		return new ProductCategoryClassificationResponse(
+			17L,
+			"가공/냉동 식품 > 면/통조림 > 라면",
+			new BigDecimal("0.90"),
+			false,
+			"유탕면류 용기면 상품으로 판단했습니다."
 		);
 	}
 }

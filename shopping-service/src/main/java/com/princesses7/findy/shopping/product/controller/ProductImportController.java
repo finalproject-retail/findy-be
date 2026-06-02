@@ -1,11 +1,14 @@
 package com.princesses7.findy.shopping.product.controller;
 
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.global.response.ApiResponse;
+import com.princesses7.findy.shopping.product.dto.request.HaccpProductBulkImportRequest;
+import com.princesses7.findy.shopping.product.dto.response.HaccpProductBulkImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.HaccpProductImportResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductImportResultResponse;
 import com.princesses7.findy.shopping.product.service.HaccpProductImportService;
@@ -43,5 +46,13 @@ public class ProductImportController {
 	) {
 		HaccpProductImportResponse response = haccpProductImportService.importByProductName(productName);
 		return ApiResponse.ok("HACCP 상품 import에 성공했습니다.", response);
+	}
+
+	@PostMapping("/haccp/bulk")
+	public ApiResponse<HaccpProductBulkImportResponse> bulkImportProductsFromHaccp(
+		@RequestBody HaccpProductBulkImportRequest request
+	) {
+		HaccpProductBulkImportResponse response = haccpProductImportService.bulkImport(request);
+		return ApiResponse.ok("HACCP 상품 bulk import에 성공했습니다.", response);
 	}
 }
