@@ -1,6 +1,5 @@
 package com.princesses7.findy.shopping.analytics.publisher;
 
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -17,42 +16,61 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ShoppingAnalyticsEventPublisher {
 
+	private final KafkaTemplate<String, ShoppingAnalyticsEvent> kafkaTemplate;
 	private final ShoppingKafkaProperties shoppingKafkaProperties;
-	private final ObjectProvider<KafkaTemplate<String, ShoppingAnalyticsEvent>> shoppingAnalyticsKafkaTemplateProvider;
 
 	public void publish(ShoppingAnalyticsEvent event) {
+		if (event == null) {
+			return;
+		}
+
 		if (!shoppingKafkaProperties.enabled()) {
+			log.info(
+				"Skip shopping analytics event because Kafka is disabled. eventType={}, userId={}",
+				event.eventType(),
+				event.userId()
+			);
 			return;
 		}
 
-		if (event.userId() == null) {
-			log.debug("Skip analytics event without userId. eventType={}", event.eventType());
+		if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+			log.info(
+				"Publish shopping analytics event immediately. eventType={}, userId={}, topic={}",
+				event.eventType(),
+				event.userId(),
+				shoppingKafkaProperties.topic()
+			);
+			send(event);
 			return;
 		}
 
-		Runnable sendTask = () -> send(event);
+		log.info(
+			"Register shopping analytics event after commit. eventType={}, userId={}, topic={}",
+			event.eventType(),
+			event.userId(),
+			shoppingKafkaProperties.topic()
+		);
 
-		if (TransactionSynchronizationManager.isSynchronizationActive()) {
-			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-				@Override
-				public void afterCommit() {
-					sendTask.run();
-				}
-			});
-			return;
-		}
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
 
-		sendTask.run();
+			@Override
+			public void afterCommit() {
+				log.info(
+					"Publish shopping analytics event after commit. eventType={}, userId={}, topic={}",
+					event.eventType(),
+					event.userId(),
+					shoppingKafkaProperties.topic()
+				);
+				send(event);
+			}
+		});
+	}
+
+	public void publishAfterCommit(ShoppingAnalyticsEvent event) {
+		publish(event);
 	}
 
 	private void send(ShoppingAnalyticsEvent event) {
-		KafkaTemplate<String, ShoppingAnalyticsEvent> kafkaTemplate =
-			shoppingAnalyticsKafkaTemplateProvider.getIfAvailable();
-		if (kafkaTemplate == null) {
-			log.debug("KafkaTemplate not available. eventType={}", event.eventType());
-			return;
-		}
-
 		try {
 			kafkaTemplate.send(
 				shoppingKafkaProperties.topic(),
@@ -61,18 +79,30 @@ public class ShoppingAnalyticsEventPublisher {
 			).whenComplete((result, exception) -> {
 				if (exception != null) {
 					log.warn(
-						"Failed to publish shopping analytics event. eventType={}, userId={}",
+						"Failed to publish shopping analytics event. eventType={}, userId={}, topic={}",
 						event.eventType(),
 						event.userId(),
+						shoppingKafkaProperties.topic(),
 						exception
 					);
+					return;
 				}
+
+				log.info(
+					"Published shopping analytics event. eventType={}, userId={}, topic={}, partition={}, offset={}",
+					event.eventType(),
+					event.userId(),
+					result.getRecordMetadata().topic(),
+					result.getRecordMetadata().partition(),
+					result.getRecordMetadata().offset()
+				);
 			});
 		} catch (RuntimeException exception) {
 			log.warn(
-				"Failed to publish shopping analytics event. eventType={}, userId={}",
+				"Failed to publish shopping analytics event. eventType={}, userId={}, topic={}",
 				event.eventType(),
 				event.userId(),
+				shoppingKafkaProperties.topic(),
 				exception
 			);
 		}
