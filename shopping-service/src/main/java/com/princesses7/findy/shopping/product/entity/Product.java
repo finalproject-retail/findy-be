@@ -1,6 +1,7 @@
 package com.princesses7.findy.shopping.product.entity;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -51,20 +52,11 @@ public class Product extends BaseTimeEntity {
 	@Column(name = "original_price", nullable = false)
 	private Integer originalPrice;
 
-	@Column(name = "sale_price", nullable = false)
-	private Integer salePrice;
-
-	@Column(name = "discount_rate", nullable = false, precision = 5, scale = 2)
-	private BigDecimal discountRate;
-
 	@Column(name = "description", columnDefinition = "TEXT")
 	private String description;
 
 	@Column(name = "image_url", length = 500)
 	private String imageUrl;
-
-	@Column(name = "packaging_type", length = 100)
-	private String packagingType;
 
 	@Column(name = "sales_unit", length = 100)
 	private String salesUnit;
@@ -91,8 +83,11 @@ public class Product extends BaseTimeEntity {
 	@Column(name = "sale_status", nullable = false, length = 30)
 	private SaleStatus saleStatus;
 
-	@Column(name = "is_deleted", nullable = false)
-	private Boolean isDeleted = false;
+	@Column(name = "grid_id")
+	private Long gridId;
+
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
 
 	public static Product create(ProductImportCommand command) {
 		Product product = new Product();
@@ -103,11 +98,8 @@ public class Product extends BaseTimeEntity {
 		product.externalSource = command.externalSource();
 		product.externalProductId = command.externalProductId();
 		product.originalPrice = command.originalPrice();
-		product.salePrice = command.salePrice();
-		product.discountRate = command.discountRate();
 		product.description = command.description();
 		product.imageUrl = command.imageUrl();
-		product.packagingType = command.packagingType();
 		product.salesUnit = command.salesUnit();
 		product.volume = command.volume();
 		product.allergyInfo = command.allergyInfo();
@@ -118,7 +110,7 @@ public class Product extends BaseTimeEntity {
 		product.categoryClassifiedBy = command.categoryClassifiedBy();
 		product.categoryReviewRequired = command.categoryReviewRequired();
 
-		product.isDeleted = false;
+		product.deletedAt = null;
 		return product;
 	}
 
@@ -153,11 +145,6 @@ public class Product extends BaseTimeEntity {
 		if (isBlank(this.imageUrl) && hasText(command.imageUrl())) {
 			this.imageUrl = command.imageUrl();
 			updatedFields.add("imageUrl");
-		}
-
-		if (isBlank(this.packagingType) && hasText(command.packagingType())) {
-			this.packagingType = command.packagingType();
-			updatedFields.add("packagingType");
 		}
 
 		if (isBlank(this.salesUnit) && hasText(command.salesUnit())) {

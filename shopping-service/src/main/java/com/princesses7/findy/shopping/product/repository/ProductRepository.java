@@ -15,33 +15,33 @@ import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-	List<Product> findAllByProductIdInAndIsDeletedFalse(Collection<Long> productIds);
+	List<Product> findAllByProductIdInAndDeletedAtIsNull(Collection<Long> productIds);
 
-	Page<Product> findByIsDeletedFalse(Pageable pageable);
+	Page<Product> findByDeletedAtIsNull(Pageable pageable);
 
-	Page<Product> findByCategoryIdAndIsDeletedFalse(Long categoryId, Pageable pageable);
+	Page<Product> findByCategoryIdAndDeletedAtIsNull(Long categoryId, Pageable pageable);
 
-	Page<Product> findByProductNameContainingIgnoreCaseAndIsDeletedFalse(
+	Page<Product> findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 		String keyword,
 		Pageable pageable
 	);
 
-	Page<Product> findByCategoryIdAndProductNameContainingIgnoreCaseAndIsDeletedFalse(
+	Page<Product> findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 		Long categoryId,
 		String keyword,
 		Pageable pageable
 	);
 
-	Optional<Product> findByProductIdAndIsDeletedFalse(Long productId);
+	Optional<Product> findByProductIdAndDeletedAtIsNull(Long productId);
 
-	boolean existsByBarcodeAndIsDeletedFalse(String barcode);
+	boolean existsByBarcodeAndDeletedAtIsNull(String barcode);
 
-	Optional<Product> findByBarcodeAndIsDeletedFalse(String barcode);
+	Optional<Product> findByBarcodeAndDeletedAtIsNull(String barcode);
 
 	@Query("""
 		SELECT p
 		FROM Product p
-		WHERE p.isDeleted = false
+		WHERE p.deletedAt IS NULL
 		  AND REPLACE(LOWER(p.productName), ' ', '') = :normalizedProductName
 		ORDER BY p.productId ASC
 		""")
@@ -49,7 +49,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		@Param("normalizedProductName") String normalizedProductName
 	);
 
-	boolean existsByExternalSourceAndExternalProductIdAndIsDeletedFalse(
+	boolean existsByExternalSourceAndExternalProductIdAndDeletedAtIsNull(
 		String externalSource,
 		String externalProductId
 	);
@@ -57,7 +57,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	@Query("""
 		SELECT p
 		FROM Product p
-		WHERE p.isDeleted = false
+		WHERE p.deletedAt IS NULL
 		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
 		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
 		""")
@@ -70,7 +70,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	@Query("""
 		SELECT p
 		FROM Product p
-		WHERE p.isDeleted = false
+		WHERE p.deletedAt IS NULL
 		  AND (
 		       LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
 		       OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
@@ -89,9 +89,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	@Query("""
 		SELECT p
 		FROM Product p
-		WHERE p.isDeleted = false
+		WHERE p.deletedAt IS NULL
 		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
-		ORDER BY p.discountRate DESC, p.salePrice ASC, p.productId ASC
+		ORDER BY p.createdAt DESC, p.productId ASC
 		""")
 	List<Product> findMartRecommendedProducts(Pageable pageable);
 }
