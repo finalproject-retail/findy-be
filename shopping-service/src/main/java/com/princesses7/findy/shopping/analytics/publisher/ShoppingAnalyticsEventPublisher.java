@@ -58,7 +58,16 @@ public class ShoppingAnalyticsEventPublisher {
 				shoppingKafkaProperties.topic(),
 				String.valueOf(event.userId()),
 				event
-			);
+			).whenComplete((result, exception) -> {
+				if (exception != null) {
+					log.warn(
+						"Failed to publish shopping analytics event. eventType={}, userId={}",
+						event.eventType(),
+						event.userId(),
+						exception
+					);
+				}
+			});
 		} catch (RuntimeException exception) {
 			log.warn(
 				"Failed to publish shopping analytics event. eventType={}, userId={}",
