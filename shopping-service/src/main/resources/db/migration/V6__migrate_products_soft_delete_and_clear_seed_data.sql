@@ -4,8 +4,12 @@
 -- 1) FK cleanup: promotion_products references products
 TRUNCATE TABLE promotion_products RESTART IDENTITY;
 
--- 2) drop product-related tables
+-- 2) drop product-related tables (drop FK before products; TRUNCATE alone keeps the constraint)
 DROP TABLE IF EXISTS inventories;
+
+ALTER TABLE promotion_products
+    DROP CONSTRAINT IF EXISTS promotion_products_product_id_fkey;
+
 DROP TABLE IF EXISTS products;
 
 -- 3) recreate products with latest schema
@@ -50,6 +54,10 @@ CREATE TABLE inventories (
 CREATE INDEX idx_inventories_product_id ON inventories (product_id);
 CREATE INDEX idx_inventories_store_id ON inventories (store_id);
 CREATE INDEX idx_products_grid_id ON products (grid_id);
+
+ALTER TABLE promotion_products
+    ADD CONSTRAINT promotion_products_product_id_fkey
+        FOREIGN KEY (product_id) REFERENCES products (product_id);
 
 -- 5) reseed products only (inventories stays empty)
 INSERT INTO products (
