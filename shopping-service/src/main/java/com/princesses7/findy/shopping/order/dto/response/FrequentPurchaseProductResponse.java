@@ -1,9 +1,9 @@
 package com.princesses7.findy.shopping.order.dto.response;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import com.princesses7.findy.shopping.order.repository.projection.FrequentPurchaseProductRow;
+import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public record FrequentPurchaseProductResponse(
 	Long productId,
@@ -12,8 +12,8 @@ public record FrequentPurchaseProductResponse(
 	String productName,
 	String imageUrl,
 	Integer originalPrice,
-	Integer salePrice,
-	BigDecimal discountRate,
+	SaleStatus saleStatus,
+	Long gridId,
 	Long purchaseCount,
 	Long purchaseQuantity,
 	LocalDateTime lastPurchasedAt
@@ -27,8 +27,8 @@ public record FrequentPurchaseProductResponse(
 			row.productName(),
 			row.imageUrl(),
 			row.originalPrice(),
-			row.salePrice(),
-			row.discountRate(),
+			row.saleStatus(),
+			row.gridId(),
 			row.purchaseCount(),
 			row.purchaseQuantity(),
 			row.lastPurchasedAt()

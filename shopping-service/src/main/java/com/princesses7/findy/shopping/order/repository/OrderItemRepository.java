@@ -21,8 +21,8 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 			p.productName,
 			p.imageUrl,
 			p.originalPrice,
-			p.salePrice,
-			p.discountRate,
+			p.saleStatus,
+			p.gridId,
 			COUNT(DISTINCT o.orderId),
 			SUM(oi.quantity),
 			MAX(o.createdAt)
@@ -34,9 +34,9 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 		  AND o.orderStatus = com.princesses7.findy.shopping.order.entity.OrderStatus.COMPLETED
 		  AND o.createdAt >= :fromDateTime
 		  AND o.createdAt < :toDateTime
-		  AND p.isDeleted = false
+		  AND p.deletedAt IS NULL
 		GROUP BY p.productId, p.categoryId, p.brandName, p.productName, p.imageUrl,
-		         p.originalPrice, p.salePrice, p.discountRate
+		         p.originalPrice, p.saleStatus, p.gridId
 		ORDER BY COUNT(DISTINCT o.orderId) DESC,
 		         SUM(oi.quantity) DESC,
 		         MAX(o.createdAt) DESC,

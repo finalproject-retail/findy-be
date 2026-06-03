@@ -1,7 +1,8 @@
 package com.princesses7.findy.shopping.order.repository.projection;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
+
+import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public record FrequentPurchaseProductRow(
 	Long productId,
@@ -10,8 +11,8 @@ public record FrequentPurchaseProductRow(
 	String productName,
 	String imageUrl,
 	Integer originalPrice,
-	Integer salePrice,
-	BigDecimal discountRate,
+	SaleStatus saleStatus,
+	Long gridId,
 	Long purchaseCount,
 	Long purchaseQuantity,
 	LocalDateTime lastPurchasedAt
