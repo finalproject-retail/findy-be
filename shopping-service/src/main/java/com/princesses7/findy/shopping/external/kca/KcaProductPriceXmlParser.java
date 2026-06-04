@@ -60,7 +60,7 @@ public class KcaProductPriceXmlParser {
 	}
 
 	private List<KcaProductPriceItemResponse> parseItems(Document document) {
-		NodeList itemNodes = document.getElementsByTagName("item");
+		NodeList itemNodes = document.getElementsByTagName("iros.openapi.service.vo.goodPriceVO");
 		List<KcaProductPriceItemResponse> items = new ArrayList<>();
 
 		for (int index = 0; index < itemNodes.getLength(); index++) {
@@ -68,19 +68,10 @@ public class KcaProductPriceXmlParser {
 
 			items.add(new KcaProductPriceItemResponse(
 				getText(itemNode, "goodInspectDay"),
-				getText(itemNode, "goodId"),
-				getText(itemNode, "goodName"),
 				getText(itemNode, "entpId"),
-				getText(itemNode, "entpName"),
-				getText(itemNode, "productEntpCode"),
-				getText(itemNode, "productEntpName"),
+				getText(itemNode, "goodId"),
 				getText(itemNode, "goodPrice"),
-				getText(itemNode, "plusoneYn"),
-				getText(itemNode, "saleYn"),
-				getText(itemNode, "goodDcYn"),
-				getText(itemNode, "goodDcStartDay"),
-				getText(itemNode, "goodDcEndDay"),
-				getText(itemNode, "inputDay")
+				getText(itemNode, "inputDttm")
 			));
 		}
 
