@@ -205,4 +205,14 @@ public class ShoppingList extends BaseTimeEntity {
 		}
 	}
 
+	public void moveProductItemsToCartForNextShopping() {
+		shoppingListItems.stream()
+			.filter(ShoppingListItem::isProductItem)
+			.forEach(item ->
+				cart.saveItemForNextShopping(
+					item.getProductId(),
+					item.getQuantity()
+				)
+			);
+	}
 }

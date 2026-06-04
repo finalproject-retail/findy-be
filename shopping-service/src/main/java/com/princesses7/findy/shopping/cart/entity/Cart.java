@@ -128,4 +128,25 @@ public class Cart extends BaseTimeEntity {
 			throw new CartException(INVALID_CART_QUANTITY);
 		}
 	}
+
+	public void saveItemForNextShopping(Long productId, int quantity) {
+		if (productId == null) {
+			return;
+		}
+
+		validateQuantity(quantity);
+
+		findItemByProductId(productId)
+			.ifPresentOrElse(
+				cartItem -> {
+					cartItem.changeQuantity(quantity);
+					cartItem.changeChecked(false);
+				},
+				() -> {
+					CartItem cartItem = CartItem.create(this, productId, quantity);
+					cartItem.changeChecked(false);
+					cartItems.add(cartItem);
+				}
+			);
+	}
 }
