@@ -13,7 +13,9 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.global.response.ApiResponse;
+import com.princesses7.findy.shopping.shoppinglist.dto.request.AddCategoryShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListItemRequest;
+import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemCheckedRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ScanShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListResponse;
@@ -117,5 +119,33 @@ public class ShoppingListController {
 		shoppingListService.cancelShopping(userId);
 
 		return ApiResponse.ok("쇼핑이 취소되었습니다.", null);
+	}
+
+	@PostMapping("/items/categories")
+	@ResponseStatus(HttpStatus.CREATED)
+	public ApiResponse<ShoppingListResponse> addCategoryShoppingListItem(
+		@RequestHeader("X-User-Id") Long userId,
+		@Valid @RequestBody AddCategoryShoppingListItemRequest request
+	) {
+		return ApiResponse.ok(
+			"쇼핑리스트에 카테고리 항목이 추가되었습니다.",
+			shoppingListService.addCategoryShoppingListItem(userId, request)
+		);
+	}
+
+	@PatchMapping("/items/{shoppingListItemId}/checked")
+	public ApiResponse<ShoppingListResponse> changeShoppingListItemChecked(
+		@RequestHeader("X-User-Id") Long userId,
+		@PathVariable Long shoppingListItemId,
+		@Valid @RequestBody ChangeShoppingListItemCheckedRequest request
+	) {
+		return ApiResponse.ok(
+			"쇼핑리스트 항목 체크 상태가 변경되었습니다.",
+			shoppingListService.changeShoppingListItemChecked(
+				userId,
+				shoppingListItemId,
+				request
+			)
+		);
 	}
 }

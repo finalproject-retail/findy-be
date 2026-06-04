@@ -104,6 +104,37 @@ public class ShoppingList extends BaseTimeEntity {
 			);
 	}
 
+	public void addCategoryItem(Long categoryId, String categoryName, int quantity) {
+		validateQuantity(quantity);
+		validateCategoryName(categoryName);
+
+		findItemByCategory(categoryId, categoryName)
+			.ifPresentOrElse(
+				item -> item.increaseQuantity(quantity),
+				() -> shoppingListItems.add(
+					ShoppingListItem.createFromCategory(this, categoryId, categoryName, quantity)
+				)
+			);
+	}
+
+	public void changeItemChecked(Long shoppingListItemId, boolean checked) {
+		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
+
+		item.changeChecked(checked);
+	}
+
+	private Optional<ShoppingListItem> findItemByCategory(Long categoryId, String categoryName) {
+		return shoppingListItems.stream()
+			.filter(item -> item.hasSameCategory(categoryId, categoryName))
+			.findFirst();
+	}
+
+	private void validateCategoryName(String categoryName) {
+		if (categoryName == null || categoryName.isBlank()) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_CATEGORY);
+		}
+	}
+
 	public void completeScan(Long productId) {
 		ShoppingListItem item = getItemByProductId(productId);
 		item.completeScan();
@@ -146,7 +177,7 @@ public class ShoppingList extends BaseTimeEntity {
 
 	public long getScannedItemCount() {
 		return shoppingListItems.stream()
-			.mapToInt(ShoppingListItem::getScannedQuantity)
+			.mapToInt(ShoppingListItem::getCompletedQuantity)
 			.sum();
 	}
 
@@ -173,4 +204,5 @@ public class ShoppingList extends BaseTimeEntity {
 			throw new ShoppingListException(INVALID_SHOPPING_LIST_QUANTITY);
 		}
 	}
+
 }
