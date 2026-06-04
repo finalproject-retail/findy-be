@@ -95,13 +95,23 @@ public class ShoppingList extends BaseTimeEntity {
 	public void addScannedItem(Long productId, int quantity) {
 		validateQuantity(quantity);
 
-		findItemByProductId(productId)
+		findItemByProduct(productId)
 			.ifPresentOrElse(
 				item -> item.scanOrIncreaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createFromScan(this, productId, quantity)
+					ShoppingListItem.createFromScan(
+						this,
+						productId,
+						quantity
+					)
 				)
 			);
+	}
+
+	private Optional<ShoppingListItem> findItemByProduct(Long productId) {
+		return shoppingListItems.stream()
+			.filter(item -> item.hasSameProduct(productId))
+			.findFirst();
 	}
 
 	public void addCategoryItem(Long categoryId, String categoryName, int quantity) {

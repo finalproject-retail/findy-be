@@ -178,9 +178,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 	}
 
 	public boolean hasSameProduct(Long productId) {
-		return isProductItem()
-			&& this.productId != null
-			&& this.productId.equals(productId);
+		return this.productId.equals(productId);
 	}
 
 	public boolean hasSameCategory(Long categoryId, String categoryName) {
