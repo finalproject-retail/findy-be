@@ -14,6 +14,6 @@ public record KcaProductPriceItemResponse(
 	String goodDcYn,
 	String goodDcStartDay,
 	String goodDcEndDay,
-	String inputDay
+	String inputDttm
 ) {
 }

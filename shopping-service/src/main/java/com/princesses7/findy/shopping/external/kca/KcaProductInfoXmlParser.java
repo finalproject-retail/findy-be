@@ -12,21 +12,15 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
-import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceItemResponse;
-import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceResponse;
+import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductInfoItemResponse;
+import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductInfoResponse;
 
-/*
-	공공데이터포털 응답이 XML이라, RestClient로 String을 받은 뒤 직접 파싱
-	jackson-dataformat-xml 의존성을 추가하지 않아도 됨
- */
 @Component
-public class KcaProductPriceXmlParser {
+public class KcaProductInfoXmlParser {
 
-	private static final String SUCCESS_CODE = "00";
-
-	public KcaProductPriceResponse parse(String xml) {
+	public KcaProductInfoResponse parse(String xml) {
 		if (xml == null || xml.isBlank()) {
-			return new KcaProductPriceResponse(null, "empty response", List.of());
+			return new KcaProductInfoResponse(null, "empty response", List.of());
 		}
 
 		try {
@@ -42,45 +36,45 @@ public class KcaProductPriceXmlParser {
 
 			document.getDocumentElement().normalize();
 
-			String resultCode = getText(document, "resultCode");
-			String resultMessage = getText(document, "resultMsg");
-
-			return new KcaProductPriceResponse(
-				resultCode,
-				resultMessage,
+			return new KcaProductInfoResponse(
+				getText(document, "resultCode"),
+				getText(document, "resultMsg"),
 				parseItems(document)
 			);
 		} catch (Exception exception) {
-			return new KcaProductPriceResponse(null, "xml parse failed: " + exception.getMessage(), List.of());
+			return new KcaProductInfoResponse(null, "xml parse failed: " + exception.getMessage(), List.of());
 		}
 	}
 
-	public boolean isSuccess(KcaProductPriceResponse response) {
-		return response != null && SUCCESS_CODE.equals(response.resultCode());
-	}
+	private List<KcaProductInfoItemResponse> parseItems(Document document) {
+		NodeList resultNodes = document.getElementsByTagName("result");
+		List<KcaProductInfoItemResponse> items = new ArrayList<>();
 
-	private List<KcaProductPriceItemResponse> parseItems(Document document) {
-		NodeList itemNodes = document.getElementsByTagName("iros.openapi.service.vo.goodPriceVO");
-		List<KcaProductPriceItemResponse> items = new ArrayList<>();
+		if (resultNodes.getLength() == 0) {
+			return items;
+		}
 
-		for (int index = 0; index < itemNodes.getLength(); index++) {
-			Node itemNode = itemNodes.item(index);
+		Node resultNode = resultNodes.item(0);
+		NodeList childNodes = resultNode.getChildNodes();
 
-			items.add(new KcaProductPriceItemResponse(
-				getText(itemNode, "goodInspectDay"),
-				getText(itemNode, "goodId"),
-				null,
-				getText(itemNode, "entpId"),
-				null,
-				null,
-				null,
-				getText(itemNode, "goodPrice"),
-				null,
-				null,
-				null,
-				null,
-				null,
-				getText(itemNode, "inputDttm")
+		for (int index = 0; index < childNodes.getLength(); index++) {
+			Node itemNode = childNodes.item(index);
+
+			if (itemNode.getNodeType() != Node.ELEMENT_NODE) {
+				continue;
+			}
+
+			String goodId = getText(itemNode, "goodId");
+
+			if (goodId == null || goodId.isBlank()) {
+				continue;
+			}
+
+			items.add(new KcaProductInfoItemResponse(
+				goodId,
+				getText(itemNode, "goodName"),
+				getText(itemNode, "productEntpCode"),
+				getText(itemNode, "productEntpName")
 			));
 		}
 
