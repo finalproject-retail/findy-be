@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
+import com.princesses7.findy.shopping.external.ai.CategoryClassifierClient;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 
 import lombok.RequiredArgsConstructor;
@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/products/categories/classify")
 public class ProductCategoryClassificationController {
 
-	private final OpenAiCategoryClassifierClient classifierClient;
+	private final CategoryClassifierClient classifierClient;
 
 	@GetMapping
 	public ProductCategoryClassificationResponse classify(

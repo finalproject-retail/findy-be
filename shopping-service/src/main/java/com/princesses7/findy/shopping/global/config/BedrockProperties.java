@@ -1,0 +1,28 @@
+package com.princesses7.findy.shopping.global.config;
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@ConfigurationProperties(prefix = "bedrock")
+public record BedrockProperties(
+	String region,
+	String chatModelId,
+	Integer maxTokens,
+	Float temperature
+) {
+
+	public String region() {
+		return region == null ? "ap-northeast-2" : region;
+	}
+
+	public String chatModelId() {
+		return chatModelId == null ? "anthropic.claude-3-haiku-20240307-v1:0" : chatModelId;
+	}
+
+	public Integer maxTokens() {
+		return maxTokens == null ? 1200 : maxTokens;
+	}
+
+	public Float temperature() {
+		return temperature == null ? 0.0F : temperature;
+	}
+}
