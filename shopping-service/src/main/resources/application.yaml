@@ -82,6 +82,15 @@ openai:
   api-key: ${OPENAI_API_KEY}
   model: gpt-4o-mini
 
+ai:
+  provider: ${AI_PROVIDER:openai}
+
+bedrock:
+  region: ${AWS_REGION:ap-northeast-2}
+  chat-model-id: ${BEDROCK_CHAT_MODEL_ID:anthropic.claude-3-haiku-20240307-v1:0}
+  max-tokens: ${BEDROCK_MAX_TOKENS:1200}
+  temperature: ${BEDROCK_TEMPERATURE:0.0}
+
 external:
   haccp:
     base-url: http://apis.data.go.kr/B553748/CertImgListServiceV3
