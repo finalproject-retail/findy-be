@@ -8,7 +8,7 @@ public record MyPageResponse(
 	String name,
 	String email,
 	Grade grade,
-	double reward
+	long reward
 ) {
 
 	public static MyPageResponse from(UserEntity user) {

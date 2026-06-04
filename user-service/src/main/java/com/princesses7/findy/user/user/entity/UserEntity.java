@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 public class UserEntity extends BaseTimeEntity {
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long userId;
@@ -64,7 +65,7 @@ public class UserEntity extends BaseTimeEntity {
 
 	@Builder.Default
 	@Column(nullable = false)
-	private double reward = 0;
+	private long reward = 0;
 
 	@Builder.Default
 	@Column(nullable = false)
@@ -76,5 +77,11 @@ public class UserEntity extends BaseTimeEntity {
 
 	public void completeOnboarding() {
 		this.isFirstLogin = false;
+	}
+
+	public void applyPurchaseReward(long gradeBaseAmount, long earnedReward, UserGradeEntity nextGrade) {
+		this.purchaseAmount = gradeBaseAmount;
+		this.reward += earnedReward;
+		this.grade = nextGrade;
 	}
 }

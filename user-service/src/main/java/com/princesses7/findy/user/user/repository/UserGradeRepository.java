@@ -12,4 +12,6 @@ import com.princesses7.findy.user.user.entity.UserGradeEntity;
 public interface UserGradeRepository extends JpaRepository<UserGradeEntity, Long> {
 
 	Optional<UserGradeEntity> findByGradeName(Grade gradeName);
+
+	Optional<UserGradeEntity> findTopByCriteriaAmountLessThanEqualOrderByCriteriaAmountDesc(long criteriaAmount);
 }
