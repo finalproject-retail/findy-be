@@ -4,9 +4,11 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
+import com.princesses7.findy.shopping.external.ai.CategoryClassifierClient;
 import com.princesses7.findy.shopping.global.config.OpenAiProperties;
 import com.princesses7.findy.shopping.product.category.ProductCategoryCatalog;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
@@ -19,13 +21,15 @@ import tools.jackson.databind.ObjectMapper;
 @Slf4j
 @Component
 @RequiredArgsConstructor
-public class OpenAiCategoryClassifierClient {
+@ConditionalOnProperty(prefix = "ai", name = "provider", havingValue = "openai", matchIfMissing = true)
+public class OpenAiCategoryClassifierClient implements CategoryClassifierClient {
 
 	private static final BigDecimal REVIEW_THRESHOLD = new BigDecimal("0.85");
 
 	private final OpenAiProperties properties;
 	private final ObjectMapper objectMapper;
 
+	@Override
 	public ProductCategoryClassificationResponse classify(
 		String productName,
 		String brandName,
