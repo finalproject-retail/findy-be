@@ -78,4 +78,10 @@ public class UserEntity extends BaseTimeEntity {
 	public void completeOnboarding() {
 		this.isFirstLogin = false;
 	}
+
+	public void applyPurchaseReward(long gradeBaseAmount, long earnedReward, UserGradeEntity nextGrade) {
+		this.purchaseAmount = gradeBaseAmount;
+		this.reward += earnedReward;
+		this.grade = nextGrade;
+	}
 }
