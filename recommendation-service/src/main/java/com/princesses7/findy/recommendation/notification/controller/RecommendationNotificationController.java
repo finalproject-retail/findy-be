@@ -20,12 +20,12 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/notifications")
+@RequestMapping("/api/v1/recommendations/notifications")
 public class RecommendationNotificationController {
 
 	private final RecommendationNotificationService recommendationNotificationService;
 
-	@GetMapping("/recommendations/shopping")
+	@GetMapping("/shopping")
 	public ApiResponse<ShoppingRecommendationNotificationResponse> getShoppingRecommendationNotification(
 		@RequestParam Long userId,
 		@RequestParam Long storeId,
