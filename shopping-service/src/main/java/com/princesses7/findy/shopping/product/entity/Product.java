@@ -185,6 +185,19 @@ public class Product extends BaseTimeEntity {
 		return updatedFields;
 	}
 
+	public boolean isPriceMissing() {
+		return originalPrice == null || originalPrice <= 0;
+	}
+
+	public boolean applyExternalPriceIfMissing(Integer price) {
+		if (!isPriceMissing() || price == null || price <= 0) {
+			return false;
+		}
+
+		this.originalPrice = price;
+		return true;
+	}
+
 	private boolean hasText(String value) {
 		return value != null && !value.isBlank();
 	}

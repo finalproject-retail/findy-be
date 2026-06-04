@@ -94,4 +94,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		ORDER BY p.createdAt DESC, p.productId ASC
 		""")
 	List<Product> findMartRecommendedProducts(Pageable pageable);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+		  AND (p.originalPrice IS NULL OR p.originalPrice <= 0)
+		ORDER BY p.productId ASC
+		""")
+	List<Product> findPriceMissingProducts(Pageable pageable);
 }
