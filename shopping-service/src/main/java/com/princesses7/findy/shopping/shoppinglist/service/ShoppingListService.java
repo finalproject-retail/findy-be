@@ -334,7 +334,9 @@ public class ShoppingListService {
 
 	private ShoppingListResponse toResponse(ShoppingList shoppingList) {
 		List<Long> productIds = shoppingList.getShoppingListItems().stream()
+			.filter(ShoppingListItem::isProductItem)
 			.map(ShoppingListItem::getProductId)
+			.distinct()
 			.toList();
 
 		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
