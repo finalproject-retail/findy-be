@@ -58,6 +58,22 @@ public final class AislePathfinder {
 		return bfsPathByGridId(fromGridId, toGridId, storeGridMap);
 	}
 
+	/** 통행 가능 격자 간 BFS 최단 통로 칸 수. 도달 불가 시 {@link Integer#MAX_VALUE}. */
+	public static int pathStepCount(Long fromGridId, Long toGridId, StoreGridMap storeGridMap) {
+		if (fromGridId.equals(toGridId)) {
+			return 0;
+		}
+		if (!storeGridMap.isWalkable(fromGridId) || !storeGridMap.isWalkable(toGridId)) {
+			return Integer.MAX_VALUE;
+		}
+
+		List<Long> path = bfsPathByGridId(fromGridId, toGridId, storeGridMap);
+		if (path.size() < 2) {
+			return Integer.MAX_VALUE;
+		}
+		return path.size() - 1;
+	}
+
 	private static Long findNearestWalkableGridId(
 		int gridX,
 		int gridY,

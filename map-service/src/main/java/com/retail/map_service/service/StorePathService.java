@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.retail.map_service.domain.path.AislePathfinder;
+import com.retail.map_service.domain.path.ShoppingVisitOrderOptimizer;
 import com.retail.map_service.domain.path.StoreGridMap;
 import com.retail.map_service.dto.request.PathNavigationRequest;
 import com.retail.map_service.dto.response.PathLegResponse;
@@ -42,22 +43,40 @@ public class StorePathService {
 		Long currentGridId = resolveCurrentGridId(userId, storeId, storeGridMap);
 		List<Long> destinationGridIds = dedupePreserveOrder(request.destinationGridIds());
 		destinationGridIds.forEach(gridId -> validateGridExists(storeGridMap, gridId, storeId));
+		destinationGridIds.forEach(gridId -> {
+			if (AislePathfinder.resolveWalkableGridId(gridId, storeGridMap) == null) {
+				throw new BaseException(
+					ErrorCode.PATH_DESTINATION_NOT_NAVIGABLE,
+					"경로를 찾을 수 없는 목적지 격자입니다. gridId=" + gridId
+				);
+			}
+		});
 
 		Long cursorGridId = AislePathfinder.resolveWalkableGridId(currentGridId, storeGridMap);
 		if (cursorGridId == null) {
 			throw new BaseException(ErrorCode.PATH_CURRENT_NOT_NAVIGABLE);
 		}
 
+		List<Long> orderedDestinationGridIds = ShoppingVisitOrderOptimizer.orderMinimumVisit(
+			cursorGridId,
+			destinationGridIds,
+			storeGridMap
+		);
+
 		List<PathLegResponse> legs = new ArrayList<>();
 		List<Long> fullPathGridIds = new ArrayList<>();
 
-		for (Long destinationGridId : destinationGridIds) {
+		for (Long destinationGridId : orderedDestinationGridIds) {
 			Long goalGridId = AislePathfinder.resolveWalkableGridId(destinationGridId, storeGridMap);
 			if (goalGridId == null) {
 				throw new BaseException(
 					ErrorCode.PATH_DESTINATION_NOT_NAVIGABLE,
 					"경로를 찾을 수 없는 목적지 격자입니다. gridId=" + destinationGridId
 				);
+			}
+
+			if (cursorGridId.equals(goalGridId)) {
+				continue;
 			}
 
 			List<Long> legGridIds = AislePathfinder.findPathGridIds(
@@ -79,6 +98,10 @@ public class StorePathService {
 			));
 			appendFullPath(fullPathGridIds, legGridIds);
 			cursorGridId = goalGridId;
+		}
+
+		if (legs.isEmpty()) {
+			throw new BaseException(ErrorCode.PATH_NOT_FOUND, "목적지까지 통로 경로를 찾을 수 없습니다.");
 		}
 
 		return new PathNavigationResponse(
