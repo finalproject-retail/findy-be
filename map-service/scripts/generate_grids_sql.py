@@ -5,6 +5,8 @@ VERTICAL_SHELF_X = {2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18, 20, 21}
 SHELF_Y_BANDS = [(2, 5), (7, 10), (12, 15)]
 RIGHT_SHELF_X = {23, 24, 25, 26}
 RIGHT_SHELF_Y = {2, 3, 4, 5, 7, 8, 9, 10, 12, 13}
+# 좌측 출입구 — grid_id 465, 494 (grid_x=0, grid_y=16|17)
+ENTRANCE_CELLS = {(0, 16), (0, 17)}
 
 
 def is_border(x: int, y: int) -> bool:
@@ -20,6 +22,8 @@ def is_interior_shelf(x: int, y: int) -> bool:
 
 
 def resolve(x: int, y: int) -> str:
+    if (x, y) in ENTRANCE_CELLS:
+        return "START"
     if is_border(x, y) or is_interior_shelf(x, y):
         return "SHELF"
     return "AISLE"
@@ -38,7 +42,7 @@ def main() -> None:
 
     lines = [
         "-- store_id=1, grid 29x18 = 522 cells",
-        "-- SHELF: walls/shelves, AISLE: walkable (pathfinding uses AISLE only)",
+        "-- SHELF / AISLE / START(출입구 grid_id 465,494)",
         "-- 실물 Minew 비콘 설치 격자(grid_id): 43, 321, 333, 466 (레이아웃은 기존과 동일)",
         "INSERT INTO grids (store_id, grid_x, grid_y, cell_type, created_at, updated_at) VALUES",
         ",\n".join(values) + ";",

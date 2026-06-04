@@ -14,6 +14,10 @@ public enum ErrorCode {
     STORE_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_001", "매장을 찾을 수 없습니다."),
     STORE_MAP_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_004", "매장 지도를 찾을 수 없습니다."),
     GRID_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_002", "격자를 찾을 수 없습니다."),
+    PATH_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_005", "경로를 찾을 수 없습니다."),
+    PATH_START_GRID_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_008", "매장 입구(START) 격자가 설정되지 않았습니다."),
+    PATH_CURRENT_NOT_NAVIGABLE(HttpStatus.BAD_REQUEST, "MAP_006", "현재 위치 격자에서 통로로 진입할 수 없습니다."),
+    PATH_DESTINATION_NOT_NAVIGABLE(HttpStatus.BAD_REQUEST, "MAP_007", "목적지 격자에서 통로를 찾을 수 없습니다."),
     BEACON_NOT_FOUND(HttpStatus.NOT_FOUND, "MAP_003", "비콘을 찾을 수 없습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "COMMON_999", "서버 내부 오류가 발생했습니다.");
 
