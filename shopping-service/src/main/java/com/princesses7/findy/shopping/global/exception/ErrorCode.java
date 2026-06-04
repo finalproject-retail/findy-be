@@ -57,7 +57,8 @@ public enum ErrorCode {
 	SHOPPING_LIST_ALREADY_EXISTS(HttpStatus.CONFLICT, "SHOPPING_LIST_010", "이미 생성된 쇼핑리스트가 있습니다."),
 	INVALID_SHOPPING_LIST_ITEM_TYPE(HttpStatus.BAD_REQUEST, "SHOPPING_LIST_011", "쇼핑리스트 항목 타입이 올바르지 않습니다."),
 	INVALID_SHOPPING_LIST_CATEGORY(HttpStatus.BAD_REQUEST, "SHOPPING_LIST_012", "쇼핑리스트 카테고리 항목이 올바르지 않습니다."),
-
+	DECREASE_QUANTITY_REQUIRES_SCAN(HttpStatus.BAD_REQUEST, "SHOPPING_LIST_013", "쇼핑리스트 상품 수량 감소는 바코드 스캔 후 가능합니다."),
+	
 	// Scan
 	INVALID_BARCODE(HttpStatus.BAD_REQUEST, "SCAN_001", "올바르지 않은 바코드입니다."),
 	BARCODE_SCAN_FAILED(HttpStatus.BAD_REQUEST, "SCAN_002", "바코드 인식에 실패했습니다."),

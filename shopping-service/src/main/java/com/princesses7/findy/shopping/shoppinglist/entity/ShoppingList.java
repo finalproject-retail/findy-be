@@ -202,7 +202,7 @@ public class ShoppingList extends BaseTimeEntity {
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_ITEM_NOT_FOUND));
 	}
 
-	private ShoppingListItem getShoppingListItem(Long shoppingListItemId) {
+	public ShoppingListItem getShoppingListItem(Long shoppingListItemId) {
 		return shoppingListItems.stream()
 			.filter(item -> item.hasSameId(shoppingListItemId))
 			.findFirst()
