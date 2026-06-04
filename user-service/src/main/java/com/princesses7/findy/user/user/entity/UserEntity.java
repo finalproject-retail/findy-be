@@ -29,6 +29,7 @@ import lombok.NoArgsConstructor;
 @Builder
 @AllArgsConstructor
 public class UserEntity extends BaseTimeEntity {
+
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long userId;
@@ -64,7 +65,7 @@ public class UserEntity extends BaseTimeEntity {
 
 	@Builder.Default
 	@Column(nullable = false)
-	private double reward = 0;
+	private long reward = 0;
 
 	@Builder.Default
 	@Column(nullable = false)
