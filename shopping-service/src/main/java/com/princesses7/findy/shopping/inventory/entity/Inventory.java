@@ -8,8 +8,6 @@ import com.princesses7.findy.shopping.product.entity.Product;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -47,18 +45,17 @@ public class Inventory extends BaseTimeEntity {
 	@Column(name = "unit", nullable = false, length = 30)
 	private String unit;
 
-	@Enumerated(EnumType.STRING)
-	@Column(name = "stock_status", nullable = false, length = 30)
-	private StockStatus stockStatus;
-
 	public static Inventory createDefault(Product product, Long storeId, Integer stockQuantity) {
 		Inventory inventory = new Inventory();
 		inventory.product = product;
 		inventory.storeId = storeId;
 		inventory.stockQuantity = stockQuantity;
 		inventory.unit = "개";
-		inventory.stockStatus = resolveStockStatus(stockQuantity);
 		return inventory;
+	}
+
+	public StockStatus getStockStatus() {
+		return resolveStockStatus(stockQuantity);
 	}
 
 	private static StockStatus resolveStockStatus(Integer stockQuantity) {
@@ -85,7 +82,6 @@ public class Inventory extends BaseTimeEntity {
 		}
 
 		stockQuantity -= quantity;
-		stockStatus = resolveStockStatus(stockQuantity);
 	}
 
 	public void increaseStock(int quantity) {
@@ -96,7 +92,6 @@ public class Inventory extends BaseTimeEntity {
 		}
 
 		stockQuantity += quantity;
-		stockStatus = resolveStockStatus(stockQuantity);
 	}
 
 	private void validateQuantity(int quantity) {
