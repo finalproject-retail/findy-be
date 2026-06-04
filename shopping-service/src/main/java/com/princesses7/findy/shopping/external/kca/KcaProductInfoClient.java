@@ -12,22 +12,28 @@ import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductInfoIt
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductInfoResponse;
 import com.princesses7.findy.shopping.global.config.KcaProductPriceProperties;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class KcaProductInfoClient {
 
 	private static final String PRODUCT_INFO_PATH =
 		"/openApiImpl/ProductPriceInfoService/getProductInfoSvc.do";
 
-	@Qualifier("kcaProductPriceRestClient")
 	private final RestClient kcaProductPriceRestClient;
-
 	private final KcaProductPriceProperties properties;
 	private final KcaProductInfoXmlParser xmlParser;
+
+	public KcaProductInfoClient(
+		@Qualifier("kcaProductPriceRestClient") RestClient kcaProductPriceRestClient,
+		KcaProductPriceProperties properties,
+		KcaProductInfoXmlParser xmlParser
+	) {
+		this.kcaProductPriceRestClient = kcaProductPriceRestClient;
+		this.properties = properties;
+		this.xmlParser = xmlParser;
+	}
 
 	public List<KcaProductInfoItemResponse> getProductInfos() {
 		try {

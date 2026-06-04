@@ -15,24 +15,34 @@ import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceI
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceResponse;
 import com.princesses7.findy.shopping.global.config.KcaProductPriceProperties;
 
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class KcaProductPriceClient {
 
 	private static final String PRODUCT_PRICE_PATH =
 		"/openApiImpl/ProductPriceInfoService/getProductPriceInfoSvc.do";
 
-	@Qualifier("kcaProductPriceRestClient")
 	private final RestClient kcaProductPriceRestClient;
-
 	private final KcaProductPriceProperties properties;
 	private final KcaProductPriceXmlParser xmlParser;
 	private final KcaPriceDateResolver dateResolver;
 	private final KcaProductInfoClient productInfoClient;
+
+	public KcaProductPriceClient(
+		@Qualifier("kcaProductPriceRestClient") RestClient kcaProductPriceRestClient,
+		KcaProductPriceProperties properties,
+		KcaProductPriceXmlParser xmlParser,
+		KcaPriceDateResolver dateResolver,
+		KcaProductInfoClient productInfoClient
+	) {
+		this.kcaProductPriceRestClient = kcaProductPriceRestClient;
+		this.properties = properties;
+		this.xmlParser = xmlParser;
+		this.dateResolver = dateResolver;
+		this.productInfoClient = productInfoClient;
+	}
 
 	public KcaProductPriceResponse getProductPrices(
 		String goodInspectDay,
@@ -47,11 +57,52 @@ public class KcaProductPriceClient {
 
 			KcaProductPriceResponse response = xmlParser.parse(xml);
 
+			if (!xmlParser.isSuccess(response)) {
+				log.warn(
+					"KCA product price API returned non-success. resultCode={}, resultMessage={}",
+					response.resultCode(),
+					response.resultMessage()
+				);
+
+				return response;
+			}
+
 			return enrichProductInfo(response);
 		} catch (Exception exception) {
 			log.warn("KCA product price API request failed. message={}", exception.getMessage());
 
 			return new KcaProductPriceResponse(null, exception.getMessage(), List.of());
+		}
+	}
+
+	public KcaProductPriceResponse getLatestProductPrices(
+		String entpId,
+		String goodId
+	) {
+		return getProductPrices(dateResolver.resolveLatestFriday(), entpId, goodId);
+	}
+
+	public List<KcaProductPriceItemResponse> getLatestProductPriceItems(
+		String entpId,
+		String goodId
+	) {
+		return getLatestProductPrices(entpId, goodId).items();
+	}
+
+	public String getRawProductPrices(
+		String goodInspectDay,
+		String entpId,
+		String goodId
+	) {
+		try {
+			return kcaProductPriceRestClient.get()
+				.uri(buildProductPriceUri(goodInspectDay, entpId, goodId))
+				.retrieve()
+				.body(String.class);
+		} catch (Exception exception) {
+			log.warn("KCA raw product price API request failed. message={}", exception.getMessage());
+
+			return "KCA raw product price API request failed: " + exception.getMessage();
 		}
 	}
 
@@ -104,37 +155,6 @@ public class KcaProductPriceClient {
 			item.goodDcEndDay(),
 			item.inputDttm()
 		);
-	}
-
-	public KcaProductPriceResponse getLatestProductPrices(
-		String entpId,
-		String goodId
-	) {
-		return getProductPrices(dateResolver.resolveLatestFriday(), entpId, goodId);
-	}
-
-	public List<KcaProductPriceItemResponse> getLatestProductPriceItems(
-		String entpId,
-		String goodId
-	) {
-		return getLatestProductPrices(entpId, goodId).items();
-	}
-
-	public String getRawProductPrices(
-		String goodInspectDay,
-		String entpId,
-		String goodId
-	) {
-		try {
-			return kcaProductPriceRestClient.get()
-				.uri(buildProductPriceUri(goodInspectDay, entpId, goodId))
-				.retrieve()
-				.body(String.class);
-		} catch (Exception exception) {
-			log.warn("KCA raw product price API request failed. message={}", exception.getMessage());
-
-			return "KCA raw product price API request failed: " + exception.getMessage();
-		}
 	}
 
 	private URI buildProductPriceUri(

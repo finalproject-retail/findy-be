@@ -24,12 +24,7 @@ public class KcaProductInfoXmlParser {
 		}
 
 		try {
-			DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-			factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-			factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-			factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-			factory.setXIncludeAware(false);
-			factory.setExpandEntityReferences(false);
+			DocumentBuilderFactory factory = createSecureDocumentBuilderFactory();
 
 			Document document = factory.newDocumentBuilder()
 				.parse(new InputSource(new StringReader(xml)));
@@ -42,7 +37,11 @@ public class KcaProductInfoXmlParser {
 				parseItems(document)
 			);
 		} catch (Exception exception) {
-			return new KcaProductInfoResponse(null, "xml parse failed: " + exception.getMessage(), List.of());
+			return new KcaProductInfoResponse(
+				null,
+				"xml parse failed: " + exception.getMessage(),
+				List.of()
+			);
 		}
 	}
 
@@ -79,6 +78,16 @@ public class KcaProductInfoXmlParser {
 		}
 
 		return items;
+	}
+
+	private DocumentBuilderFactory createSecureDocumentBuilderFactory() throws Exception {
+		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+		factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+		factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+		factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+		factory.setXIncludeAware(false);
+		factory.setExpandEntityReferences(false);
+		return factory;
 	}
 
 	private String getText(Document document, String tagName) {
