@@ -2,12 +2,15 @@ package com.princesses7.findy.shopping.external.kca;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
+import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductInfoItemResponse;
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceItemResponse;
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceResponse;
 import com.princesses7.findy.shopping.global.config.KcaProductPriceProperties;
@@ -29,6 +32,7 @@ public class KcaProductPriceClient {
 	private final KcaProductPriceProperties properties;
 	private final KcaProductPriceXmlParser xmlParser;
 	private final KcaPriceDateResolver dateResolver;
+	private final KcaProductInfoClient productInfoClient;
 
 	public KcaProductPriceResponse getProductPrices(
 		String goodInspectDay,
@@ -43,20 +47,63 @@ public class KcaProductPriceClient {
 
 			KcaProductPriceResponse response = xmlParser.parse(xml);
 
-			if (!xmlParser.isSuccess(response)) {
-				log.warn(
-					"KCA product price API returned non-success. resultCode={}, resultMessage={}",
-					response.resultCode(),
-					response.resultMessage()
-				);
-			}
-
-			return response;
+			return enrichProductInfo(response);
 		} catch (Exception exception) {
 			log.warn("KCA product price API request failed. message={}", exception.getMessage());
 
 			return new KcaProductPriceResponse(null, exception.getMessage(), List.of());
 		}
+	}
+
+	private KcaProductPriceResponse enrichProductInfo(KcaProductPriceResponse response) {
+		if (response == null || response.items() == null || response.items().isEmpty()) {
+			return response;
+		}
+
+		Map<String, KcaProductInfoItemResponse> productInfoMap = productInfoClient.getProductInfos()
+			.stream()
+			.collect(Collectors.toMap(
+				KcaProductInfoItemResponse::goodId,
+				productInfo -> productInfo,
+				(first, second) -> first
+			));
+
+		List<KcaProductPriceItemResponse> enrichedItems = response.items()
+			.stream()
+			.map(item -> enrichItem(item, productInfoMap.get(item.goodId())))
+			.toList();
+
+		return new KcaProductPriceResponse(
+			response.resultCode(),
+			response.resultMessage(),
+			enrichedItems
+		);
+	}
+
+	private KcaProductPriceItemResponse enrichItem(
+		KcaProductPriceItemResponse item,
+		KcaProductInfoItemResponse productInfo
+	) {
+		if (productInfo == null) {
+			return item;
+		}
+
+		return new KcaProductPriceItemResponse(
+			item.goodInspectDay(),
+			item.goodId(),
+			productInfo.goodName(),
+			item.entpId(),
+			item.entpName(),
+			productInfo.productEntpCode(),
+			productInfo.productEntpName(),
+			item.goodPrice(),
+			item.plusoneYn(),
+			item.saleYn(),
+			item.goodDcYn(),
+			item.goodDcStartDay(),
+			item.goodDcEndDay(),
+			item.inputDttm()
+		);
 	}
 
 	public KcaProductPriceResponse getLatestProductPrices(
