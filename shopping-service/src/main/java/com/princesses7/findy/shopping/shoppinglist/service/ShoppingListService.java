@@ -162,16 +162,15 @@ public class ShoppingListService {
 		ChangeShoppingListItemQuantityRequest request
 	) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
-		ShoppingListItem item = getShoppingListItem(shoppingList, shoppingListItemId);
+		ShoppingListItem shoppingListItem = shoppingList.getShoppingListItem(shoppingListItemId);
 
-		if (item.isProductItem()) {
-			productSummaryReader.validatePurchasable(item.getProductId(), request.quantity());
+		int newQuantity = request.quantity();
+
+		if (shoppingListItem.isQuantityDecrease(newQuantity)) {
+			throw new ShoppingListException(DECREASE_QUANTITY_REQUIRES_SCAN);
 		}
 
-		shoppingList.changeItemQuantity(
-			shoppingListItemId,
-			request.quantity()
-		);
+		shoppingListItem.changeQuantity(newQuantity);
 
 		return toResponse(shoppingList);
 	}

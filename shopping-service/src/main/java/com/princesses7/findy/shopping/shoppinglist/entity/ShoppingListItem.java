@@ -423,4 +423,8 @@ public class ShoppingListItem extends BaseTimeEntity {
 
 		return categoryName.trim();
 	}
+
+	public boolean isQuantityDecrease(int newQuantity) {
+		return newQuantity < this.quantity;
+	}
 }
