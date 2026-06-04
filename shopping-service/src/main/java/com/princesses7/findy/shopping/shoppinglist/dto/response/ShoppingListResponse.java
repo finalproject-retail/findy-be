@@ -1,5 +1,6 @@
 package com.princesses7.findy.shopping.shoppinglist.dto.response;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -13,7 +14,8 @@ public record ShoppingListResponse(
 	long scannedItemCount,
 	int totalAmount,
 	int scannedAmount,
-	List<ShoppingListItemResponse> items
+	List<ShoppingListItemResponse> items,
+	List<Long> destinationGridIds
 ) {
 
 	public static ShoppingListResponse from(
@@ -43,7 +45,33 @@ public record ShoppingListResponse(
 			shoppingList.getScannedItemCount(),
 			totalAmount,
 			scannedAmount,
-			items
+			items,
+			extractDestinationGridIds(items)
 		);
+	}
+
+	/**
+	 * map-service 경로 API({@code destinationGridIds})에 바로 넣을 수 있는 목록.
+	 * 쇼핑 리스트 순서를 유지하고, 연속 중복 격자·gridId 없음 항목은 제외한다.
+	 */
+	private static List<Long> extractDestinationGridIds(List<ShoppingListItemResponse> items) {
+		List<Long> destinationGridIds = new ArrayList<>();
+		Long previousGridId = null;
+
+		for (ShoppingListItemResponse item : items) {
+			if (item.product() == null || item.product().gridId() == null) {
+				continue;
+			}
+
+			Long gridId = item.product().gridId();
+			if (gridId.equals(previousGridId)) {
+				continue;
+			}
+
+			destinationGridIds.add(gridId);
+			previousGridId = gridId;
+		}
+
+		return destinationGridIds;
 	}
 }
