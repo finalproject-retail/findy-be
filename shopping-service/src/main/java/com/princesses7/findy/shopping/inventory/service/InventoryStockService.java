@@ -60,6 +60,7 @@ public class InventoryStockService {
 
 	public void increaseStocks(Long storeId, Collection<ShoppingListItem> shoppingListItems) {
 		Map<Long, Integer> quantityByProductId = shoppingListItems.stream()
+			.filter(ShoppingListItem::isProductItem)
 			.collect(Collectors.groupingBy(
 				ShoppingListItem::getProductId,
 				Collectors.summingInt(ShoppingListItem::getQuantity)
@@ -80,6 +81,7 @@ public class InventoryStockService {
 		Collection<ShoppingListItem> shoppingListItems
 	) {
 		Map<Long, Integer> quantityByProductId = shoppingListItems.stream()
+			.filter(ShoppingListItem::isProductItem)
 			.collect(Collectors.groupingBy(
 				ShoppingListItem::getProductId,
 				Collectors.summingInt(item -> Math.max(
