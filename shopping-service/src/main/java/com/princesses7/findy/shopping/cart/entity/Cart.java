@@ -8,7 +8,6 @@ import java.util.Optional;
 
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
-import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
 import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
 
@@ -130,17 +129,21 @@ public class Cart extends BaseTimeEntity {
 		}
 	}
 
-	public void saveItemForNextShopping(Product product, int quantity) {
+	public void saveItemForNextShopping(Long productId, int quantity) {
+		if (productId == null) {
+			return;
+		}
+
 		validateQuantity(quantity);
 
-		findItemByProductId(product.getProductId())
+		findItemByProductId(productId)
 			.ifPresentOrElse(
 				cartItem -> {
 					cartItem.changeQuantity(quantity);
 					cartItem.changeChecked(false);
 				},
 				() -> {
-					CartItem cartItem = CartItem.create(this, product.getProductId(), quantity);
+					CartItem cartItem = CartItem.create(this, productId, quantity);
 					cartItem.changeChecked(false);
 					cartItems.add(cartItem);
 				}

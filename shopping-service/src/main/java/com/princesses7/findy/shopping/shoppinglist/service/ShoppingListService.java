@@ -213,8 +213,11 @@ public class ShoppingListService {
 			shoppingList.getShoppingListItems()
 		);
 
+		shoppingList.moveProductItemsToCartForNextShopping();
 		shoppingList.cancel();
+
 		shoppingListRepository.delete(shoppingList);
+		shoppingListRepository.flush();
 	}
 
 	@Transactional

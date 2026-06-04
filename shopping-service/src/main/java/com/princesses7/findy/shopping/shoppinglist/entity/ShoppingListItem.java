@@ -203,7 +203,7 @@ public class ShoppingListItem extends BaseTimeEntity {
 	}
 
 	public boolean isProductItem() {
-		return this.itemType == ShoppingListItemType.PRODUCT;
+		return itemType == ShoppingListItemType.PRODUCT && productId != null;
 	}
 
 	public boolean isCategoryItem() {
