@@ -27,7 +27,8 @@ public class ServiceRouteResolver {
 			return normalizeBaseUrl(gatewayServiceProperties.recommendation().baseUrl());
 		}
 
-		if (requestUri.startsWith("/api/v1/analytics")) {
+		if (requestUri.startsWith("/api/v1/analytics")
+			|| requestUri.startsWith("/api/v1/admin/analytics")) {
 			return normalizeBaseUrl(gatewayServiceProperties.analytics().baseUrl());
 		}
 
