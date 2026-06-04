@@ -13,7 +13,7 @@ import org.springframework.util.StringUtils;
 import com.princesses7.findy.shopping.external.haccp.HaccpProductClient;
 import com.princesses7.findy.shopping.external.haccp.HaccpProductMapper;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
-import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
+import com.princesses7.findy.shopping.external.ai.CategoryClassifierClient;
 import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.request.HaccpProductBulkImportRequest;
@@ -39,7 +39,7 @@ public class HaccpProductImportService {
 
 	private final HaccpProductClient haccpProductClient;
 	private final HaccpProductMapper haccpProductMapper;
-	private final OpenAiCategoryClassifierClient openAiCategoryClassifierClient;
+	private final CategoryClassifierClient categoryClassifierClient;
 	private final ProductRepository productRepository;
 	private final InventoryService inventoryService;
 
@@ -198,7 +198,7 @@ public class HaccpProductImportService {
 	}
 
 	private ProductCategoryClassificationResponse classifyCategory(HaccpProductItemResponse haccpItem) {
-		return openAiCategoryClassifierClient.classify(
+		return categoryClassifierClient.classify(
 			haccpItem.productName(),
 			haccpProductMapper.extractBrandName(haccpItem),
 			haccpItem.productKind()

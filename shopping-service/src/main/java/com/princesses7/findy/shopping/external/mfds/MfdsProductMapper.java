@@ -8,7 +8,7 @@ import org.springframework.stereotype.Component;
 
 import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsBarcodeItemResponse;
 import com.princesses7.findy.shopping.external.mfds.dto.response.MfdsLinkedProductItemResponse;
-import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
+import com.princesses7.findy.shopping.external.ai.CategoryClassifierClient;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
@@ -23,7 +23,7 @@ public class MfdsProductMapper {
 	private static final String EXTERNAL_SOURCE = "MFDS";
 	private static final int DEFAULT_PRICE = 0;
 
-	private final OpenAiCategoryClassifierClient categoryClassifierClient;
+	private final CategoryClassifierClient categoryClassifierClient;
 
 	public ProductImportCommand toCommand(
 		String barcode,

@@ -18,7 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.princesses7.findy.shopping.external.haccp.HaccpProductClient;
 import com.princesses7.findy.shopping.external.haccp.HaccpProductMapper;
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
-import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
+import com.princesses7.findy.shopping.external.ai.CategoryClassifierClient;
 import com.princesses7.findy.shopping.global.exception.ErrorCode;
 import com.princesses7.findy.shopping.inventory.service.InventoryService;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
@@ -41,7 +41,7 @@ class HaccpProductImportServiceTest {
 	private HaccpProductMapper haccpProductMapper;
 
 	@Mock
-	private OpenAiCategoryClassifierClient openAiCategoryClassifierClient;
+	private CategoryClassifierClient categoryClassifierClient;
 
 	@Mock
 	private ProductRepository productRepository;
@@ -70,7 +70,7 @@ class HaccpProductImportServiceTest {
 			.thenReturn(List.of());
 		when(haccpProductMapper.extractBrandName(haccpItem))
 			.thenReturn("크라운제과");
-		when(openAiCategoryClassifierClient.classify("마이쮸사과", "크라운제과", "캔디류"))
+		when(categoryClassifierClient.classify("마이쮸사과", "크라운제과", "캔디류"))
 			.thenReturn(classification);
 		when(haccpProductMapper.toCreateCommand(haccpItem, classification))
 			.thenReturn(createCommand);
@@ -88,7 +88,7 @@ class HaccpProductImportServiceTest {
 		assertThat(response.items()).hasSize(1);
 		assertThat(response.items().get(0).importStatus()).isEqualTo("CREATED");
 
-		verify(openAiCategoryClassifierClient).classify("마이쮸사과", "크라운제과", "캔디류");
+		verify(categoryClassifierClient).classify("마이쮸사과", "크라운제과", "캔디류");
 		verify(productRepository).save(any(Product.class));
 		verify(inventoryService).createDefaultInventory(any(Product.class));
 	}
@@ -139,7 +139,7 @@ class HaccpProductImportServiceTest {
 		assertThat(response.items().get(0).importStatus()).isEqualTo("UPDATED");
 		assertThat(response.items().get(0).updatedFields()).contains("barcode", "imageUrl", "volume");
 
-		verify(openAiCategoryClassifierClient, never()).classify(any(), any(), any());
+		verify(categoryClassifierClient, never()).classify(any(), any(), any());
 		verify(haccpProductMapper, never()).toCreateCommand(any(), any());
 		verify(productRepository, never()).save(any(Product.class));
 		verify(inventoryService, never()).createDefaultInventory(any(Product.class));
@@ -247,7 +247,7 @@ class HaccpProductImportServiceTest {
 			.thenReturn(List.of());
 		when(haccpProductMapper.extractBrandName(haccpItem))
 			.thenReturn("팔도");
-		when(openAiCategoryClassifierClient.classify("틈새라면왕컵", "팔도", "유탕면류(용기면)"))
+		when(categoryClassifierClient.classify("틈새라면왕컵", "팔도", "유탕면류(용기면)"))
 			.thenReturn(classification);
 		when(haccpProductMapper.toCreateCommand(haccpItem, classification))
 			.thenReturn(createCommand);

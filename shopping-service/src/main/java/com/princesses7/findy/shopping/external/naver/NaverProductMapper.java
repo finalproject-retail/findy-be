@@ -5,7 +5,7 @@ import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 import org.springframework.stereotype.Component;
 
 import com.princesses7.findy.shopping.external.naver.dto.response.NaverShoppingItemResponse;
-import com.princesses7.findy.shopping.external.openai.OpenAiCategoryClassifierClient;
+import com.princesses7.findy.shopping.external.ai.CategoryClassifierClient;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
@@ -19,7 +19,7 @@ public class NaverProductMapper {
 
 	private static final String EXTERNAL_SOURCE = "NAVER";
 
-	private final OpenAiCategoryClassifierClient categoryClassifierClient;
+	private final CategoryClassifierClient categoryClassifierClient;
 
 	public ProductImportCommand toCommand(NaverShoppingItemResponse item) {
 		String productName = cleanTitle(item.title());
