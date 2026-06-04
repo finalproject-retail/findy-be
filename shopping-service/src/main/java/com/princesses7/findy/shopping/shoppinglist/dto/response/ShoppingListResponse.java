@@ -6,6 +6,7 @@ import java.util.Map;
 
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
+import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingListItem;
 
 public record ShoppingListResponse(
 	Long shoppingListId,
@@ -26,7 +27,7 @@ public record ShoppingListResponse(
 			.stream()
 			.map(item -> ShoppingListItemResponse.from(
 				item,
-				productMap.get(item.getProductId())
+				getProductSummary(item, productMap)
 			))
 			.toList();
 
@@ -48,6 +49,17 @@ public record ShoppingListResponse(
 			items,
 			extractDestinationGridIds(items)
 		);
+	}
+
+	private static ProductSummaryResponse getProductSummary(
+		ShoppingListItem item,
+		Map<Long, ProductSummaryResponse> productMap
+	) {
+		if (item.isCategoryItem()) {
+			return null;
+		}
+
+		return productMap.get(item.getProductId());
 	}
 
 	/**
