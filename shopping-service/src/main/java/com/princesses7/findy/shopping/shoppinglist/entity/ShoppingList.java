@@ -177,7 +177,7 @@ public class ShoppingList extends BaseTimeEntity {
 
 	public long getScannedItemCount() {
 		return shoppingListItems.stream()
-			.mapToInt(ShoppingListItem::getScannedQuantity)
+			.mapToInt(ShoppingListItem::getCompletedQuantity)
 			.sum();
 	}
 

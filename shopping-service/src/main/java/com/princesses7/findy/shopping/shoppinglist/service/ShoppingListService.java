@@ -13,11 +13,15 @@ import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEvent
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
+import com.princesses7.findy.shopping.category.entity.Category;
+import com.princesses7.findy.shopping.category.repository.CategoryRepository;
 import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 import com.princesses7.findy.shopping.product.service.ProductBarcodeReader;
 import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
+import com.princesses7.findy.shopping.shoppinglist.dto.request.AddCategoryShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.AddShoppingListItemRequest;
+import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemCheckedRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ChangeShoppingListItemQuantityRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.request.ScanShoppingListItemRequest;
 import com.princesses7.findy.shopping.shoppinglist.dto.response.ShoppingListResponse;
@@ -41,6 +45,7 @@ public class ShoppingListService {
 	private final ProductSummaryReader productSummaryReader;
 	private final ProductBarcodeReader productBarcodeReader;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
+	private final CategoryRepository categoryRepository;
 
 	@Transactional
 	public ShoppingListResponse createShoppingList(Long userId) {
@@ -77,6 +82,7 @@ public class ShoppingListService {
 			+ quantity;
 
 		productSummaryReader.validatePurchasable(request.productId(), targetQuantity);
+
 		shoppingList.addSearchedItem(
 			request.productId(),
 			quantity
@@ -87,6 +93,23 @@ public class ShoppingListService {
 			List.of(request.productId()),
 			RecommendationSource.fromNullable(request.recommendationSource()),
 			request.originalProductId()
+		);
+
+		return toResponse(shoppingList);
+	}
+
+	@Transactional
+	public ShoppingListResponse addCategoryShoppingListItem(
+		Long userId,
+		AddCategoryShoppingListItemRequest request
+	) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		CategoryItemTarget target = resolveCategoryTarget(request);
+
+		shoppingList.addCategoryItem(
+			target.categoryId(),
+			target.categoryName(),
+			request.quantityOrDefault()
 		);
 
 		return toResponse(shoppingList);
@@ -107,6 +130,7 @@ public class ShoppingListService {
 		);
 
 		productSummaryReader.validatePurchasable(productId, targetQuantity);
+
 		shoppingList.addScannedItem(
 			productId,
 			quantity
@@ -140,10 +164,29 @@ public class ShoppingListService {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		ShoppingListItem item = getShoppingListItem(shoppingList, shoppingListItemId);
 
-		productSummaryReader.validatePurchasable(item.getProductId(), request.quantity());
+		if (item.isProductItem()) {
+			productSummaryReader.validatePurchasable(item.getProductId(), request.quantity());
+		}
+
 		shoppingList.changeItemQuantity(
 			shoppingListItemId,
 			request.quantity()
+		);
+
+		return toResponse(shoppingList);
+	}
+
+	@Transactional
+	public ShoppingListResponse changeShoppingListItemChecked(
+		Long userId,
+		Long shoppingListItemId,
+		ChangeShoppingListItemCheckedRequest request
+	) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		shoppingList.changeItemChecked(
+			shoppingListItemId,
+			request.checked()
 		);
 
 		return toResponse(shoppingList);
@@ -239,14 +282,72 @@ public class ShoppingListService {
 			.orElse(scanQuantity);
 	}
 
+	private CategoryItemTarget resolveCategoryTarget(
+		AddCategoryShoppingListItemRequest request
+	) {
+		if (request.categoryId() != null) {
+			Category category = categoryRepository.findByCategoryIdAndActiveTrue(request.categoryId())
+				.orElseThrow(() -> new ShoppingListException(INVALID_SHOPPING_LIST_CATEGORY));
+
+			return new CategoryItemTarget(
+				category.getCategoryId(),
+				category.getCategoryName()
+			);
+		}
+
+		String categoryName = normalizeCategoryName(request.categoryName());
+
+		return categoryRepository.findFirstByCategoryNameAndActiveTrue(categoryName)
+			.map(category -> new CategoryItemTarget(
+				category.getCategoryId(),
+				category.getCategoryName()
+			))
+			.orElseGet(() -> resolveByContainingName(categoryName));
+	}
+
+	private CategoryItemTarget resolveByContainingName(String categoryName) {
+		List<Category> categories = categoryRepository
+			.findByCategoryNameContainingAndActiveTrueOrderByCategoryIdAsc(categoryName);
+
+		if (categories.size() == 1) {
+			Category category = categories.get(0);
+
+			return new CategoryItemTarget(
+				category.getCategoryId(),
+				category.getCategoryName()
+			);
+		}
+
+		return new CategoryItemTarget(
+			null,
+			categoryName
+		);
+	}
+
+	private String normalizeCategoryName(String categoryName) {
+		if (categoryName == null || categoryName.isBlank()) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_CATEGORY);
+		}
+
+		return categoryName.trim();
+	}
+
 	private ShoppingListResponse toResponse(ShoppingList shoppingList) {
 		List<Long> productIds = shoppingList.getShoppingListItems().stream()
+			.filter(ShoppingListItem::isProductItem)
 			.map(ShoppingListItem::getProductId)
+			.distinct()
 			.toList();
 
 		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
 			.getProductSummaryMap(productIds);
 
 		return ShoppingListResponse.from(shoppingList, productMap);
+	}
+
+	private record CategoryItemTarget(
+		Long categoryId,
+		String categoryName
+	) {
 	}
 }
