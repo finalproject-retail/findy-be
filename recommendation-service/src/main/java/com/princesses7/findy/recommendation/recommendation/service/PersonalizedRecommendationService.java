@@ -16,6 +16,7 @@ import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
 import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
+import com.princesses7.findy.recommendation.external.shopping.PurchaseHistoryClient;
 import com.princesses7.findy.recommendation.preference.dto.response.UserPreferenceResponse;
 import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
 import com.princesses7.findy.recommendation.preference.repository.CategorySnapshotRepository;
@@ -51,6 +52,7 @@ public class PersonalizedRecommendationService {
 	private final PersonalizedRecommendationScorer scorer;
 	private final RecommendationRequestValidator requestValidator;
 	private final RecommendationLogRepository recommendationLogRepository;
+	private final PurchaseHistoryClient purchaseHistoryClient;
 
 	public PersonalizedRecommendationResponse getPersonalizedRecommendations(
 		Long userId,
@@ -60,13 +62,17 @@ public class PersonalizedRecommendationService {
 		int normalizedSize = normalizeSize(size);
 
 		UserPreferenceResponse userPreference = userPreferenceQueryService.getUserPreference(userId);
-		RecommendationBaseType baseType = resolveBaseType(userPreference);
+		PurchaseHistoryContext purchaseHistory = PurchaseHistoryContext.from(
+			purchaseHistoryClient.findFrequentPurchaseProducts(userId)
+		);
+		RecommendationBaseType baseType = resolveBaseType(userPreference, purchaseHistory);
 
 		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
 			return fallback(
 				userId,
 				normalizedSize,
 				userPreference,
+				purchaseHistory,
 				RecommendationBaseType.POPULAR_FALLBACK
 			);
 		}
@@ -81,12 +87,13 @@ public class PersonalizedRecommendationService {
 				userId,
 				normalizedSize,
 				userPreference,
+				purchaseHistory,
 				RecommendationBaseType.NO_PRODUCT_EMBEDDING_FALLBACK
 			);
 		}
 
 		List<Double> userPreferenceEmbedding = productEmbeddingClient.createEmbedding(
-			userPreference.preferenceText()
+			createPersonalizationText(userPreference, purchaseHistory)
 		);
 
 		List<Long> productIds = candidateEmbeddings.stream()
@@ -108,7 +115,8 @@ public class PersonalizedRecommendationService {
 					productEmbedding,
 					productMap,
 					categoryNameMap,
-					userPreferenceEmbedding
+					userPreferenceEmbedding,
+					purchaseHistory
 				))
 				.filter(Objects::nonNull)
 				.toList(),
@@ -120,6 +128,7 @@ public class PersonalizedRecommendationService {
 				userId,
 				normalizedSize,
 				userPreference,
+				purchaseHistory,
 				RecommendationBaseType.POPULAR_FALLBACK
 			);
 		}
@@ -133,18 +142,13 @@ public class PersonalizedRecommendationService {
 		);
 	}
 
-	private RecommendationBaseType resolveBaseType(UserPreferenceResponse userPreference) {
+	private RecommendationBaseType resolveBaseType(
+		UserPreferenceResponse userPreference,
+		PurchaseHistoryContext purchaseHistory
+	) {
 		boolean hasPreference = userPreferenceQueryService.hasPreference(userPreference);
 
-		/*
-		 * 현재 작업 범위는 선호 정보 기반 개인 맞춤 추천입니다.
-		 * 구매 기록 조회 로직은 아직 연결하지 않았기 때문에 false로 둡니다.
-		 *
-		 * 이후 구매 기록 기능을 붙이면
-		 * hasPurchaseHistory 값을 실제 구매 기록 존재 여부로 교체하면 됩니다.
-		 */
-		// TODO: 구매 기록 조회 로직과 연결
-		boolean hasPurchaseHistory = false;
+		boolean hasPurchaseHistory = purchaseHistory.hasHistory();
 
 		if (hasPreference && hasPurchaseHistory) {
 			return RecommendationBaseType.PREFERENCE_WITH_PURCHASE_HISTORY;
@@ -166,7 +170,8 @@ public class PersonalizedRecommendationService {
 		ProductEmbedding productEmbedding,
 		Map<Long, ProductSnapshot> productMap,
 		Map<Long, String> categoryNameMap,
-		List<Double> userPreferenceEmbedding
+		List<Double> userPreferenceEmbedding,
+		PurchaseHistoryContext purchaseHistory
 	) {
 		ProductSnapshot product = productMap.get(productEmbedding.getProductId());
 
@@ -185,14 +190,15 @@ public class PersonalizedRecommendationService {
 			userPreference,
 			product,
 			categoryName,
-			similarityScore
+			similarityScore,
+			purchaseHistory
 		);
 
 		return ProductRecommendationResponse.from(
 			product,
 			score,
 			RecommendationType.PERSONALIZED,
-			scorer.createReason(userPreference, product, categoryName)
+			scorer.createReason(userPreference, product, categoryName, purchaseHistory)
 		);
 	}
 
@@ -200,11 +206,16 @@ public class PersonalizedRecommendationService {
 		Long userId,
 		int size,
 		UserPreferenceResponse userPreference,
+		PurchaseHistoryContext purchaseHistory,
 		RecommendationBaseType baseType
 	) {
 		List<ProductRecommendationResponse> recommendations = List.of();
 
-		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
+		if (purchaseHistory.hasHistory()) {
+			recommendations = findPurchaseHistoryRecommendations(size, purchaseHistory);
+		}
+
+		if (recommendations.isEmpty() && baseType == RecommendationBaseType.POPULAR_FALLBACK) {
 			recommendations = findPopularFallbackRecommendations(size);
 		}
 
@@ -218,6 +229,48 @@ public class PersonalizedRecommendationService {
 			userPreference.preferredCategories(),
 			userPreference.shoppingStyles(),
 			recommendations
+		);
+	}
+
+	private List<ProductRecommendationResponse> findPurchaseHistoryRecommendations(
+		int size,
+		PurchaseHistoryContext purchaseHistory
+	) {
+		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(
+			purchaseHistory.purchasedProductIds()
+				.stream()
+				.toList()
+		);
+
+		if (productMap.isEmpty()) {
+			return List.of();
+		}
+
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+			productMap.values()
+				.stream()
+				.map(product -> ProductRecommendationResponse.from(
+					product,
+					Math.min(0.70 + purchaseHistory.productAffinity(product) * 0.30, 1.0),
+					RecommendationType.PERSONALIZED,
+					"최근 구매 이력에서 자주 구매한 상품을 기반으로 추천합니다."
+				))
+				.toList(),
+			size
+		);
+	}
+
+	private String createPersonalizationText(
+		UserPreferenceResponse userPreference,
+		PurchaseHistoryContext purchaseHistory
+	) {
+		return """
+			%s
+
+			%s
+			""".formatted(
+			userPreference.preferenceText(),
+			purchaseHistory.toPreferenceText()
 		);
 	}
 

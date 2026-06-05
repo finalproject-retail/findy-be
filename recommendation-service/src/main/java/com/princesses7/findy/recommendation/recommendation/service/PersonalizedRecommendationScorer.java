@@ -37,12 +37,18 @@ public class PersonalizedRecommendationScorer {
 		UserPreferenceResponse userPreference,
 		ProductSnapshot product,
 		String categoryName,
-		double similarityScore
+		double similarityScore,
+		PurchaseHistoryContext purchaseHistory
 	) {
-		double score = normalizeSimilarity(similarityScore) * 0.70;
+		double score = normalizeSimilarity(similarityScore) * 0.55;
 
 		if (userPreference.hasPreferredCategory(product.getCategoryId())) {
 			score += 0.15;
+		}
+
+		if (purchaseHistory.hasHistory()) {
+			score += purchaseHistory.productAffinity(product) * 0.20;
+			score += purchaseHistory.categoryAffinity(product) * 0.10;
 		}
 
 		if (userPreference.hasShoppingStyle("가성비")) {
@@ -100,8 +106,17 @@ public class PersonalizedRecommendationScorer {
 	public String createReason(
 		UserPreferenceResponse userPreference,
 		ProductSnapshot product,
-		String categoryName
+		String categoryName,
+		PurchaseHistoryContext purchaseHistory
 	) {
+		if (purchaseHistory.productAffinity(product) > 0) {
+			return "최근 구매 이력에서 반복 구매한 상품을 반영해 추천한 상품입니다.";
+		}
+
+		if (purchaseHistory.categoryAffinity(product) > 0) {
+			return "최근 구매 이력에서 자주 구매한 카테고리를 반영해 추천한 상품입니다.";
+		}
+
 		if (userPreference.hasPreferredCategory(product.getCategoryId())) {
 			return "첫 로그인 설문에서 선택한 선호 카테고리를 기반으로 추천한 상품입니다.";
 		}
