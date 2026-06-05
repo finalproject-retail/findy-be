@@ -43,15 +43,16 @@ public class RecommendationController {
 	@GetMapping("/personalized")
 	public ApiResponse<PersonalizedRecommendationResponse> getPersonalizedRecommendations(
 		@RequestParam Long userId,
+		@RequestParam Long storeId,
 		@RequestParam(defaultValue = "10") int size
 	) {
 		PersonalizedRecommendationResponse response = personalizedRecommendationService
-			.getPersonalizedRecommendations(userId, size);
+			.getPersonalizedRecommendations(userId, storeId, size);
 
 		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
 			userId,
 			null,
-			null,
+			storeId,
 			RecommendationType.PERSONALIZED,
 			PERSONALIZED_DISPLAY_LOCATION,
 			response.recommendations()
