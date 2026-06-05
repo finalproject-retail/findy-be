@@ -34,11 +34,11 @@ public record ShoppingListResponse(
 			.toList();
 
 		int totalAmount = items.stream()
-			.mapToInt(ShoppingListItemResponse::itemTotalAmount)
+			.mapToInt(item -> item.itemTotalAmount() == null ? 0 : item.itemTotalAmount())
 			.sum();
 
 		int scannedAmount = items.stream()
-			.mapToInt(ShoppingListItemResponse::scannedAmount)
+			.mapToInt(item -> item.scannedAmount() == null ? 0 : item.scannedAmount())
 			.sum();
 
 		return new ShoppingListResponse(
