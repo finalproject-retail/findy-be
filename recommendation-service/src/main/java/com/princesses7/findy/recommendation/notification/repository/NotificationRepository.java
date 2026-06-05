@@ -1,6 +1,5 @@
 package com.princesses7.findy.recommendation.notification.repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.data.domain.Pageable;
@@ -17,15 +16,6 @@ public interface NotificationRepository extends JpaRepository<Notification, Long
 		Long userId,
 		NotificationType notificationType,
 		Pageable pageable
-	);
-
-	boolean existsByUserIdAndSentAtAfter(Long userId, LocalDateTime sentAt);
-
-	boolean existsByUserIdAndProductIdAndNotificationTypeAndSentAtAfter(
-		Long userId,
-		Long productId,
-		NotificationType notificationType,
-		LocalDateTime sentAt
 	);
 
 	boolean existsByUserIdAndShoppingListIdAndProductIdAndNotificationType(
