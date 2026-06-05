@@ -1,6 +1,7 @@
 package com.princesses7.findy.user.user.dto.response;
 
 import com.princesses7.findy.user.user.entity.Grade;
+import com.princesses7.findy.user.user.entity.Role;
 import com.princesses7.findy.user.user.entity.UserEntity;
 
 public record MyPageResponse(
@@ -8,7 +9,8 @@ public record MyPageResponse(
 	String name,
 	String email,
 	Grade grade,
-	long reward
+	long reward,
+	Role role
 ) {
 
 	public static MyPageResponse from(UserEntity user) {
@@ -17,7 +19,8 @@ public record MyPageResponse(
 			user.getName(),
 			user.getEmail(),
 			user.getGrade().getGradeName(),
-			user.getReward()
+			user.getReward(),
+			user.getRole()
 		);
 	}
 }
