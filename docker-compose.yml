@@ -211,11 +211,14 @@ services:
       <<: *database-env
       SERVER_PORT: 8080
       OPENAI_API_KEY: ${OPENAI_API_KEY:-test}
+      SHOPPING_SERVICE_URL: http://shopping-service:8080
       TZ: Asia/Seoul
       JAVA_TOOL_OPTIONS: -Duser.timezone=Asia/Seoul
     depends_on:
       postgres:
         condition: service_healthy
+      shopping-service:
+        condition: service_started
     networks:
       - findy-network
 

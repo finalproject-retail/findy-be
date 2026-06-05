@@ -39,6 +39,10 @@ openai:
 ai:
   provider: ${AI_PROVIDER:openai}
 
+external:
+  shopping:
+    base-url: ${SHOPPING_SERVICE_URL:http://localhost:8887}
+
 bedrock:
   region: ${AWS_REGION:ap-northeast-2}
   chat-model-id: ${BEDROCK_CHAT_MODEL_ID:anthropic.claude-3-haiku-20240307-v1:0}

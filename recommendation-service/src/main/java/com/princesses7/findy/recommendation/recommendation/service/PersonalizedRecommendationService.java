@@ -16,6 +16,9 @@ import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
 import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
+import com.princesses7.findy.recommendation.external.shopping.PurchaseHistoryClient;
+import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
+import com.princesses7.findy.recommendation.inventory.repository.InventorySnapshotRepository;
 import com.princesses7.findy.recommendation.preference.dto.response.UserPreferenceResponse;
 import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
 import com.princesses7.findy.recommendation.preference.repository.CategorySnapshotRepository;
@@ -51,100 +54,97 @@ public class PersonalizedRecommendationService {
 	private final PersonalizedRecommendationScorer scorer;
 	private final RecommendationRequestValidator requestValidator;
 	private final RecommendationLogRepository recommendationLogRepository;
+	private final PurchaseHistoryClient purchaseHistoryClient;
+	private final InventorySnapshotRepository inventoryRepository;
 
 	public PersonalizedRecommendationResponse getPersonalizedRecommendations(
-		Long userId,
-		int size
-	) {
+			Long userId,
+			Long storeId,
+			int size) {
 		requestValidator.validatePositiveId(userId, "userId");
+		requestValidator.validatePositiveId(storeId, "storeId");
 		int normalizedSize = normalizeSize(size);
 
 		UserPreferenceResponse userPreference = userPreferenceQueryService.getUserPreference(userId);
-		RecommendationBaseType baseType = resolveBaseType(userPreference);
+		PurchaseHistoryContext purchaseHistory = PurchaseHistoryContext.from(
+				purchaseHistoryClient.findFrequentPurchaseProducts(userId));
+		RecommendationBaseType baseType = resolveBaseType(userPreference, purchaseHistory);
 
 		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
 			return fallback(
-				userId,
-				normalizedSize,
-				userPreference,
-				RecommendationBaseType.POPULAR_FALLBACK
-			);
+					userId,
+					normalizedSize,
+					userPreference,
+					purchaseHistory,
+					storeId,
+					RecommendationBaseType.POPULAR_FALLBACK);
 		}
 
 		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findByModelAndDimensions(
-			productEmbeddingClient.model(),
-			productEmbeddingClient.dimensions()
-		);
+				productEmbeddingClient.model(),
+				productEmbeddingClient.dimensions());
 
 		if (candidateEmbeddings.isEmpty()) {
 			return fallback(
-				userId,
-				normalizedSize,
-				userPreference,
-				RecommendationBaseType.NO_PRODUCT_EMBEDDING_FALLBACK
-			);
+					userId,
+					normalizedSize,
+					userPreference,
+					purchaseHistory,
+					storeId,
+					RecommendationBaseType.NO_PRODUCT_EMBEDDING_FALLBACK);
 		}
 
 		List<Double> userPreferenceEmbedding = productEmbeddingClient.createEmbedding(
-			userPreference.preferenceText()
-		);
+				createPersonalizationText(userPreference, purchaseHistory));
 
 		List<Long> productIds = candidateEmbeddings.stream()
-			.map(ProductEmbedding::getProductId)
-			.toList();
+				.map(ProductEmbedding::getProductId)
+				.toList();
 
-		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(productIds);
+		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(productIds, storeId);
 
 		Map<Long, String> categoryNameMap = findCategoryNameMap(
-			productMap.values().stream()
-				.map(ProductSnapshot::getCategoryId)
-				.toList()
-		);
+				productMap.values().stream()
+						.map(ProductSnapshot::getCategoryId)
+						.toList());
 
 		List<ProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
-			candidateEmbeddings.stream()
-				.map(productEmbedding -> toRecommendationResponse(
-					userPreference,
-					productEmbedding,
-					productMap,
-					categoryNameMap,
-					userPreferenceEmbedding
-				))
-				.filter(Objects::nonNull)
-				.toList(),
-			normalizedSize
-		);
+				candidateEmbeddings.stream()
+						.map(productEmbedding -> toRecommendationResponse(
+								userPreference,
+								productEmbedding,
+								productMap,
+								categoryNameMap,
+								userPreferenceEmbedding,
+								purchaseHistory))
+						.filter(Objects::nonNull)
+						.toList(),
+				normalizedSize);
 
 		if (recommendations.isEmpty()) {
 			return fallback(
-				userId,
-				normalizedSize,
-				userPreference,
-				RecommendationBaseType.POPULAR_FALLBACK
-			);
+					userId,
+					normalizedSize,
+					userPreference,
+					purchaseHistory,
+					storeId,
+					RecommendationBaseType.POPULAR_FALLBACK);
 		}
 
 		return new PersonalizedRecommendationResponse(
-			userId,
-			baseType,
-			userPreference.preferredCategories(),
-			userPreference.shoppingStyles(),
-			recommendations
-		);
+				userId,
+				baseType,
+				userPreference.preferredCategories(),
+				userPreference.shoppingStyles(),
+				recommendations);
 	}
 
-	private RecommendationBaseType resolveBaseType(UserPreferenceResponse userPreference) {
+	private RecommendationBaseType resolveBaseType(
+			UserPreferenceResponse userPreference,
+			PurchaseHistoryContext purchaseHistory) {
 		boolean hasPreference = userPreferenceQueryService.hasPreference(userPreference);
 
-		/*
-		 * 현재 작업 범위는 선호 정보 기반 개인 맞춤 추천입니다.
-		 * 구매 기록 조회 로직은 아직 연결하지 않았기 때문에 false로 둡니다.
-		 *
-		 * 이후 구매 기록 기능을 붙이면
-		 * hasPurchaseHistory 값을 실제 구매 기록 존재 여부로 교체하면 됩니다.
-		 */
-		// TODO: 구매 기록 조회 로직과 연결
-		boolean hasPurchaseHistory = false;
+		boolean hasPurchaseHistory = purchaseHistory.hasHistory();
 
 		if (hasPreference && hasPurchaseHistory) {
 			return RecommendationBaseType.PREFERENCE_WITH_PURCHASE_HISTORY;
@@ -162,12 +162,12 @@ public class PersonalizedRecommendationService {
 	}
 
 	private ProductRecommendationResponse toRecommendationResponse(
-		UserPreferenceResponse userPreference,
-		ProductEmbedding productEmbedding,
-		Map<Long, ProductSnapshot> productMap,
-		Map<Long, String> categoryNameMap,
-		List<Double> userPreferenceEmbedding
-	) {
+			UserPreferenceResponse userPreference,
+			ProductEmbedding productEmbedding,
+			Map<Long, ProductSnapshot> productMap,
+			Map<Long, String> categoryNameMap,
+			List<Double> userPreferenceEmbedding,
+			PurchaseHistoryContext purchaseHistory) {
 		ProductSnapshot product = productMap.get(productEmbedding.getProductId());
 
 		if (product == null) {
@@ -177,91 +177,127 @@ public class PersonalizedRecommendationService {
 		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
 
 		double similarityScore = VectorSimilarityCalculator.cosineSimilarity(
-			userPreferenceEmbedding,
-			productEmbedding.getEmbeddingVector()
-		);
+				userPreferenceEmbedding,
+				productEmbedding.getEmbeddingVector());
 
 		double score = scorer.calculate(
-			userPreference,
-			product,
-			categoryName,
-			similarityScore
-		);
+				userPreference,
+				product,
+				categoryName,
+				similarityScore,
+				purchaseHistory);
 
 		return ProductRecommendationResponse.from(
-			product,
-			score,
-			RecommendationType.PERSONALIZED,
-			scorer.createReason(userPreference, product, categoryName)
-		);
+				product,
+				score,
+				RecommendationType.PERSONALIZED,
+				scorer.createReason(userPreference, product, categoryName, purchaseHistory));
 	}
 
 	private PersonalizedRecommendationResponse fallback(
-		Long userId,
-		int size,
-		UserPreferenceResponse userPreference,
-		RecommendationBaseType baseType
-	) {
+			Long userId,
+			int size,
+			UserPreferenceResponse userPreference,
+			PurchaseHistoryContext purchaseHistory,
+			Long storeId,
+			RecommendationBaseType baseType) {
 		List<ProductRecommendationResponse> recommendations = List.of();
 
-		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
-			recommendations = findPopularFallbackRecommendations(size);
+		if (purchaseHistory.hasHistory()) {
+			recommendations = findPurchaseHistoryRecommendations(size, purchaseHistory, storeId);
+		}
+
+		if (recommendations.isEmpty() && baseType == RecommendationBaseType.POPULAR_FALLBACK) {
+			recommendations = findPopularFallbackRecommendations(size, storeId);
 		}
 
 		if (recommendations.isEmpty()) {
-			recommendations = findDefaultFallbackRecommendations(size, baseType);
+			recommendations = findDefaultFallbackRecommendations(size, storeId, baseType);
 		}
 
 		return new PersonalizedRecommendationResponse(
-			userId,
-			baseType,
-			userPreference.preferredCategories(),
-			userPreference.shoppingStyles(),
-			recommendations
-		);
+				userId,
+				baseType,
+				userPreference.preferredCategories(),
+				userPreference.shoppingStyles(),
+				recommendations);
 	}
 
-	private List<ProductRecommendationResponse> findPopularFallbackRecommendations(int size) {
+	private List<ProductRecommendationResponse> findPurchaseHistoryRecommendations(
+			int size,
+			PurchaseHistoryContext purchaseHistory,
+			Long storeId) {
+		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(
+				purchaseHistory.purchasedProductIds()
+						.stream()
+						.toList(),
+				storeId);
+
+		if (productMap.isEmpty()) {
+			return List.of();
+		}
+
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+				productMap.values()
+						.stream()
+						.map(product -> ProductRecommendationResponse.from(
+								product,
+								Math.min(0.70 + purchaseHistory.productAffinity(product) * 0.30, 1.0),
+								RecommendationType.PERSONALIZED,
+								"최근 구매 이력에서 자주 구매한 상품을 기반으로 추천합니다."))
+						.toList(),
+				size);
+	}
+
+	private String createPersonalizationText(
+			UserPreferenceResponse userPreference,
+			PurchaseHistoryContext purchaseHistory) {
+		return """
+				%s
+
+				%s
+				""".formatted(
+				userPreference.preferenceText(),
+				purchaseHistory.toPreferenceText());
+	}
+
+	private List<ProductRecommendationResponse> findPopularFallbackRecommendations(int size, Long storeId) {
 		LocalDateTime fromDateTime = LocalDateTime.now().minusDays(POPULAR_LOOKBACK_DAYS);
 
 		List<PopularProductProjection> popularProducts = recommendationLogRepository.findPopularPersonalizedProducts(
-			fromDateTime,
-			size * FALLBACK_MULTIPLIER
-		);
+				fromDateTime,
+				size * FALLBACK_MULTIPLIER);
 
 		if (popularProducts.isEmpty()) {
 			return List.of();
 		}
 
 		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(
-			popularProducts.stream()
-				.map(PopularProductProjection::getProductId)
-				.toList()
-		);
+				popularProducts.stream()
+						.map(PopularProductProjection::getProductId)
+						.toList(),
+				storeId);
 
 		double maxPopularityScore = popularProducts.stream()
-			.mapToLong(popularProduct -> defaultLong(popularProduct.getPopularityScore()))
-			.max()
-			.orElse(1L);
+				.mapToLong(popularProduct -> defaultLong(popularProduct.getPopularityScore()))
+				.max()
+				.orElse(1L);
 
 		return RecommendationResultPolicy.finalizeProductRecommendations(
-			popularProducts.stream()
-				.map(popularProduct -> toPopularFallbackResponse(
-					popularProduct,
-					productMap,
-					maxPopularityScore
-				))
-				.filter(Objects::nonNull)
-				.toList(),
-			size
-		);
+				popularProducts.stream()
+						.map(popularProduct -> toPopularFallbackResponse(
+								popularProduct,
+								productMap,
+								maxPopularityScore))
+						.filter(Objects::nonNull)
+						.toList(),
+				size);
 	}
 
 	private ProductRecommendationResponse toPopularFallbackResponse(
-		PopularProductProjection popularProduct,
-		Map<Long, ProductSnapshot> productMap,
-		double maxPopularityScore
-	) {
+			PopularProductProjection popularProduct,
+			Map<Long, ProductSnapshot> productMap,
+			double maxPopularityScore) {
 		ProductSnapshot product = productMap.get(popularProduct.getProductId());
 
 		if (product == null) {
@@ -269,34 +305,31 @@ public class PersonalizedRecommendationService {
 		}
 
 		return ProductRecommendationResponse.from(
-			product,
-			scorer.popularFallbackScore(
 				product,
-				defaultLong(popularProduct.getPopularityScore()),
-				maxPopularityScore
-			),
-			RecommendationType.PERSONALIZED,
-			createPopularFallbackReason(popularProduct)
-		);
+				scorer.popularFallbackScore(
+						product,
+						defaultLong(popularProduct.getPopularityScore()),
+						maxPopularityScore),
+				RecommendationType.PERSONALIZED,
+				createPopularFallbackReason(popularProduct));
 	}
 
 	private List<ProductRecommendationResponse> findDefaultFallbackRecommendations(
-		int size,
-		RecommendationBaseType baseType
-	) {
+			int size,
+			Long storeId,
+			RecommendationBaseType baseType) {
 		return RecommendationResultPolicy.finalizeProductRecommendations(
-			productRepository.findByDeletedFalse(PageRequest.of(0, size * FALLBACK_MULTIPLIER))
-				.stream()
-				.filter(RecommendationResultPolicy::isDisplayableProduct)
-				.map(product -> ProductRecommendationResponse.from(
-					product,
-					scorer.fallbackScore(product),
-					RecommendationType.PERSONALIZED,
-					createFallbackReason(baseType)
-				))
-				.toList(),
-			size
-		);
+				productRepository.findByDeletedFalse(PageRequest.of(0, size * FALLBACK_MULTIPLIER * FALLBACK_MULTIPLIER))
+						.stream()
+						.filter(RecommendationResultPolicy::isDisplayableProduct)
+						.filter(product -> hasAvailableStock(product, storeId))
+						.map(product -> ProductRecommendationResponse.from(
+								product,
+								scorer.fallbackScore(product),
+								RecommendationType.PERSONALIZED,
+								createFallbackReason(baseType)))
+						.toList(),
+				size);
 	}
 
 	private String createPopularFallbackReason(PopularProductProjection popularProduct) {
@@ -319,15 +352,47 @@ public class PersonalizedRecommendationService {
 		return "개인화 데이터가 부족하여 구매 가능한 상품을 기준으로 추천합니다.";
 	}
 
-	private Map<Long, ProductSnapshot> findRecommendableProductMap(List<Long> productIds) {
+	private Map<Long, ProductSnapshot> findRecommendableProductMap(List<Long> productIds, Long storeId) {
+		if (productIds.isEmpty()) {
+			return Map.of();
+		}
+
+		Map<Long, InventorySnapshot> availableInventoryMap = findAvailableInventoryMap(storeId, productIds);
+
+		if (availableInventoryMap.isEmpty()) {
+			return Map.of();
+		}
+
 		return productRepository.findByProductIdIn(productIds)
-			.stream()
-			.filter(ProductSnapshot::isRecommendable)
-			.collect(Collectors.toMap(
-				ProductSnapshot::getProductId,
-				product -> product,
-				(left, right) -> left
-			));
+				.stream()
+				.filter(ProductSnapshot::isRecommendable)
+				.filter(product -> availableInventoryMap.containsKey(product.getProductId()))
+				.collect(Collectors.toMap(
+						ProductSnapshot::getProductId,
+						product -> product,
+						(left, right) -> left));
+	}
+
+	private Map<Long, InventorySnapshot> findAvailableInventoryMap(
+			Long storeId,
+			Collection<Long> productIds) {
+		if (productIds.isEmpty()) {
+			return Map.of();
+		}
+
+		return inventoryRepository.findByStoreIdAndProductIdIn(storeId, productIds)
+				.stream()
+				.filter(InventorySnapshot::hasAvailableStock)
+				.collect(Collectors.toMap(
+						InventorySnapshot::getProductId,
+						inventory -> inventory,
+						(left, right) -> left));
+	}
+
+	private boolean hasAvailableStock(ProductSnapshot product, Long storeId) {
+		return inventoryRepository.findByProductIdAndStoreId(product.getProductId(), storeId)
+				.map(InventorySnapshot::hasAvailableStock)
+				.orElse(false);
 	}
 
 	private Map<Long, String> findCategoryNameMap(Collection<Long> categoryIds) {
@@ -336,12 +401,11 @@ public class PersonalizedRecommendationService {
 		}
 
 		return categoryRepository.findByCategoryIdIn(categoryIds)
-			.stream()
-			.collect(Collectors.toMap(
-				CategorySnapshot::getCategoryId,
-				CategorySnapshot::getCategoryName,
-				(left, right) -> left
-			));
+				.stream()
+				.collect(Collectors.toMap(
+						CategorySnapshot::getCategoryId,
+						CategorySnapshot::getCategoryName,
+						(left, right) -> left));
 	}
 
 	private BigDecimal getDiscountRate(ProductSnapshot product) {
