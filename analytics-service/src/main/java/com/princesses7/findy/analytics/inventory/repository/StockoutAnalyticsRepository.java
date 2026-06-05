@@ -1,13 +1,13 @@
 package com.princesses7.findy.analytics.inventory.repository;
 
 import java.sql.Timestamp;
+import java.sql.Types;
 import java.time.LocalDate;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -75,7 +75,7 @@ public class StockoutAnalyticsRepository {
 			table("products")
 		);
 
-		Map<String, Object> params = params(periodRange, storeId, categoryId);
+		MapSqlParameterSource params = params(periodRange, storeId, categoryId);
 
 		return jdbcTemplate.queryForObject(
 			sql,
@@ -114,7 +114,7 @@ public class StockoutAnalyticsRepository {
 			table("products")
 		);
 
-		Map<String, Object> params = params(periodRange, storeId, categoryId);
+		MapSqlParameterSource params = params(periodRange, storeId, categoryId);
 
 		return jdbcTemplate.query(
 			sql,
@@ -168,8 +168,8 @@ public class StockoutAnalyticsRepository {
 			table("categories")
 		);
 
-		Map<String, Object> params = params(periodRange, storeId, categoryId);
-		params.put("limit", limit);
+		MapSqlParameterSource params = params(periodRange, storeId, categoryId);
+		params.addValue("limit", limit, Types.INTEGER);
 
 		return jdbcTemplate.query(
 			sql,
@@ -188,13 +188,12 @@ public class StockoutAnalyticsRepository {
 		);
 	}
 
-	private Map<String, Object> params(PeriodRange periodRange, Long storeId, Long categoryId) {
-		Map<String, Object> params = new HashMap<>();
-		params.put("fromAt", periodRange.fromAt());
-		params.put("toAt", periodRange.toExclusiveAt());
-		params.put("storeId", storeId);
-		params.put("categoryId", categoryId);
-		return params;
+	private MapSqlParameterSource params(PeriodRange periodRange, Long storeId, Long categoryId) {
+		return new MapSqlParameterSource()
+			.addValue("fromAt", periodRange.fromAt(), Types.TIMESTAMP)
+			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP)
+			.addValue("storeId", storeId, Types.BIGINT)
+			.addValue("categoryId", categoryId, Types.BIGINT);
 	}
 
 	private LocalDate toLocalDate(java.sql.Date date) {
