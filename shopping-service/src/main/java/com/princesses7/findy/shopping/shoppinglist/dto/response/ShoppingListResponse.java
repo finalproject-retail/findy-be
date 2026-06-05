@@ -21,13 +21,15 @@ public record ShoppingListResponse(
 
 	public static ShoppingListResponse from(
 		ShoppingList shoppingList,
-		Map<Long, ProductSummaryResponse> productMap
+		Map<Long, ProductSummaryResponse> productMap,
+		Map<Long, Long> categoryGridIdMap
 	) {
 		List<ShoppingListItemResponse> items = shoppingList.getShoppingListItems()
 			.stream()
 			.map(item -> ShoppingListItemResponse.from(
 				item,
-				getProductSummary(item, productMap)
+				getProductSummary(item, productMap),
+				getCategoryGridId(item, categoryGridIdMap)
 			))
 			.toList();
 
@@ -62,6 +64,17 @@ public record ShoppingListResponse(
 		return productMap.get(item.getProductId());
 	}
 
+	private static Long getCategoryGridId(
+		ShoppingListItem item,
+		Map<Long, Long> categoryGridIdMap
+	) {
+		if (item.isProductItem() || item.getCategoryId() == null) {
+			return null;
+		}
+
+		return categoryGridIdMap.get(item.getCategoryId());
+	}
+
 	/**
 	 * map-service 경로 API({@code destinationGridIds})에 바로 넣을 수 있는 목록.
 	 * 쇼핑 리스트 순서를 유지하고, 연속 중복 격자·gridId 없음 항목은 제외한다.
@@ -71,11 +84,12 @@ public record ShoppingListResponse(
 		Long previousGridId = null;
 
 		for (ShoppingListItemResponse item : items) {
-			if (item.product() == null || item.product().gridId() == null) {
+			Long gridId = extractGridId(item);
+
+			if (gridId == null) {
 				continue;
 			}
 
-			Long gridId = item.product().gridId();
 			if (gridId.equals(previousGridId)) {
 				continue;
 			}
@@ -85,5 +99,17 @@ public record ShoppingListResponse(
 		}
 
 		return destinationGridIds;
+	}
+
+	private static Long extractGridId(ShoppingListItemResponse item) {
+		if (item.product() != null) {
+			return item.product().gridId();
+		}
+
+		if (item.category() != null) {
+			return item.category().gridId();
+		}
+
+		return null;
 	}
 }
