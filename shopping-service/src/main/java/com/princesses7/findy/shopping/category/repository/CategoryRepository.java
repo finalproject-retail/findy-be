@@ -1,5 +1,6 @@
 package com.princesses7.findy.shopping.category.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +17,6 @@ public interface CategoryRepository extends JpaRepository<Category, Long> {
 	Optional<Category> findFirstByCategoryNameAndActiveTrue(String categoryName);
 
 	List<Category> findByCategoryNameContainingAndActiveTrueOrderByCategoryIdAsc(String categoryName);
+
+	List<Category> findAllByCategoryIdInAndActiveTrue(Collection<Long> categoryIds);
 }

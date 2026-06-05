@@ -23,10 +23,11 @@ public record ShoppingListItemResponse(
 
 	public static ShoppingListItemResponse from(
 		ShoppingListItem item,
-		ProductSummaryResponse product
+		ProductSummaryResponse product,
+		Long categoryGridId
 	) {
 		if (item.isCategoryItem()) {
-			return fromCategory(item);
+			return fromCategory(item, categoryGridId);
 		}
 
 		return fromProduct(item, product);
@@ -54,11 +55,13 @@ public record ShoppingListItemResponse(
 	}
 
 	private static ShoppingListItemResponse fromCategory(
-		ShoppingListItem item
+		ShoppingListItem item,
+		Long categoryGridId
 	) {
 		CategoryShoppingListItemResponse category = new CategoryShoppingListItemResponse(
 			item.getCategoryId(),
-			item.getCategoryName()
+			item.getCategoryName(),
+			categoryGridId
 		);
 
 		return new ShoppingListItemResponse(
