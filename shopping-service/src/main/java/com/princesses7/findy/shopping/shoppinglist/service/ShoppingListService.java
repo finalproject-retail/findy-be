@@ -4,6 +4,7 @@ import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -344,7 +345,25 @@ public class ShoppingListService {
 		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
 			.getProductSummaryMap(productIds);
 
-		return ShoppingListResponse.from(shoppingList, productMap);
+		List<Long> categoryIds = shoppingList.getShoppingListItems().stream()
+			.filter(ShoppingListItem::isCategoryItem)
+			.map(ShoppingListItem::getCategoryId)
+			.distinct()
+			.toList();
+
+		Map<Long, Long> categoryGridIdMap = categoryRepository
+			.findAllByCategoryIdInAndActiveTrue(categoryIds)
+			.stream()
+			.collect(Collectors.toMap(
+				Category::getCategoryId,
+				Category::getGridId
+			));
+
+		return ShoppingListResponse.from(
+			shoppingList,
+			productMap,
+			categoryGridIdMap
+		);
 	}
 
 	private record CategoryItemTarget(
