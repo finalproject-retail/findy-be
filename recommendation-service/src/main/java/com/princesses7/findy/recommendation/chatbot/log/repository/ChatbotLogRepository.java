@@ -24,8 +24,8 @@ public interface ChatbotLogRepository extends JpaRepository<ChatbotLog, Long> {
 		FROM ChatbotLog l
 		WHERE (:status IS NULL OR l.status = :status)
 			AND (:intent IS NULL OR l.intent = :intent)
-			AND (:fromDateTime IS NULL OR l.createdAt >= :fromDateTime)
-			AND (:toDateTime IS NULL OR l.createdAt < :toDateTime)
+			AND l.createdAt >= :fromDateTime
+			AND l.createdAt < :toDateTime
 		ORDER BY l.createdAt DESC
 		""")
 	Page<ChatbotLog> searchLogs(
@@ -43,8 +43,8 @@ public interface ChatbotLogRepository extends JpaRepository<ChatbotLog, Long> {
 			COALESCE(SUM(CASE WHEN l.status = :failureStatus THEN 1 ELSE 0 END), 0) AS failureCount,
 			COALESCE(AVG(l.durationMs), 0) AS averageDurationMs
 		FROM ChatbotLog l
-		WHERE (:fromDateTime IS NULL OR l.createdAt >= :fromDateTime)
-			AND (:toDateTime IS NULL OR l.createdAt < :toDateTime)
+		WHERE l.createdAt >= :fromDateTime
+			AND l.createdAt < :toDateTime
 		""")
 	ChatbotLogSummaryProjection getSummary(
 		@Param("fromDateTime") LocalDateTime fromDateTime,
@@ -58,8 +58,8 @@ public interface ChatbotLogRepository extends JpaRepository<ChatbotLog, Long> {
 			l.intent AS intent,
 			COUNT(l) AS count
 		FROM ChatbotLog l
-		WHERE (:fromDateTime IS NULL OR l.createdAt >= :fromDateTime)
-			AND (:toDateTime IS NULL OR l.createdAt < :toDateTime)
+		WHERE l.createdAt >= :fromDateTime
+			AND l.createdAt < :toDateTime
 			AND l.intent IS NOT NULL
 		GROUP BY l.intent
 		ORDER BY COUNT(l) DESC
@@ -76,8 +76,8 @@ public interface ChatbotLogRepository extends JpaRepository<ChatbotLog, Long> {
 			MAX(l.createdAt) AS lastAskedAt
 		FROM ChatbotLog l
 		WHERE l.status = :successStatus
-			AND (:fromDateTime IS NULL OR l.createdAt >= :fromDateTime)
-			AND (:toDateTime IS NULL OR l.createdAt < :toDateTime)
+			AND l.createdAt >= :fromDateTime
+			AND l.createdAt < :toDateTime
 		GROUP BY l.requestMessage
 		ORDER BY COUNT(l) DESC, MAX(l.createdAt) DESC
 		""")
@@ -100,8 +100,8 @@ public interface ChatbotLogRepository extends JpaRepository<ChatbotLog, Long> {
 			l.createdAt AS createdAt
 		FROM ChatbotLog l
 		WHERE l.status = :failureStatus
-			AND (:fromDateTime IS NULL OR l.createdAt >= :fromDateTime)
-			AND (:toDateTime IS NULL OR l.createdAt < :toDateTime)
+			AND l.createdAt >= :fromDateTime
+			AND l.createdAt < :toDateTime
 		ORDER BY l.createdAt DESC
 		""")
 	List<ChatbotFailureLogProjection> getFailureLogs(

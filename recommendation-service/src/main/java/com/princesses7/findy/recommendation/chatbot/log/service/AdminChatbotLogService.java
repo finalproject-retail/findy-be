@@ -34,6 +34,9 @@ public class AdminChatbotLogService {
 	private static final int DEFAULT_LIMIT = 10;
 	private static final int MAX_LIMIT = 50;
 
+	private static final LocalDateTime DEFAULT_FROM_DATE_TIME = LocalDateTime.of(1970, 1, 1, 0, 0);
+	private static final LocalDateTime DEFAULT_TO_DATE_TIME = LocalDateTime.of(9999, 12, 31, 23, 59, 59);
+
 	private final ChatbotLogRepository chatbotLogRepository;
 
 	public AdminChatbotLogPageResponse getLogs(
@@ -92,38 +95,6 @@ public class AdminChatbotLogService {
 		return AdminChatbotSummaryResponse.of(summary, intentCounts);
 	}
 
-	private int normalizePage(Integer page) {
-		if (page == null || page < 0) {
-			return DEFAULT_PAGE;
-		}
-
-		return page;
-	}
-
-	private int normalizeSize(Integer size) {
-		if (size == null || size <= 0) {
-			return DEFAULT_SIZE;
-		}
-
-		return Math.min(size, MAX_SIZE);
-	}
-
-	private LocalDateTime toStartDateTime(LocalDate date) {
-		if (date == null) {
-			return null;
-		}
-
-		return date.atStartOfDay();
-	}
-
-	private LocalDateTime toExclusiveEndDateTime(LocalDate date) {
-		if (date == null) {
-			return null;
-		}
-
-		return date.plusDays(1).atStartOfDay();
-	}
-
 	public List<AdminChatbotFrequentQuestionResponse> getFrequentQuestions(
 		LocalDate fromDate,
 		LocalDate toDate,
@@ -140,14 +111,6 @@ public class AdminChatbotLogService {
 			.toList();
 	}
 
-	private int normalizeLimit(Integer limit) {
-		if (limit == null || limit <= 0) {
-			return DEFAULT_LIMIT;
-		}
-
-		return Math.min(limit, MAX_LIMIT);
-	}
-
 	public List<AdminChatbotFailureLogResponse> getFailureLogs(
 		LocalDate fromDate,
 		LocalDate toDate,
@@ -162,5 +125,45 @@ public class AdminChatbotLogService {
 			.stream()
 			.map(AdminChatbotFailureLogResponse::from)
 			.toList();
+	}
+
+	private int normalizePage(Integer page) {
+		if (page == null || page < 0) {
+			return DEFAULT_PAGE;
+		}
+
+		return page;
+	}
+
+	private int normalizeSize(Integer size) {
+		if (size == null || size <= 0) {
+			return DEFAULT_SIZE;
+		}
+
+		return Math.min(size, MAX_SIZE);
+	}
+
+	private int normalizeLimit(Integer limit) {
+		if (limit == null || limit <= 0) {
+			return DEFAULT_LIMIT;
+		}
+
+		return Math.min(limit, MAX_LIMIT);
+	}
+
+	private LocalDateTime toStartDateTime(LocalDate date) {
+		if (date == null) {
+			return DEFAULT_FROM_DATE_TIME;
+		}
+
+		return date.atStartOfDay();
+	}
+
+	private LocalDateTime toExclusiveEndDateTime(LocalDate date) {
+		if (date == null) {
+			return DEFAULT_TO_DATE_TIME;
+		}
+
+		return date.plusDays(1).atStartOfDay();
 	}
 }
