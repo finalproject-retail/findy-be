@@ -1,5 +1,7 @@
 package com.princesses7.findy.recommendation.chatbot.service;
 
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -18,6 +20,7 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotShopping
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatMessage;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatSession;
+import com.princesses7.findy.recommendation.chatbot.log.service.ChatbotLogService;
 import com.princesses7.findy.recommendation.chatbot.rag.dto.response.RagContextResponse;
 import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextPromptBuilder;
 import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextService;
@@ -46,47 +49,76 @@ public class ChatbotService {
 	private final ChatbotShoppingContextPromptBuilder chatbotShoppingContextPromptBuilder;
 	private final RagContextService ragContextService;
 	private final RagContextPromptBuilder ragContextPromptBuilder;
+	private final ChatbotLogService chatbotLogService;
 
 	@Transactional
 	public ChatbotMessageResponse reply(Long userId, ChatbotMessageRequest request) {
-		ChatSession chatSession = findOrCreateSession(userId, request.sessionId(), request.message());
-		ChatbotIntentAnalysis analysis = chatbotIntentAnalyzer.analyze(request.message());
-		ChatIntent intent = analysis.intent();
+		LocalDateTime startedAt = LocalDateTime.now();
+		ChatSession chatSession = null;
+		ChatbotIntentAnalysis analysis = ChatbotIntentAnalysis.general();
 
-		ChatbotShoppingContextResponse shoppingContext = chatbotShoppingContextService.getContext(
-			request,
-			analysis
-		);
+		try {
+			chatSession = findOrCreateSession(userId, request.sessionId(), request.message());
+			analysis = chatbotIntentAnalyzer.analyze(request.message());
+			ChatIntent intent = analysis.intent();
 
-		RagContextResponse ragContext = ragContextService.getContext(
-			request.message(),
-			analysis
-		);
+			ChatbotShoppingContextResponse shoppingContext = chatbotShoppingContextService.getContext(
+				request,
+				analysis
+			);
 
-		String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
-		String ragContextPrompt = ragContextPromptBuilder.build(ragContext);
+			RagContextResponse ragContext = ragContextService.getContext(
+				request.message(),
+				analysis
+			);
 
-		List<ChatMessage> recentMessages = getRecentMessages(chatSession);
-		List<OpenAiChatMessage> messages = chatbotPromptContextBuilder.build(
-			chatbotPromptProvider.systemPrompt(),
-			recentMessages,
-			shoppingContextPrompt,
-			ragContextPrompt,
-			request.message()
-		);
+			String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
+			String ragContextPrompt = ragContextPromptBuilder.build(ragContext);
 
-		String answer = openAiChatClient.chat(messages);
+			List<ChatMessage> recentMessages = getRecentMessages(chatSession);
+			List<OpenAiChatMessage> messages = chatbotPromptContextBuilder.build(
+				chatbotPromptProvider.systemPrompt(),
+				recentMessages,
+				shoppingContextPrompt,
+				ragContextPrompt,
+				request.message()
+			);
 
-		chatMessageRepository.save(ChatMessage.user(chatSession, request.message(), intent));
-		chatMessageRepository.save(ChatMessage.assistant(chatSession, answer, intent));
-		chatSession.updateLastMessage(answer);
+			String answer = openAiChatClient.chat(messages);
 
-		return new ChatbotMessageResponse(
-			chatSession.getChatSessionId(),
-			answer,
-			shoppingContext,
-			ragContext
-		);
+			chatMessageRepository.save(ChatMessage.user(chatSession, request.message(), intent));
+			chatMessageRepository.save(ChatMessage.assistant(chatSession, answer, intent));
+			chatSession.updateLastMessage(answer);
+
+			chatbotLogService.saveSuccessLog(
+				userId,
+				chatSession.getChatSessionId(),
+				intent,
+				analysis.keyword(),
+				request.message(),
+				answer,
+				calculateDurationMs(startedAt)
+			);
+
+			return new ChatbotMessageResponse(
+				chatSession.getChatSessionId(),
+				answer,
+				shoppingContext,
+				ragContext
+			);
+		} catch (Exception exception) {
+			chatbotLogService.saveFailureLog(
+				userId,
+				resolveChatSessionId(request, chatSession),
+				analysis.intent(),
+				analysis.keyword(),
+				request.message(),
+				exception,
+				calculateDurationMs(startedAt)
+			);
+
+			throw exception;
+		}
 	}
 
 	@Transactional(readOnly = true)
@@ -135,5 +167,20 @@ public class ChatbotService {
 		Collections.reverse(recentMessages);
 
 		return recentMessages;
+	}
+
+	private Long calculateDurationMs(LocalDateTime startedAt) {
+		return Duration.between(startedAt, LocalDateTime.now()).toMillis();
+	}
+
+	private Long resolveChatSessionId(
+		ChatbotMessageRequest request,
+		ChatSession chatSession
+	) {
+		if (chatSession != null) {
+			return chatSession.getChatSessionId();
+		}
+
+		return request.sessionId();
 	}
 }
