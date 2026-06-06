@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
+import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotFailureLogResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotFrequentQuestionResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotIntentCountResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotLogPageResponse;
@@ -145,5 +146,21 @@ public class AdminChatbotLogService {
 		}
 
 		return Math.min(limit, MAX_LIMIT);
+	}
+
+	public List<AdminChatbotFailureLogResponse> getFailureLogs(
+		LocalDate fromDate,
+		LocalDate toDate,
+		Integer limit
+	) {
+		return chatbotLogRepository.getFailureLogs(
+				toStartDateTime(fromDate),
+				toExclusiveEndDateTime(toDate),
+				ChatbotLogStatus.FAILURE,
+				PageRequest.of(0, normalizeLimit(limit))
+			)
+			.stream()
+			.map(AdminChatbotFailureLogResponse::from)
+			.toList();
 	}
 }
