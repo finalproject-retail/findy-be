@@ -18,6 +18,9 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotShopping
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatMessage;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatSession;
+import com.princesses7.findy.recommendation.chatbot.rag.dto.response.RagContextResponse;
+import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextPromptBuilder;
+import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextService;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatMessageRepository;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatSessionRepository;
 import com.princesses7.findy.recommendation.external.openai.OpenAiChatClient;
@@ -41,6 +44,8 @@ public class ChatbotService {
 	private final ChatbotPromptContextBuilder chatbotPromptContextBuilder;
 	private final ChatbotShoppingContextService chatbotShoppingContextService;
 	private final ChatbotShoppingContextPromptBuilder chatbotShoppingContextPromptBuilder;
+	private final RagContextService ragContextService;
+	private final RagContextPromptBuilder ragContextPromptBuilder;
 
 	@Transactional
 	public ChatbotMessageResponse reply(Long userId, ChatbotMessageRequest request) {
@@ -53,13 +58,20 @@ public class ChatbotService {
 			analysis
 		);
 
+		RagContextResponse ragContext = ragContextService.getContext(
+			request.message(),
+			analysis
+		);
+
 		String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
+		String ragContextPrompt = ragContextPromptBuilder.build(ragContext);
 
 		List<ChatMessage> recentMessages = getRecentMessages(chatSession);
 		List<OpenAiChatMessage> messages = chatbotPromptContextBuilder.build(
 			chatbotPromptProvider.systemPrompt(),
 			recentMessages,
 			shoppingContextPrompt,
+			ragContextPrompt,
 			request.message()
 		);
 
@@ -72,7 +84,8 @@ public class ChatbotService {
 		return new ChatbotMessageResponse(
 			chatSession.getChatSessionId(),
 			answer,
-			shoppingContext
+			shoppingContext,
+			ragContext
 		);
 	}
 

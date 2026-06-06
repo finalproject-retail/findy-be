@@ -26,6 +26,10 @@ public enum ErrorCode {
 	CHATBOT_RESPONSE_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_001", "챗봇 답변 생성에 실패했습니다."),
 	CHAT_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "CHATBOT_002", "채팅 세션을 찾을 수 없습니다."),
 
+	// RAG
+	RAG_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "RAG_001", "RAG 문서를 찾을 수 없습니다."),
+	RAG_DOCUMENT_EMPTY(HttpStatus.BAD_REQUEST, "RAG_002", "RAG 문서 내용이 비어 있습니다."),
+
 	// Notification
 	NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "NOTIFICATION_001", "알림을 찾을 수 없습니다.");
 
