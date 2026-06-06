@@ -9,7 +9,6 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.Lob;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,16 +28,16 @@ public class RagDocument extends BaseTimeEntity {
 	private String title;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false, length = 50)
+	@Column(name = "source_type", nullable = false, length = 50)
 	private RagSourceType sourceType;
 
+	@Column(name = "source_name")
 	private String sourceName;
 
-	@Lob
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String content;
 
-	@Column(nullable = false)
+	@Column(name = "is_active", nullable = false)
 	private boolean active;
 
 	private RagDocument(

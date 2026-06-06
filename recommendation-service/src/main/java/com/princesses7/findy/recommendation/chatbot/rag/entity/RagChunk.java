@@ -9,7 +9,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
-import jakarta.persistence.Lob;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
@@ -30,17 +29,16 @@ public class RagChunk extends BaseTimeEntity {
 	@JoinColumn(name = "rag_document_id", nullable = false)
 	private RagDocument ragDocument;
 
-	@Column(nullable = false)
+	@Column(name = "chunk_index", nullable = false)
 	private Integer chunkIndex;
 
-	@Lob
-	@Column(nullable = false)
+	@Column(nullable = false, columnDefinition = "TEXT")
 	private String content;
 
-	@Column(nullable = false)
+	@Column(name = "token_count", nullable = false)
 	private Integer tokenCount;
 
-	@Column(nullable = false)
+	@Column(name = "is_active", nullable = false)
 	private boolean active;
 
 	private RagChunk(
