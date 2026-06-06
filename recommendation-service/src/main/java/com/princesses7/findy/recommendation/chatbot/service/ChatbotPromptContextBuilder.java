@@ -16,6 +16,7 @@ public class ChatbotPromptContextBuilder {
 		String systemPrompt,
 		List<ChatMessage> recentMessages,
 		String shoppingContextPrompt,
+		String ragContextPrompt,
 		String currentMessage
 	) {
 		List<OpenAiChatMessage> messages = new ArrayList<>();
@@ -24,6 +25,10 @@ public class ChatbotPromptContextBuilder {
 
 		if (shoppingContextPrompt != null && !shoppingContextPrompt.isBlank()) {
 			messages.add(OpenAiChatMessage.system(shoppingContextPrompt));
+		}
+
+		if (ragContextPrompt != null && !ragContextPrompt.isBlank()) {
+			messages.add(OpenAiChatMessage.system(ragContextPrompt));
 		}
 
 		recentMessages.stream()
