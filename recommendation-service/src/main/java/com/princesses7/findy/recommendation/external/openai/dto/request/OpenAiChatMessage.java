@@ -12,4 +12,8 @@ public record OpenAiChatMessage(
 	public static OpenAiChatMessage user(String content) {
 		return new OpenAiChatMessage("user", content);
 	}
+
+	public static OpenAiChatMessage assistant(String content) {
+		return new OpenAiChatMessage("assistant", content);
+	}
 }

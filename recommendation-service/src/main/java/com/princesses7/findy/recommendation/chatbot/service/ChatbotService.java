@@ -8,18 +8,20 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.recommendation.chatbot.dto.ChatbotIntentAnalysis;
 import com.princesses7.findy.recommendation.chatbot.dto.request.ChatbotMessageRequest;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatMessageHistoryResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatMessageItemResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatSessionResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotMessageResponse;
+import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotShoppingContextResponse;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatMessage;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatSession;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatMessageRepository;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatSessionRepository;
 import com.princesses7.findy.recommendation.external.openai.OpenAiChatClient;
-import com.princesses7.findy.recommendation.external.openai.dto.OpenAiChatMessage;
+import com.princesses7.findy.recommendation.external.openai.dto.request.OpenAiChatMessage;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
 import com.princesses7.findy.recommendation.global.exception.ErrorCode;
 
@@ -35,17 +37,29 @@ public class ChatbotService {
 	private final ChatbotPromptProvider chatbotPromptProvider;
 	private final ChatSessionRepository chatSessionRepository;
 	private final ChatMessageRepository chatMessageRepository;
+	private final ChatbotIntentAnalyzer chatbotIntentAnalyzer;
 	private final ChatbotPromptContextBuilder chatbotPromptContextBuilder;
+	private final ChatbotShoppingContextService chatbotShoppingContextService;
+	private final ChatbotShoppingContextPromptBuilder chatbotShoppingContextPromptBuilder;
 
 	@Transactional
 	public ChatbotMessageResponse reply(Long userId, ChatbotMessageRequest request) {
 		ChatSession chatSession = findOrCreateSession(userId, request.sessionId(), request.message());
-		ChatIntent intent = ChatIntent.GENERAL;
+		ChatbotIntentAnalysis analysis = chatbotIntentAnalyzer.analyze(request.message());
+		ChatIntent intent = analysis.intent();
+
+		ChatbotShoppingContextResponse shoppingContext = chatbotShoppingContextService.getContext(
+			request,
+			analysis
+		);
+
+		String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
 
 		List<ChatMessage> recentMessages = getRecentMessages(chatSession);
 		List<OpenAiChatMessage> messages = chatbotPromptContextBuilder.build(
 			chatbotPromptProvider.systemPrompt(),
 			recentMessages,
+			shoppingContextPrompt,
 			request.message()
 		);
 
@@ -55,7 +69,11 @@ public class ChatbotService {
 		chatMessageRepository.save(ChatMessage.assistant(chatSession, answer, intent));
 		chatSession.updateLastMessage(answer);
 
-		return new ChatbotMessageResponse(chatSession.getChatSessionId(), answer);
+		return new ChatbotMessageResponse(
+			chatSession.getChatSessionId(),
+			answer,
+			shoppingContext
+		);
 	}
 
 	@Transactional(readOnly = true)
