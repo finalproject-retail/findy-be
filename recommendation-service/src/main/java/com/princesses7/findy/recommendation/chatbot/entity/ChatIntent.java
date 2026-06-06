@@ -1,5 +1,10 @@
 package com.princesses7.findy.recommendation.chatbot.entity;
 
 public enum ChatIntent {
-	GENERAL
+	GENERAL,
+	RECIPE_INGREDIENT_RECOMMENDATION,
+	PRODUCT_SEARCH,
+	INVENTORY_INQUIRY,
+	PROMOTION_INQUIRY,
+	COUPON_INQUIRY
 }
