@@ -16,6 +16,9 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotMessageR
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatMessage;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatSession;
+import com.princesses7.findy.recommendation.chatbot.rag.dto.response.RagContextResponse;
+import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextPromptBuilder;
+import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextService;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatMessageRepository;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatSessionRepository;
 import com.princesses7.findy.recommendation.external.openai.OpenAiChatClient;
@@ -32,6 +35,8 @@ class ChatbotServiceTest {
 		ChatbotShoppingContextService.class);
 	private final ChatbotShoppingContextPromptBuilder chatbotShoppingContextPromptBuilder =
 		new ChatbotShoppingContextPromptBuilder();
+	private final RagContextService ragContextService = mock(RagContextService.class);
+	private final RagContextPromptBuilder ragContextPromptBuilder = new RagContextPromptBuilder();
 
 	private final ChatbotService chatbotService = new ChatbotService(
 		openAiChatClient,
@@ -41,7 +46,9 @@ class ChatbotServiceTest {
 		chatbotIntentAnalyzer,
 		chatbotPromptContextBuilder,
 		chatbotShoppingContextService,
-		chatbotShoppingContextPromptBuilder
+		chatbotShoppingContextPromptBuilder,
+		ragContextService,
+		ragContextPromptBuilder
 	);
 
 	@Test
@@ -61,6 +68,9 @@ class ChatbotServiceTest {
 			any(ChatbotIntentAnalysis.class)))
 			.willReturn(null);
 
+		given(ragContextService.getContext(anyString(), any(ChatbotIntentAnalysis.class)))
+			.willReturn(RagContextResponse.empty("오늘 카레 만들고 싶어"));
+
 		given(chatMessageRepository.findRecentMessages(any(ChatSession.class), any(Pageable.class)))
 			.willReturn(List.of());
 
@@ -79,11 +89,16 @@ class ChatbotServiceTest {
 
 		assertThat(response.answer()).contains("카레");
 		assertThat(response.shoppingContext()).isNull();
+		assertThat(response.ragContext()).isNotNull();
 
 		verify(chatSessionRepository).save(any(ChatSession.class));
 		verify(chatbotIntentAnalyzer).analyze("오늘 카레 만들고 싶어");
 		verify(chatbotShoppingContextService).getContext(
 			any(ChatbotMessageRequest.class),
+			any(ChatbotIntentAnalysis.class)
+		);
+		verify(ragContextService).getContext(
+			anyString(),
 			any(ChatbotIntentAnalysis.class)
 		);
 		verify(chatMessageRepository, times(2)).save(any(ChatMessage.class));
