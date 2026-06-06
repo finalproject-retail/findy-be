@@ -1,6 +1,7 @@
 package com.princesses7.findy.recommendation.chatbot.log.controller;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
+import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotFrequentQuestionResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotLogPageResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotSummaryResponse;
 import com.princesses7.findy.recommendation.chatbot.log.entity.ChatbotLogStatus;
@@ -56,5 +58,20 @@ public class AdminChatbotLogController {
 		);
 
 		return ApiResponse.ok("관리자 챗봇 사용 요약 조회에 성공했습니다.", response);
+	}
+
+	@GetMapping("/analytics/frequent-questions")
+	public ApiResponse<List<AdminChatbotFrequentQuestionResponse>> getFrequentQuestions(
+		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fromDate,
+		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate toDate,
+		@RequestParam(required = false) Integer limit
+	) {
+		List<AdminChatbotFrequentQuestionResponse> response = adminChatbotLogService.getFrequentQuestions(
+			fromDate,
+			toDate,
+			limit
+		);
+
+		return ApiResponse.ok("관리자 챗봇 자주 묻는 질문 조회에 성공했습니다.", response);
 	}
 }

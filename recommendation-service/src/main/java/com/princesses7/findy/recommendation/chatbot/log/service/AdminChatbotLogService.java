@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
+import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotFrequentQuestionResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotIntentCountResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotLogPageResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotLogResponse;
@@ -29,6 +30,8 @@ public class AdminChatbotLogService {
 	private static final int DEFAULT_PAGE = 0;
 	private static final int DEFAULT_SIZE = 20;
 	private static final int MAX_SIZE = 100;
+	private static final int DEFAULT_LIMIT = 10;
+	private static final int MAX_LIMIT = 50;
 
 	private final ChatbotLogRepository chatbotLogRepository;
 
@@ -118,5 +121,29 @@ public class AdminChatbotLogService {
 		}
 
 		return date.plusDays(1).atStartOfDay();
+	}
+
+	public List<AdminChatbotFrequentQuestionResponse> getFrequentQuestions(
+		LocalDate fromDate,
+		LocalDate toDate,
+		Integer limit
+	) {
+		return chatbotLogRepository.getFrequentQuestions(
+				toStartDateTime(fromDate),
+				toExclusiveEndDateTime(toDate),
+				ChatbotLogStatus.SUCCESS,
+				PageRequest.of(0, normalizeLimit(limit))
+			)
+			.stream()
+			.map(AdminChatbotFrequentQuestionResponse::from)
+			.toList();
+	}
+
+	private int normalizeLimit(Integer limit) {
+		if (limit == null || limit <= 0) {
+			return DEFAULT_LIMIT;
+		}
+
+		return Math.min(limit, MAX_LIMIT);
 	}
 }
