@@ -2,6 +2,7 @@ package com.princesses7.findy.recommendation.chatbot.log.service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -9,11 +10,14 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
+import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotIntentCountResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotLogPageResponse;
 import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotLogResponse;
+import com.princesses7.findy.recommendation.chatbot.log.dto.response.AdminChatbotSummaryResponse;
 import com.princesses7.findy.recommendation.chatbot.log.entity.ChatbotLog;
 import com.princesses7.findy.recommendation.chatbot.log.entity.ChatbotLogStatus;
 import com.princesses7.findy.recommendation.chatbot.log.repository.ChatbotLogRepository;
+import com.princesses7.findy.recommendation.chatbot.log.repository.projection.ChatbotLogSummaryProjection;
 
 import lombok.RequiredArgsConstructor;
 
@@ -59,6 +63,29 @@ public class AdminChatbotLogService {
 			logs.getTotalElements(),
 			logs.getTotalPages()
 		);
+	}
+
+	public AdminChatbotSummaryResponse getSummary(
+		LocalDate fromDate,
+		LocalDate toDate
+	) {
+		LocalDateTime fromDateTime = toStartDateTime(fromDate);
+		LocalDateTime toDateTime = toExclusiveEndDateTime(toDate);
+
+		ChatbotLogSummaryProjection summary = chatbotLogRepository.getSummary(
+			fromDateTime,
+			toDateTime,
+			ChatbotLogStatus.SUCCESS,
+			ChatbotLogStatus.FAILURE
+		);
+
+		List<AdminChatbotIntentCountResponse> intentCounts = chatbotLogRepository
+			.getIntentCounts(fromDateTime, toDateTime)
+			.stream()
+			.map(AdminChatbotIntentCountResponse::from)
+			.toList();
+
+		return AdminChatbotSummaryResponse.of(summary, intentCounts);
 	}
 
 	private int normalizePage(Integer page) {
