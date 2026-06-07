@@ -5,6 +5,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.user.global.exception.BaseException;
 import com.princesses7.findy.user.global.exception.ErrorCode;
+import com.princesses7.findy.user.reward.dto.request.AccruePurchaseRewardPublicRequest;
 import com.princesses7.findy.user.reward.dto.request.AccruePurchaseRewardRequest;
 import com.princesses7.findy.user.reward.dto.response.AccruePurchaseRewardResponse;
 import com.princesses7.findy.user.reward.entity.RewardHistory;
@@ -35,6 +36,23 @@ public class RewardService {
 		return rewardHistoryRepository.findByOrderId(request.orderId())
 			.map(rewardHistory -> toIdempotentResponse(user, rewardHistory))
 			.orElseGet(() -> accrueNewPurchaseReward(user, request));
+	}
+
+	@Transactional
+	public AccruePurchaseRewardResponse accruePurchaseRewardFromOrder(
+		Long userId,
+		AccruePurchaseRewardPublicRequest request
+	) {
+		UserEntity user = getActiveUser(userId);
+
+		return accruePurchaseReward(
+			userId,
+			new AccruePurchaseRewardRequest(
+				request.orderId(),
+				request.finalAmount(),
+				user.getPurchaseAmount() + request.finalAmount()
+			)
+		);
 	}
 
 	private AccruePurchaseRewardResponse accrueNewPurchaseReward(
