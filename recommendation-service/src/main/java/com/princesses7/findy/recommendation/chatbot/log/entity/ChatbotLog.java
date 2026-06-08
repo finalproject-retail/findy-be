@@ -1,6 +1,7 @@
 package com.princesses7.findy.recommendation.chatbot.log.entity;
 
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
+import com.princesses7.findy.recommendation.chatbot.support.ChatbotFailureType;
 import com.princesses7.findy.recommendation.global.entity.BaseTimeEntity;
 
 import jakarta.persistence.Column;
@@ -51,6 +52,13 @@ public class ChatbotLog extends BaseTimeEntity {
 	@Column(name = "failure_reason", columnDefinition = "TEXT")
 	private String failureReason;
 
+	@Enumerated(EnumType.STRING)
+	@Column(name = "failure_type", length = 50)
+	private ChatbotFailureType failureType;
+
+	@Column(name = "fallback_message", columnDefinition = "TEXT")
+	private String fallbackMessage;
+
 	@Column(name = "duration_ms", nullable = false)
 	private Long durationMs;
 
@@ -63,6 +71,8 @@ public class ChatbotLog extends BaseTimeEntity {
 		String responseMessage,
 		ChatbotLogStatus status,
 		String failureReason,
+		ChatbotFailureType failureType,
+		String fallbackMessage,
 		Long durationMs
 	) {
 		this.userId = userId;
@@ -73,6 +83,8 @@ public class ChatbotLog extends BaseTimeEntity {
 		this.responseMessage = responseMessage;
 		this.status = status;
 		this.failureReason = failureReason;
+		this.failureType = failureType;
+		this.fallbackMessage = fallbackMessage;
 		this.durationMs = durationMs == null ? 0L : durationMs;
 	}
 
@@ -94,6 +106,8 @@ public class ChatbotLog extends BaseTimeEntity {
 			responseMessage,
 			ChatbotLogStatus.SUCCESS,
 			null,
+			null,
+			null,
 			durationMs
 		);
 	}
@@ -105,6 +119,8 @@ public class ChatbotLog extends BaseTimeEntity {
 		String keyword,
 		String requestMessage,
 		String failureReason,
+		ChatbotFailureType failureType,
+		String fallbackMessage,
 		Long durationMs
 	) {
 		return new ChatbotLog(
@@ -113,9 +129,11 @@ public class ChatbotLog extends BaseTimeEntity {
 			intent,
 			keyword,
 			requestMessage,
-			null,
+			fallbackMessage,
 			ChatbotLogStatus.FAILURE,
 			failureReason,
+			failureType,
+			fallbackMessage,
 			durationMs
 		);
 	}
