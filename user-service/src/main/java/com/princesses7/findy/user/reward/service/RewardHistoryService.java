@@ -81,17 +81,17 @@ public class RewardHistoryService {
 	}
 
 	private String resolveHistoryType(RewardHistory history) {
-		if (history.getRewardType() == RewardType.PURCHASE) {
-			return "earned";
-		}
-		return "used";
+		return switch (history.getRewardType()) {
+			case PURCHASE -> "earned";
+			case USE -> "used";
+		};
 	}
 
 	private String resolveTitle(RewardHistory history) {
-		if (history.getRewardType() == RewardType.PURCHASE) {
-			return "구매 포인트 지급";
-		}
-		return "포인트 사용";
+		return switch (history.getRewardType()) {
+			case PURCHASE -> "구매 포인트 지급";
+			case USE -> "포인트 사용";
+		};
 	}
 
 	private String resolveSubtitle(RewardHistory history) {
@@ -102,9 +102,9 @@ public class RewardHistoryService {
 	}
 
 	private long resolveAmount(RewardHistory history) {
-		if (history.getRewardType() == RewardType.PURCHASE) {
-			return history.getRewardAmount();
+		if (history.getRewardType() == RewardType.USE) {
+			return -Math.abs(history.getRewardAmount());
 		}
-		return -Math.abs(history.getRewardAmount());
+		return history.getRewardAmount();
 	}
 }

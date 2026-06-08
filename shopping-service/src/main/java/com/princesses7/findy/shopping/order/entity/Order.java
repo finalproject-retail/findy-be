@@ -51,6 +51,9 @@ public class Order extends BaseTimeEntity {
 	@Column(name = "final_amount", nullable = false)
 	private int finalAmount;
 
+	@Column(name = "used_reward", nullable = false)
+	private int usedReward;
+
 	@Column(name = "earned_reward", nullable = false)
 	private int earnedReward;
 
@@ -67,6 +70,7 @@ public class Order extends BaseTimeEntity {
 		Long couponId,
 		int totalAmount,
 		int discountAmount,
+		int usedReward,
 		int finalAmount
 	) {
 		Order order = new Order();
@@ -75,6 +79,7 @@ public class Order extends BaseTimeEntity {
 		order.couponId = couponId;
 		order.totalAmount = totalAmount;
 		order.discountAmount = discountAmount;
+		order.usedReward = usedReward;
 		order.finalAmount = finalAmount;
 		order.earnedReward = 0;
 		order.orderStatus = OrderStatus.CREATED;

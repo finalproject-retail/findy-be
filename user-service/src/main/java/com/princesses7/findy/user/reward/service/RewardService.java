@@ -7,9 +7,12 @@ import com.princesses7.findy.user.global.exception.BaseException;
 import com.princesses7.findy.user.global.exception.ErrorCode;
 import com.princesses7.findy.user.reward.dto.request.AccruePurchaseRewardPublicRequest;
 import com.princesses7.findy.user.reward.dto.request.AccruePurchaseRewardRequest;
+import com.princesses7.findy.user.reward.dto.request.UsePurchaseRewardPublicRequest;
 import com.princesses7.findy.user.reward.dto.response.AccruePurchaseRewardResponse;
+import com.princesses7.findy.user.reward.dto.response.UsePurchaseRewardResponse;
 import com.princesses7.findy.user.reward.entity.RewardHistory;
 import com.princesses7.findy.user.reward.repository.RewardHistoryRepository;
+import com.princesses7.findy.user.reward.type.RewardType;
 import com.princesses7.findy.user.user.entity.UserEntity;
 import com.princesses7.findy.user.user.entity.UserGradeEntity;
 import com.princesses7.findy.user.user.repository.UserGradeRepository;
@@ -33,9 +36,21 @@ public class RewardService {
 	) {
 		UserEntity user = getActiveUser(userId);
 
-		return rewardHistoryRepository.findByOrderId(request.orderId())
+		return rewardHistoryRepository.findByOrderIdAndRewardType(request.orderId(), RewardType.PURCHASE)
 			.map(rewardHistory -> toIdempotentResponse(user, rewardHistory))
 			.orElseGet(() -> accrueNewPurchaseReward(user, request));
+	}
+
+	@Transactional
+	public UsePurchaseRewardResponse usePurchaseRewardFromOrder(
+		Long userId,
+		UsePurchaseRewardPublicRequest request
+	) {
+		UserEntity user = getActiveUser(userId);
+
+		return rewardHistoryRepository.findByOrderIdAndRewardType(request.orderId(), RewardType.USE)
+			.map(rewardHistory -> toUseIdempotentResponse(user, rewardHistory))
+			.orElseGet(() -> useNewPurchaseReward(user, request));
 	}
 
 	@Transactional
@@ -73,6 +88,43 @@ public class RewardService {
 		rewardHistoryRepository.save(rewardHistory);
 
 		return toResponse(user, rewardHistory);
+	}
+
+	private UsePurchaseRewardResponse useNewPurchaseReward(
+		UserEntity user,
+		UsePurchaseRewardPublicRequest request
+	) {
+		if (user.getReward() < request.usedAmount()) {
+			throw new BaseException(ErrorCode.INSUFFICIENT_REWARD_BALANCE);
+		}
+
+		RewardHistory rewardHistory = RewardHistory.createUseReward(
+			user,
+			request.orderId(),
+			request.usedAmount()
+		);
+
+		user.useReward(request.usedAmount());
+		rewardHistoryRepository.save(rewardHistory);
+
+		return toUseResponse(user, rewardHistory);
+	}
+
+	private UsePurchaseRewardResponse toUseIdempotentResponse(UserEntity user, RewardHistory rewardHistory) {
+		if (!rewardHistory.getUser().getUserId().equals(user.getUserId())) {
+			throw new BaseException(ErrorCode.INVALID_REQUEST, "해당 주문의 포인트 사용 이력이 다른 회원에게 연결되어 있습니다.");
+		}
+
+		return toUseResponse(user, rewardHistory);
+	}
+
+	private UsePurchaseRewardResponse toUseResponse(UserEntity user, RewardHistory rewardHistory) {
+		return new UsePurchaseRewardResponse(
+			user.getUserId(),
+			rewardHistory.getOrderId(),
+			rewardHistory.getRewardAmount(),
+			user.getReward()
+		);
 	}
 
 	private AccruePurchaseRewardResponse toIdempotentResponse(UserEntity user, RewardHistory rewardHistory) {

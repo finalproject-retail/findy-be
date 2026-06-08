@@ -84,4 +84,11 @@ public class UserEntity extends BaseTimeEntity {
 		this.reward += earnedReward;
 		this.grade = nextGrade;
 	}
+
+	public void useReward(long usedAmount) {
+		if (usedAmount > this.reward) {
+			throw new IllegalStateException("보유 포인트가 부족합니다.");
+		}
+		this.reward -= usedAmount;
+	}
 }

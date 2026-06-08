@@ -23,7 +23,7 @@ public enum RewardHistoryFilter {
 		return switch (this) {
 			case ALL -> true;
 			case EARNED -> history.getRewardType() == RewardType.PURCHASE && history.getRewardAmount() > 0;
-			case USED_EXPIRED -> history.getRewardType() != RewardType.PURCHASE || history.getRewardAmount() <= 0;
+			case USED_EXPIRED -> history.getRewardType() == RewardType.USE;
 		};
 	}
 }

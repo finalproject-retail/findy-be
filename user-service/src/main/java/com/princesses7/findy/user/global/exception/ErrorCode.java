@@ -51,7 +51,10 @@ public enum ErrorCode {
 	INVALID_SHOPPING_STYLE(HttpStatus.BAD_REQUEST, "PREFERENCE_005", "유효하지 않은 쇼핑 스타일입니다."),
 	EMPTY_PREFERENCE_CATEGORY(HttpStatus.BAD_REQUEST, "PREFERENCE_006", "선호 카테고리를 하나 이상 선택해야 합니다."),
 	EMPTY_SHOPPING_STYLE(HttpStatus.BAD_REQUEST, "PREFERENCE_007", "쇼핑 스타일을 하나 이상 선택해야 합니다."),
-	FIRST_LOGIN_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "PREFERENCE_008", "이미 첫 로그인 설문을 완료한 회원입니다.");
+	FIRST_LOGIN_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "PREFERENCE_008", "이미 첫 로그인 설문을 완료한 회원입니다."),
+
+	// Reward
+	INSUFFICIENT_REWARD_BALANCE(HttpStatus.BAD_REQUEST, "REWARD_001", "보유 포인트가 부족합니다.");
 
 	private final HttpStatus status;
 	private final String code;
