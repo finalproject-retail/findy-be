@@ -43,6 +43,8 @@ class ChatbotServiceTest {
 	private final ChatbotLogService chatbotLogService = mock(ChatbotLogService.class);
 	private final ChatbotFallbackMessageProvider chatbotFallbackMessageProvider =
 		new ChatbotFallbackMessageProvider();
+	private final ChatbotRecipeRecommendationService chatbotRecipeRecommendationService =
+		mock(ChatbotRecipeRecommendationService.class);
 
 	private final ChatbotService chatbotService = new ChatbotService(
 		openAiChatClient,
@@ -56,7 +58,8 @@ class ChatbotServiceTest {
 		ragContextService,
 		ragContextPromptBuilder,
 		chatbotLogService,
-		chatbotFallbackMessageProvider
+		chatbotFallbackMessageProvider,
+		chatbotRecipeRecommendationService
 	);
 
 	@Test
