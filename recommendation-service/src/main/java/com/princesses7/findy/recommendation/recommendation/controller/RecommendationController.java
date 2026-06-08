@@ -90,13 +90,15 @@ public class RecommendationController {
 		@PathVariable Long productId,
 		@RequestParam Long userId,
 		@RequestParam Long storeId,
-		@RequestParam(defaultValue = "5") int size
+		@RequestParam(defaultValue = "5") int size,
+		@RequestParam(defaultValue = "false") boolean force
 	) {
 		SubstituteRecommendationResponse response = substituteRecommendationService.getSubstituteRecommendations(
 			userId,
 			productId,
 			storeId,
-			size
+			size,
+			force
 		);
 
 		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
