@@ -50,6 +50,16 @@ public class CartController {
 		);
 	}
 
+	@PatchMapping("/items/stock-sync")
+	public ApiResponse<CartResponse> syncCartItemStocks(
+		@RequestHeader("X-User-Id") Long userId
+	) {
+		return ApiResponse.ok(
+			"장바구니 상품 재고가 동기화되었습니다.",
+			cartService.syncCartItemStocks(userId)
+		);
+	}
+
 	@PatchMapping("/items/{cartItemId}/quantity")
 	public ApiResponse<CartResponse> changeCartItemQuantity(
 		@RequestHeader("X-User-Id") Long userId,
