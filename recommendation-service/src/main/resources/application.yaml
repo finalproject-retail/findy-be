@@ -30,6 +30,11 @@ spring:
         default_schema: ${DB_SCHEMA:recommendation_service}
         format_sql: true
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 openai:
   base-url: https://api.openai.com
   api-key: ${OPENAI_API_KEY}
