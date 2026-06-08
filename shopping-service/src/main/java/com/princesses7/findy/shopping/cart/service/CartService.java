@@ -19,6 +19,7 @@ import com.princesses7.findy.shopping.cart.entity.CartItem;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
+import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
 
 import lombok.RequiredArgsConstructor;
@@ -66,6 +67,34 @@ public class CartService {
 		cart.removeItem(cartItemId);
 
 		return toResponse(cart);
+	}
+
+	@Transactional
+	public CartResponse syncCartItemStocks(Long userId) {
+		return cartRepository.findByUserId(userId)
+			.map(cart -> {
+				uncheckNotPurchasableItems(cart);
+				return toResponse(cart);
+			})
+			.orElseGet(() -> CartResponse.empty(userId));
+	}
+
+	private void uncheckNotPurchasableItems(Cart cart) {
+		cart.getCartItems()
+			.stream()
+			.filter(CartItem::isChecked)
+			.forEach(this::uncheckIfNotPurchasable);
+	}
+
+	private void uncheckIfNotPurchasable(CartItem cartItem) {
+		try {
+			productSummaryReader.validatePurchasable(
+				cartItem.getProductId(),
+				cartItem.getQuantity()
+			);
+		} catch (ProductException exception) {
+			cartItem.changeChecked(false);
+		}
 	}
 
 	@Transactional
