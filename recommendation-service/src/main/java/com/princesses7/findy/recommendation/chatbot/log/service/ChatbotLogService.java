@@ -7,9 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.log.entity.ChatbotLog;
 import com.princesses7.findy.recommendation.chatbot.log.repository.ChatbotLogRepository;
+import com.princesses7.findy.recommendation.chatbot.support.ChatbotFailureType;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatbotLogService {
@@ -28,17 +31,21 @@ public class ChatbotLogService {
 		String responseMessage,
 		Long durationMs
 	) {
-		ChatbotLog chatbotLog = ChatbotLog.success(
-			userId,
-			chatSessionId,
-			intent,
-			keyword,
-			requestMessage,
-			responseMessage,
-			durationMs
-		);
+		try {
+			ChatbotLog chatbotLog = ChatbotLog.success(
+				userId,
+				chatSessionId,
+				intent,
+				keyword,
+				requestMessage,
+				responseMessage,
+				durationMs
+			);
 
-		chatbotLogRepository.save(chatbotLog);
+			chatbotLogRepository.save(chatbotLog);
+		} catch (Exception exception) {
+			log.warn("Failed to save chatbot success log. message={}", exception.getMessage());
+		}
 	}
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -48,20 +55,28 @@ public class ChatbotLogService {
 		ChatIntent intent,
 		String keyword,
 		String requestMessage,
+		ChatbotFailureType failureType,
+		String fallbackMessage,
 		Exception exception,
 		Long durationMs
 	) {
-		ChatbotLog chatbotLog = ChatbotLog.failure(
-			userId,
-			chatSessionId,
-			intent,
-			keyword,
-			requestMessage,
-			resolveFailureReason(exception),
-			durationMs
-		);
+		try {
+			ChatbotLog chatbotLog = ChatbotLog.failure(
+				userId,
+				chatSessionId,
+				intent,
+				keyword,
+				requestMessage,
+				resolveFailureReason(exception),
+				failureType,
+				fallbackMessage,
+				durationMs
+			);
 
-		chatbotLogRepository.save(chatbotLog);
+			chatbotLogRepository.save(chatbotLog);
+		} catch (Exception logException) {
+			log.warn("Failed to save chatbot failure log. message={}", logException.getMessage());
+		}
 	}
 
 	private String resolveFailureReason(Exception exception) {
@@ -73,6 +88,8 @@ public class ChatbotLogService {
 
 		if (message == null || message.isBlank()) {
 			message = exception.getClass().getSimpleName();
+		} else {
+			message = exception.getClass().getSimpleName() + ": " + message;
 		}
 
 		if (message.length() <= MAX_FAILURE_REASON_LENGTH) {

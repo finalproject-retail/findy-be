@@ -20,12 +20,14 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotShopping
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatMessage;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatSession;
+import com.princesses7.findy.recommendation.chatbot.exception.ChatbotException;
 import com.princesses7.findy.recommendation.chatbot.log.service.ChatbotLogService;
 import com.princesses7.findy.recommendation.chatbot.rag.dto.response.RagContextResponse;
 import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextPromptBuilder;
 import com.princesses7.findy.recommendation.chatbot.rag.service.RagContextService;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatMessageRepository;
 import com.princesses7.findy.recommendation.chatbot.repository.ChatSessionRepository;
+import com.princesses7.findy.recommendation.chatbot.support.ChatbotFailureType;
 import com.princesses7.findy.recommendation.external.openai.OpenAiChatClient;
 import com.princesses7.findy.recommendation.external.openai.dto.request.OpenAiChatMessage;
 import com.princesses7.findy.recommendation.global.exception.BaseException;
@@ -50,6 +52,7 @@ public class ChatbotService {
 	private final RagContextService ragContextService;
 	private final RagContextPromptBuilder ragContextPromptBuilder;
 	private final ChatbotLogService chatbotLogService;
+	private final ChatbotFallbackMessageProvider chatbotFallbackMessageProvider;
 
 	@Transactional
 	public ChatbotMessageResponse reply(Long userId, ChatbotMessageRequest request) {
@@ -62,15 +65,8 @@ public class ChatbotService {
 			analysis = chatbotIntentAnalyzer.analyze(request.message());
 			ChatIntent intent = analysis.intent();
 
-			ChatbotShoppingContextResponse shoppingContext = chatbotShoppingContextService.getContext(
-				request,
-				analysis
-			);
-
-			RagContextResponse ragContext = ragContextService.getContext(
-				request.message(),
-				analysis
-			);
+			ChatbotShoppingContextResponse shoppingContext = getShoppingContext(request, analysis);
+			RagContextResponse ragContext = getRagContext(request.message(), analysis);
 
 			String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
 			String ragContextPrompt = ragContextPromptBuilder.build(ragContext);
@@ -86,9 +82,7 @@ public class ChatbotService {
 
 			String answer = openAiChatClient.chat(messages);
 
-			chatMessageRepository.save(ChatMessage.user(chatSession, request.message(), intent));
-			chatMessageRepository.save(ChatMessage.assistant(chatSession, answer, intent));
-			chatSession.updateLastMessage(answer);
+			saveSuccessMessages(chatSession, request.message(), answer, intent);
 
 			chatbotLogService.saveSuccessLog(
 				userId,
@@ -100,24 +94,34 @@ public class ChatbotService {
 				calculateDurationMs(startedAt)
 			);
 
-			return new ChatbotMessageResponse(
+			return ChatbotMessageResponse.success(
 				chatSession.getChatSessionId(),
 				answer,
 				shoppingContext,
 				ragContext
 			);
-		} catch (Exception exception) {
-			chatbotLogService.saveFailureLog(
+		} catch (ChatbotException exception) {
+			return handleFallback(
 				userId,
-				resolveChatSessionId(request, chatSession),
-				analysis.intent(),
-				analysis.keyword(),
-				request.message(),
+				request,
+				chatSession,
+				analysis,
+				exception.getFailureType(),
 				exception,
-				calculateDurationMs(startedAt)
+				startedAt
 			);
-
+		} catch (BaseException exception) {
 			throw exception;
+		} catch (Exception exception) {
+			return handleFallback(
+				userId,
+				request,
+				chatSession,
+				analysis,
+				ChatbotFailureType.UNKNOWN,
+				exception,
+				startedAt
+			);
 		}
 	}
 
@@ -167,6 +171,103 @@ public class ChatbotService {
 		Collections.reverse(recentMessages);
 
 		return recentMessages;
+	}
+
+	private ChatbotShoppingContextResponse getShoppingContext(
+		ChatbotMessageRequest request,
+		ChatbotIntentAnalysis analysis
+	) {
+		try {
+			return chatbotShoppingContextService.getContext(request, analysis);
+		} catch (ChatbotException exception) {
+			throw exception;
+		} catch (Exception exception) {
+			throw new ChatbotException(
+				ChatbotFailureType.SHOPPING_DATA_API_FAILED,
+				"Failed to get chatbot shopping context",
+				exception
+			);
+		}
+	}
+
+	private RagContextResponse getRagContext(
+		String message,
+		ChatbotIntentAnalysis analysis
+	) {
+		try {
+			return ragContextService.getContext(message, analysis);
+		} catch (ChatbotException exception) {
+			throw exception;
+		} catch (Exception exception) {
+			throw new ChatbotException(
+				ChatbotFailureType.RAG_SEARCH_FAILED,
+				"Failed to get chatbot RAG context",
+				exception
+			);
+		}
+	}
+
+	private void saveSuccessMessages(
+		ChatSession chatSession,
+		String userMessage,
+		String answer,
+		ChatIntent intent
+	) {
+		chatMessageRepository.save(ChatMessage.user(chatSession, userMessage, intent));
+		chatMessageRepository.save(ChatMessage.assistant(chatSession, answer, intent));
+		chatSession.updateLastMessage(answer);
+	}
+
+	private ChatbotMessageResponse handleFallback(
+		Long userId,
+		ChatbotMessageRequest request,
+		ChatSession chatSession,
+		ChatbotIntentAnalysis analysis,
+		ChatbotFailureType failureType,
+		Exception exception,
+		LocalDateTime startedAt
+	) {
+		String fallbackMessage = chatbotFallbackMessageProvider.getMessage(failureType);
+
+		saveFallbackMessages(
+			chatSession,
+			request.message(),
+			fallbackMessage,
+			analysis.intent()
+		);
+
+		chatbotLogService.saveFailureLog(
+			userId,
+			resolveChatSessionId(request, chatSession),
+			analysis.intent(),
+			analysis.keyword(),
+			request.message(),
+			failureType,
+			fallbackMessage,
+			exception,
+			calculateDurationMs(startedAt)
+		);
+
+		return ChatbotMessageResponse.fallback(
+			resolveChatSessionId(request, chatSession),
+			fallbackMessage,
+			failureType
+		);
+	}
+
+	private void saveFallbackMessages(
+		ChatSession chatSession,
+		String userMessage,
+		String fallbackMessage,
+		ChatIntent intent
+	) {
+		if (chatSession == null) {
+			return;
+		}
+
+		chatMessageRepository.save(ChatMessage.user(chatSession, userMessage, intent));
+		chatMessageRepository.save(ChatMessage.assistant(chatSession, fallbackMessage, intent));
+		chatSession.updateLastMessage(fallbackMessage);
 	}
 
 	private Long calculateDurationMs(LocalDateTime startedAt) {
