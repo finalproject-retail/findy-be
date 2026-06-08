@@ -25,7 +25,11 @@ public enum ErrorCode {
 	// Chatbot
 	CHATBOT_RESPONSE_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_001", "챗봇 답변 생성에 실패했습니다."),
 	CHAT_SESSION_NOT_FOUND(HttpStatus.NOT_FOUND, "CHATBOT_002", "채팅 세션을 찾을 수 없습니다."),
-
+	CHATBOT_AUDIO_FILE_REQUIRED(HttpStatus.BAD_REQUEST, "CHATBOT_003", "음성 파일은 필수입니다."),
+	CHATBOT_AUDIO_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "CHATBOT_004", "음성 파일 크기는 10MB를 초과할 수 없습니다."),
+	CHATBOT_AUDIO_FILE_UNSUPPORTED(HttpStatus.BAD_REQUEST, "CHATBOT_005", "지원하지 않는 음성 파일 형식입니다."),
+	CHATBOT_STT_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "CHATBOT_006", "음성 인식에 실패했습니다."),
+	
 	// RAG
 	RAG_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "RAG_001", "RAG 문서를 찾을 수 없습니다."),
 	RAG_DOCUMENT_EMPTY(HttpStatus.BAD_REQUEST, "RAG_002", "RAG 문서 내용이 비어 있습니다."),
