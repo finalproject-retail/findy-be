@@ -16,6 +16,7 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatMessageHist
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatMessageItemResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatSessionResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotMessageResponse;
+import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotRecipeRecommendationResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotShoppingContextResponse;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatMessage;
@@ -53,6 +54,7 @@ public class ChatbotService {
 	private final RagContextPromptBuilder ragContextPromptBuilder;
 	private final ChatbotLogService chatbotLogService;
 	private final ChatbotFallbackMessageProvider chatbotFallbackMessageProvider;
+	private final ChatbotRecipeRecommendationService chatbotRecipeRecommendationService;
 
 	@Transactional
 	public ChatbotMessageResponse reply(Long userId, ChatbotMessageRequest request) {
@@ -66,6 +68,11 @@ public class ChatbotService {
 			ChatIntent intent = analysis.intent();
 
 			ChatbotShoppingContextResponse shoppingContext = getShoppingContext(request, analysis);
+			ChatbotRecipeRecommendationResponse recipeRecommendation = getRecipeRecommendation(
+				userId,
+				request,
+				analysis
+			);
 			RagContextResponse ragContext = getRagContext(request.message(), analysis);
 
 			String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
@@ -98,6 +105,7 @@ public class ChatbotService {
 				chatSession.getChatSessionId(),
 				answer,
 				shoppingContext,
+				recipeRecommendation,
 				ragContext
 			);
 		} catch (ChatbotException exception) {
@@ -283,5 +291,17 @@ public class ChatbotService {
 		}
 
 		return request.sessionId();
+	}
+
+	private ChatbotRecipeRecommendationResponse getRecipeRecommendation(
+		Long userId,
+		ChatbotMessageRequest request,
+		ChatbotIntentAnalysis analysis
+	) {
+		try {
+			return chatbotRecipeRecommendationService.recommend(userId, request, analysis);
+		} catch (Exception exception) {
+			return null;
+		}
 	}
 }
