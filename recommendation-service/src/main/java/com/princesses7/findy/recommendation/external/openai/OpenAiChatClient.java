@@ -23,7 +23,7 @@ import lombok.RequiredArgsConstructor;
 public class OpenAiChatClient {
 
 	private static final String CHAT_COMPLETIONS_URI = "/v1/chat/completions";
-	private static final int MAX_TOTAL_MESSAGE_LENGTH = 1_000;
+	private static final int MAX_TOTAL_MESSAGE_LENGTH = 5_000;
 
 	private final RestClient openAiRestClient;
 	private final OpenAiProperties properties;
