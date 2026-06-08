@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/recommendations/notifications")
+@RequestMapping("/api/v1/notifications")
 public class RecommendationNotificationController {
 
 	private final RecommendationNotificationService recommendationNotificationService;
