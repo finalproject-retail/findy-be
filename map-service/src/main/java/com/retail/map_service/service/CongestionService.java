@@ -46,7 +46,7 @@ public class CongestionService {
 	 * - threshold 이상이면 congested=true
 	 */
 	private static final double DEFAULT_GRID_CONGESTION_RATIO = 0.1;
-	private static final int MIN_GRID_CONGESTION_THRESHOLD = 11;
+	private static final int MIN_GRID_CONGESTION_THRESHOLD = 1;
 
 	private final StoreRepository storeRepository;
 	private final BeaconSignalLogRepository beaconSignalLogRepository;
