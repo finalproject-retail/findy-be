@@ -64,12 +64,13 @@ public class HaccpProductClient {
 								body
 							);
 						}
+
 						return body;
 					})
 				)
 				.block();
 
-			log.info("HACCP raw response={}", rawResponse);
+			log.info("HACCP raw response. productName={}, response={}", productName, rawResponse);
 
 			return parseItems(rawResponse);
 		} catch (Exception exception) {
@@ -78,6 +79,53 @@ public class HaccpProductClient {
 				productName,
 				exception.getMessage()
 			);
+			return List.of();
+		}
+	}
+
+	public List<HaccpProductItemResponse> getProducts(
+		int pageNo,
+		int numOfRows
+	) {
+		if (!StringUtils.hasText(properties.serviceKey())) {
+			log.warn("HACCP service key is empty.");
+			return List.of();
+		}
+
+		try {
+			String rawResponse = webClient.get()
+				.uri(buildProductListUri(pageNo, numOfRows))
+				.exchangeToMono(response -> response.bodyToMono(String.class)
+					.map(body -> {
+						if (response.statusCode().isError()) {
+							log.warn(
+								"HACCP API returned error. status={}, body={}",
+								response.statusCode(),
+								body
+							);
+						}
+
+						return body;
+					})
+				)
+				.block();
+
+			log.info(
+				"HACCP product list raw response. pageNo={}, numOfRows={}, response={}",
+				pageNo,
+				numOfRows,
+				rawResponse
+			);
+
+			return parseItems(rawResponse);
+		} catch (Exception exception) {
+			log.warn(
+				"HACCP product list API request failed. pageNo={}, numOfRows={}, message={}",
+				pageNo,
+				numOfRows,
+				exception.getMessage()
+			);
+
 			return List.of();
 		}
 	}
@@ -119,6 +167,43 @@ public class HaccpProductClient {
 		}
 	}
 
+	public String getRawProducts(
+		int pageNo,
+		int numOfRows
+	) {
+		if (!StringUtils.hasText(properties.serviceKey())) {
+			return "HACCP_SERVICE_KEY is empty.";
+		}
+
+		try {
+			return webClient.get()
+				.uri(buildProductListUri(pageNo, numOfRows))
+				.exchangeToMono(response -> response.bodyToMono(String.class)
+					.map(body -> {
+						if (response.statusCode().isError()) {
+							log.warn(
+								"HACCP API returned error. status={}, body={}",
+								response.statusCode(),
+								body
+							);
+						}
+
+						return body;
+					})
+				)
+				.block();
+		} catch (Exception exception) {
+			log.warn(
+				"HACCP product list raw API request failed. pageNo={}, numOfRows={}, message={}",
+				pageNo,
+				numOfRows,
+				exception.getMessage()
+			);
+
+			return "HACCP product list raw API request failed: " + exception.getMessage();
+		}
+	}
+
 	public Optional<HaccpProductItemResponse> findFirstByProductName(String productName) {
 		return searchByProductName(productName)
 			.stream()
@@ -137,6 +222,25 @@ public class HaccpProductClient {
 			+ "&pageNo=" + DEFAULT_PAGE_NO
 			+ "&numOfRows=" + DEFAULT_NUM_OF_ROWS
 			+ "&prdlstNm=" + encodedProductName;
+
+		return URI.create(uri);
+	}
+
+	private URI buildProductListUri(
+		int pageNo,
+		int numOfRows
+	) {
+		String baseUrl = removeTrailingSlash(properties.baseUrl());
+
+		int resolvedPageNo = Math.max(pageNo, 1);
+		int resolvedNumOfRows = Math.max(numOfRows, 1);
+
+		String uri = baseUrl
+			+ "/getCertImgListServiceV3"
+			+ "?serviceKey=" + properties.serviceKey()
+			+ "&returnType=json"
+			+ "&pageNo=" + resolvedPageNo
+			+ "&numOfRows=" + resolvedNumOfRows;
 
 		return URI.create(uri);
 	}
@@ -183,21 +287,10 @@ public class HaccpProductClient {
 				return List.of();
 			}
 
-			if (itemsNode.isArray()) {
-				List<HaccpProductItemResponse> items = new ArrayList<>();
+			List<HaccpProductItemResponse> items = new ArrayList<>();
+			collectItems(itemsNode, items);
 
-				for (JsonNode itemWrapperNode : itemsNode) {
-					JsonNode itemNode = unwrapItemNode(itemWrapperNode);
-
-					if (itemNode != null && !itemNode.isNull() && !itemNode.isMissingNode()) {
-						items.add(toItem(itemNode));
-					}
-				}
-
-				return items;
-			}
-
-			return List.of(toItem(unwrapItemNode(itemsNode)));
+			return items;
 		} catch (Exception exception) {
 			log.warn(
 				"HACCP API response parse failed. message={}, response={}",
@@ -206,6 +299,31 @@ public class HaccpProductClient {
 			);
 			return List.of();
 		}
+	}
+
+	private void collectItems(
+		JsonNode node,
+		List<HaccpProductItemResponse> items
+	) {
+		if (node == null || node.isNull() || node.isMissingNode()) {
+			return;
+		}
+
+		if (node.isArray()) {
+			for (JsonNode childNode : node) {
+				collectItems(childNode, items);
+			}
+			return;
+		}
+
+		JsonNode itemNode = node.path("item");
+
+		if (!itemNode.isMissingNode() && !itemNode.isNull()) {
+			collectItems(itemNode, items);
+			return;
+		}
+
+		items.add(toItem(node));
 	}
 
 	private JsonNode findItemsNode(JsonNode root) {
@@ -224,21 +342,24 @@ public class HaccpProductClient {
 			return responseItems;
 		}
 
+		JsonNode directItem = root.path("body")
+			.path("items")
+			.path("item");
+
+		if (!directItem.isMissingNode() && !directItem.isNull()) {
+			return directItem;
+		}
+
+		JsonNode responseItem = root.path("response")
+			.path("body")
+			.path("items")
+			.path("item");
+
+		if (!responseItem.isMissingNode() && !responseItem.isNull()) {
+			return responseItem;
+		}
+
 		return null;
-	}
-
-	private JsonNode unwrapItemNode(JsonNode node) {
-		if (node == null || node.isNull() || node.isMissingNode()) {
-			return node;
-		}
-
-		JsonNode itemNode = node.path("item");
-
-		if (!itemNode.isMissingNode() && !itemNode.isNull()) {
-			return itemNode;
-		}
-
-		return node;
 	}
 
 	private HaccpProductItemResponse toItem(JsonNode itemNode) {
