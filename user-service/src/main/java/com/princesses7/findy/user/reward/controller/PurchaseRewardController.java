@@ -8,7 +8,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.user.global.response.ApiResponse;
 import com.princesses7.findy.user.reward.dto.request.AccruePurchaseRewardPublicRequest;
+import com.princesses7.findy.user.reward.dto.request.UsePurchaseRewardPublicRequest;
 import com.princesses7.findy.user.reward.dto.response.AccruePurchaseRewardResponse;
+import com.princesses7.findy.user.reward.dto.response.UsePurchaseRewardResponse;
 import com.princesses7.findy.user.reward.service.RewardService;
 
 import jakarta.validation.Valid;
@@ -32,5 +34,18 @@ public class PurchaseRewardController {
 		);
 
 		return ApiResponse.ok("구매 포인트 적립에 성공했습니다.", response);
+	}
+
+	@PostMapping("/use")
+	public ApiResponse<UsePurchaseRewardResponse> usePurchaseReward(
+		@RequestHeader("X-USER-ID") Long userId,
+		@Valid @RequestBody UsePurchaseRewardPublicRequest request
+	) {
+		UsePurchaseRewardResponse response = rewardService.usePurchaseRewardFromOrder(
+			userId,
+			request
+		);
+
+		return ApiResponse.ok("포인트 사용에 성공했습니다.", response);
 	}
 }

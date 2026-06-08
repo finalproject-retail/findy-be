@@ -92,6 +92,7 @@ public enum ErrorCode {
 	// Order
 	ORDER_NOT_FOUND(HttpStatus.NOT_FOUND, "ORDER_001", "주문 정보를 찾을 수 없습니다."),
 	ORDER_ACCESS_DENIED(HttpStatus.FORBIDDEN, "ORDER_002", "본인의 주문만 조회할 수 있습니다."),
+	INVALID_USED_REWARD(HttpStatus.BAD_REQUEST, "ORDER_003", "사용 포인트가 결제 가능 금액을 초과합니다."),
 
 	// Promotion
 	PROMOTION_NOT_FOUND(HttpStatus.NOT_FOUND, "PROMOTION_001", "행사를 찾을 수 없습니다."),

@@ -32,8 +32,9 @@ public class OrderController {
 		@RequestBody(required = false) CreateOrderRequest request
 	) {
 		Long userCouponId = request == null ? null : request.userCouponId();
+		Integer usedReward = request == null ? null : request.usedReward();
 
-		OrderCreateResponse response = orderService.createOrder(userId, userCouponId);
+		OrderCreateResponse response = orderService.createOrder(userId, userCouponId, usedReward);
 
 		return ApiResponse.ok("주문 생성에 성공했습니다.", response);
 	}

@@ -47,18 +47,24 @@ public class OrderService {
 
 	@Transactional
 	public OrderCreateResponse createOrder(Long userId) {
-		return createOrder(userId, null, DEFAULT_STORE_ID);
+		return createOrder(userId, null, null, DEFAULT_STORE_ID);
 	}
 
 	@Transactional
 	public OrderCreateResponse createOrder(Long userId, Long userCouponId) {
-		return createOrder(userId, userCouponId, DEFAULT_STORE_ID);
+		return createOrder(userId, userCouponId, null, DEFAULT_STORE_ID);
+	}
+
+	@Transactional
+	public OrderCreateResponse createOrder(Long userId, Long userCouponId, Integer usedReward) {
+		return createOrder(userId, userCouponId, usedReward, DEFAULT_STORE_ID);
 	}
 
 	@Transactional
 	public OrderCreateResponse createOrder(
 		Long userId,
 		Long userCouponId,
+		Integer usedReward,
 		Long storeId
 	) {
 		PurchaseAmountResponse amountResponse = purchaseAmountService.calculate(userId);
@@ -69,8 +75,15 @@ public class OrderService {
 			amountResponse.finalAmount()
 		);
 
+		int normalizedUsedReward = normalizeUsedReward(usedReward);
+		int payableAmount = amountResponse.finalAmount() - couponDiscount.discountAmount();
+
+		if (normalizedUsedReward > payableAmount) {
+			throw new OrderException(INVALID_USED_REWARD);
+		}
+
 		int totalDiscountAmount = amountResponse.discountAmount() + couponDiscount.discountAmount();
-		int finalAmount = amountResponse.finalAmount() - couponDiscount.discountAmount();
+		int finalAmount = payableAmount - normalizedUsedReward;
 
 		Order order = Order.create(
 			userId,
@@ -78,6 +91,7 @@ public class OrderService {
 			couponDiscount.couponId(),
 			amountResponse.totalAmount(),
 			totalDiscountAmount,
+			normalizedUsedReward,
 			finalAmount
 		);
 
@@ -141,10 +155,18 @@ public class OrderService {
 			order.getCouponId(),
 			order.getTotalAmount(),
 			order.getDiscountAmount(),
+			order.getUsedReward(),
 			order.getFinalAmount(),
 			order.getOrderStatus().name(),
 			items
 		);
+	}
+
+	private int normalizeUsedReward(Integer usedReward) {
+		if (usedReward == null || usedReward <= 0) {
+			return 0;
+		}
+		return usedReward;
 	}
 
 	@Transactional(readOnly = true)

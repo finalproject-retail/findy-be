@@ -9,6 +9,7 @@ public record OrderCreateResponse(
 	Long couponId,
 	int totalAmount,
 	int discountAmount,
+	int usedReward,
 	int finalAmount,
 	String orderStatus,
 	List<OrderItemResponse> items

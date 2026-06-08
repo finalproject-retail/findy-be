@@ -67,16 +67,17 @@ class RewardHistoryServiceTest {
 	}
 
 	@Test
-	@DisplayName("사용·소멸 필터는 현재 구매 적립 타입을 제외한다")
-	void getRewardHistoriesUsedExpiredFilterExcludesPurchaseRewards() {
+	@DisplayName("사용·소멸 필터는 포인트 사용 내역만 반환한다")
+	void getRewardHistoriesUsedExpiredFilterReturnsUseRewards() {
 		UserEntity user = UserEntity.builder().userId(2L).build();
-		RewardHistory history = RewardHistory.createPurchaseReward(user, 101L, 1500L);
-		ReflectionTestUtils.setField(history, "rewardHistoryId", 1L);
-		ReflectionTestUtils.setField(history, "createdAt", LocalDateTime.of(2026, 4, 10, 12, 0));
+		RewardHistory purchaseHistory = RewardHistory.createPurchaseReward(user, 101L, 1500L);
+		RewardHistory useHistory = RewardHistory.createUseReward(user, 102L, 300L);
+		ReflectionTestUtils.setField(useHistory, "rewardHistoryId", 2L);
+		ReflectionTestUtils.setField(useHistory, "createdAt", LocalDateTime.of(2026, 4, 11, 12, 0));
 
 		when(userRepository.existsById(2L)).thenReturn(true);
 		when(rewardHistoryRepository.findHistories(eq(2L), any(), any(), any(Pageable.class)))
-			.thenReturn(List.of(history));
+			.thenReturn(List.of(purchaseHistory, useHistory));
 
 		RewardHistoryListResponse response = rewardHistoryService.getRewardHistories(
 			2L,
@@ -86,7 +87,8 @@ class RewardHistoryServiceTest {
 			50
 		);
 
-		assertThat(response.count()).isZero();
-		assertThat(response.histories()).isEmpty();
+		assertThat(response.count()).isEqualTo(1);
+		assertThat(response.histories().get(0).type()).isEqualTo("used");
+		assertThat(response.histories().get(0).amount()).isEqualTo(-300L);
 	}
 }

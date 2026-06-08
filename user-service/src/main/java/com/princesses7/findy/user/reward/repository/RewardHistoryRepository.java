@@ -10,10 +10,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import com.princesses7.findy.user.reward.entity.RewardHistory;
+import com.princesses7.findy.user.reward.type.RewardType;
 
 public interface RewardHistoryRepository extends JpaRepository<RewardHistory, Long> {
 
-	Optional<RewardHistory> findByOrderId(Long orderId);
+	Optional<RewardHistory> findByOrderIdAndRewardType(Long orderId, RewardType rewardType);
 
 	@Query("""
 		select r

@@ -52,4 +52,13 @@ public class RewardHistory extends BaseTimeEntity {
 		rewardHistory.rewardAmount = rewardAmount;
 		return rewardHistory;
 	}
+
+	public static RewardHistory createUseReward(UserEntity user, Long orderId, long rewardAmount) {
+		RewardHistory rewardHistory = new RewardHistory();
+		rewardHistory.user = user;
+		rewardHistory.orderId = orderId;
+		rewardHistory.rewardType = RewardType.USE;
+		rewardHistory.rewardAmount = rewardAmount;
+		return rewardHistory;
+	}
 }
