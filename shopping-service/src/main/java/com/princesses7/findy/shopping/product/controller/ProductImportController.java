@@ -55,4 +55,21 @@ public class ProductImportController {
 		HaccpProductBulkImportResponse response = haccpProductImportService.bulkImport(request);
 		return ApiResponse.ok("HACCP 상품 bulk import에 성공했습니다.", response);
 	}
+
+	@PostMapping("/haccp/all")
+	public ApiResponse<HaccpProductBulkImportResponse> importAllHaccpProducts(
+		@RequestParam(defaultValue = "1") int pageNo,
+		@RequestParam(defaultValue = "50") int numOfRows,
+		@RequestParam(defaultValue = "1") int maxPages,
+		@RequestParam(defaultValue = "true") boolean onlyBarcodeExists
+	) {
+		HaccpProductBulkImportResponse response = haccpProductImportService.importAll(
+			pageNo,
+			numOfRows,
+			maxPages,
+			onlyBarcodeExists
+		);
+
+		return ApiResponse.ok("HACCP 전체 상품 import에 성공했습니다.", response);
+	}
 }
