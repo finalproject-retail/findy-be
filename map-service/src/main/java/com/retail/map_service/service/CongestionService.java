@@ -38,14 +38,15 @@ public class CongestionService {
 	 * - threshold 이상이면 congested=true
 	 * - level은 threshold 대비 비율로 계산합니다.
 	 */
-	private static final int DEFAULT_STORE_THRESHOLD = 30;
+	private static final int DEFAULT_STORE_THRESHOLD = 300;
 
 	/*
 	 * grid 단위 인원 기준:
+	 * - 기본값은 매장 전체 활성 인원의 일정 비율입니다. 현재 10프로
 	 * - threshold 이상이면 congested=true
-	 * - FE heatmap은 MEDIUM/HIGH 위주로 사용 가능하도록 모든 active grid를 내려줍니다.
 	 */
-	private static final int DEFAULT_GRID_THRESHOLD = 5;
+	private static final double DEFAULT_GRID_CONGESTION_RATIO = 0.1;
+	private static final int MIN_GRID_CONGESTION_THRESHOLD = 11;
 
 	private final StoreRepository storeRepository;
 	private final BeaconSignalLogRepository beaconSignalLogRepository;
@@ -83,8 +84,9 @@ public class CongestionService {
 		validateStoreExists(storeId);
 
 		int resolvedWindowSeconds = resolveWindowSeconds(windowSeconds);
-		int resolvedThreshold = resolveThreshold(threshold, DEFAULT_GRID_THRESHOLD);
 		OffsetDateTime from = OffsetDateTime.now(KST).minusSeconds(resolvedWindowSeconds);
+		long storeActiveUserCount = beaconSignalLogRepository.countActiveUsersByStore(storeId, from);
+		int resolvedThreshold = resolveGridThreshold(threshold, storeActiveUserCount);
 
 		List<GridCongestionPointResponse> points = beaconSignalLogRepository.findGridCongestionByStore(storeId, from)
 			.stream()
@@ -159,6 +161,20 @@ public class CongestionService {
 		}
 
 		return threshold;
+	}
+
+	private int resolveGridThreshold(
+		Integer threshold,
+		long storeActiveUserCount
+	) {
+		if (threshold != null) {
+			return Math.max(MIN_GRID_CONGESTION_THRESHOLD, resolveThreshold(threshold, 1));
+		}
+
+		return Math.max(
+			MIN_GRID_CONGESTION_THRESHOLD,
+			(int)Math.ceil(storeActiveUserCount * DEFAULT_GRID_CONGESTION_RATIO)
+		);
 	}
 
 	private void validateStoreExists(Long storeId) {
