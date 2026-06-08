@@ -8,6 +8,7 @@ public record ChatbotMessageResponse(
 	Long sessionId,
 	String answer,
 	ChatbotShoppingContextResponse shoppingContext,
+	ChatbotRecipeRecommendationResponse recipeRecommendation,
 	RagContextResponse ragContext,
 	ChatbotResponseStatus status,
 	ChatbotFailureType failureType
@@ -23,6 +24,7 @@ public record ChatbotMessageResponse(
 			sessionId,
 			answer,
 			shoppingContext,
+			null,
 			ragContext,
 			ChatbotResponseStatus.SUCCESS,
 			null
@@ -33,12 +35,14 @@ public record ChatbotMessageResponse(
 		Long sessionId,
 		String answer,
 		ChatbotShoppingContextResponse shoppingContext,
+		ChatbotRecipeRecommendationResponse recipeRecommendation,
 		RagContextResponse ragContext
 	) {
 		return new ChatbotMessageResponse(
 			sessionId,
 			answer,
 			shoppingContext,
+			recipeRecommendation,
 			ragContext,
 			ChatbotResponseStatus.SUCCESS,
 			null
@@ -53,6 +57,7 @@ public record ChatbotMessageResponse(
 		return new ChatbotMessageResponse(
 			sessionId,
 			fallbackMessage,
+			null,
 			null,
 			null,
 			ChatbotResponseStatus.FALLBACK,
