@@ -57,6 +57,7 @@ class ChatbotVoiceServiceTest {
 			1L,
 			"사리곰탕 재고는 5개 남아 있어요.",
 			null,
+			null,
 			null
 		);
 
