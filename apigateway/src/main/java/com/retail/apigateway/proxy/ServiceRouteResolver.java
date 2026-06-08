@@ -23,7 +23,9 @@ public class ServiceRouteResolver {
 			return normalizeBaseUrl(gatewayServiceProperties.map().baseUrl());
 		}
 
-		if (requestUri.startsWith("/api/v1/recommendations")) {
+		if (requestUri.startsWith("/api/v1/recommendations")
+			|| requestUri.startsWith("/api/v1/notifications")
+			|| requestUri.startsWith("/api/v1/chatbot")) {
 			return normalizeBaseUrl(gatewayServiceProperties.recommendation().baseUrl());
 		}
 
