@@ -26,10 +26,10 @@ public class CongestionService {
 	private static final ZoneOffset KST = ZoneOffset.ofHours(9);
 
 	/*
-	 * 혼잡도 기준은 초기 임의값입니다.
-	 * 운영 데이터가 쌓이면 매장 크기, 시간대, BLE 전송 주기 기준으로 조정하세요.
+	 * 최근 비콘 신호만 집계합니다. 창이 길면 해산 후에도 혼잡으로 남을 수 있어
+	 * 기본 90초로 둡니다. (클라이언트는 구역 변경 시에만 신호를 보냅니다.)
 	 */
-	private static final int DEFAULT_WINDOW_SECONDS = 300;
+	private static final int DEFAULT_WINDOW_SECONDS = 90;
 	private static final int MIN_WINDOW_SECONDS = 30;
 	private static final int MAX_WINDOW_SECONDS = 1_800;
 
@@ -41,12 +41,12 @@ public class CongestionService {
 	private static final int DEFAULT_STORE_THRESHOLD = 300;
 
 	/*
-	 * grid 단위 인원 기준:
-	 * - 기본값은 매장 전체 활성 인원의 일정 비율입니다. 현재 10프로
-	 * - threshold 이상이면 congested=true
+	 * grid 단위 혼잡도:
+	 * - 2명: MEDIUM, 3명 이상: HIGH
+	 * - API threshold 파라미터는 HIGH 기준(3)을 덮어쓸 때만 사용합니다.
 	 */
-	private static final double DEFAULT_GRID_CONGESTION_RATIO = 0.1;
-	private static final int MIN_GRID_CONGESTION_THRESHOLD = 1;
+	private static final int GRID_CONGESTION_MEDIUM_THRESHOLD = 2;
+	private static final int GRID_CONGESTION_HIGH_THRESHOLD = 3;
 
 	private final StoreRepository storeRepository;
 	private final BeaconSignalLogRepository beaconSignalLogRepository;
@@ -85,37 +85,49 @@ public class CongestionService {
 
 		int resolvedWindowSeconds = resolveWindowSeconds(windowSeconds);
 		OffsetDateTime from = OffsetDateTime.now(KST).minusSeconds(resolvedWindowSeconds);
-		long storeActiveUserCount = beaconSignalLogRepository.countActiveUsersByStore(storeId, from);
-		int resolvedThreshold = resolveGridThreshold(threshold, storeActiveUserCount);
+		int resolvedHighThreshold = resolveGridHighThreshold(threshold);
 
 		List<GridCongestionPointResponse> points = beaconSignalLogRepository.findGridCongestionByStore(storeId, from)
 			.stream()
-			.map(point -> toGridCongestionPoint(point, resolvedThreshold))
+			.map(point -> toGridCongestionPoint(point, resolvedHighThreshold))
 			.toList();
 
 		return new GridCongestionListResponse(
 			storeId,
 			resolvedWindowSeconds,
-			resolvedThreshold,
+			resolvedHighThreshold,
 			points
 		);
 	}
 
 	private GridCongestionPointResponse toGridCongestionPoint(
 		GridCongestionProjection projection,
-		int threshold
+		int highThreshold
 	) {
 		long activeUserCount = projection.getActiveUserCount() == null ? 0 : projection.getActiveUserCount();
+		CongestionLevel level = resolveGridLevel(activeUserCount, highThreshold);
 
 		return new GridCongestionPointResponse(
 			projection.getGridId(),
 			projection.getGridX(),
 			projection.getGridY(),
 			activeUserCount,
-			threshold,
-			activeUserCount >= threshold,
-			resolveLevel(activeUserCount, threshold)
+			highThreshold,
+			level != CongestionLevel.LOW,
+			level
 		);
+	}
+
+	private CongestionLevel resolveGridLevel(long activeUserCount, int highThreshold) {
+		if (activeUserCount >= highThreshold) {
+			return CongestionLevel.HIGH;
+		}
+
+		if (activeUserCount >= GRID_CONGESTION_MEDIUM_THRESHOLD) {
+			return CongestionLevel.MEDIUM;
+		}
+
+		return CongestionLevel.LOW;
 	}
 
 	private CongestionLevel resolveLevel(
@@ -163,18 +175,12 @@ public class CongestionService {
 		return threshold;
 	}
 
-	private int resolveGridThreshold(
-		Integer threshold,
-		long storeActiveUserCount
-	) {
+	private int resolveGridHighThreshold(Integer threshold) {
 		if (threshold != null) {
-			return Math.max(MIN_GRID_CONGESTION_THRESHOLD, resolveThreshold(threshold, 1));
+			return Math.max(GRID_CONGESTION_HIGH_THRESHOLD, resolveThreshold(threshold, GRID_CONGESTION_HIGH_THRESHOLD));
 		}
 
-		return Math.max(
-			MIN_GRID_CONGESTION_THRESHOLD,
-			(int)Math.ceil(storeActiveUserCount * DEFAULT_GRID_CONGESTION_RATIO)
-		);
+		return GRID_CONGESTION_HIGH_THRESHOLD;
 	}
 
 	private void validateStoreExists(Long storeId) {
