@@ -1,5 +1,7 @@
 package com.princesses7.findy.recommendation.recommendation.dto.response;
 
+import com.princesses7.findy.recommendation.recommendation.type.RelatedProductRelationType;
+
 public record RelatedProductRerankItem(
 	Long productId,
 	Double relationScore,
@@ -7,8 +9,12 @@ public record RelatedProductRerankItem(
 	String reason
 ) {
 
+	public RelatedProductRelationType safeRelationType() {
+		return RelatedProductRelationType.from(relationType);
+	}
+
 	public boolean isComplementary() {
-		return "COMPLEMENTARY".equalsIgnoreCase(relationType);
+		return safeRelationType() == RelatedProductRelationType.COMPLEMENTARY;
 	}
 
 	public double safeScore() {
