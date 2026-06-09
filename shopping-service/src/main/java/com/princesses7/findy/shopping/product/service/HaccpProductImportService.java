@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.product.service;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
 
@@ -222,7 +223,10 @@ public class HaccpProductImportService {
 
 		List<HaccpProductImportItemResponse> resultItems = new ArrayList<>();
 
-		for (HaccpProductItemResponse haccpItem : haccpItems.stream().limit(resolveLimit(limit)).toList()) {
+		for (HaccpProductItemResponse haccpItem : deduplicateImportItems(haccpItems)
+			.stream()
+			.limit(resolveLimit(limit))
+			.toList()) {
 			if (isInvalid(haccpItem)) {
 				skippedCount++;
 				resultItems.add(new HaccpProductImportItemResponse(
@@ -334,7 +338,10 @@ public class HaccpProductImportService {
 
 		return !"알수없음".equals(trimmedBarcode)
 			&& !"알 수 없음".equals(trimmedBarcode)
-			&& !"UNKNOWN".equalsIgnoreCase(trimmedBarcode);
+			&& !"UNKNOWN".equalsIgnoreCase(trimmedBarcode)
+			&& !"_".equals(trimmedBarcode)
+			&& !"-".equals(trimmedBarcode)
+			&& !".".equals(trimmedBarcode);
 	}
 
 	private ProductCategoryClassificationResponse classifyCategory(HaccpProductItemResponse haccpItem) {
@@ -350,8 +357,8 @@ public class HaccpProductImportService {
 	}
 
 	private Optional<Product> findExistingProduct(ProductImportCommand command) {
-		if (StringUtils.hasText(command.barcode())) {
-			Optional<Product> product = productRepository.findByBarcodeAndDeletedAtIsNull(command.barcode());
+		if (hasUsableBarcode(command.barcode())) {
+			Optional<Product> product = productRepository.findByBarcodeAndDeletedAtIsNull(command.barcode().trim());
 
 			if (product.isPresent()) {
 				return product;
@@ -370,20 +377,22 @@ public class HaccpProductImportService {
 	}
 
 	private boolean canApplyBarcode(Product product, String barcode) {
-		if (!StringUtils.hasText(barcode)) {
+		if (!hasUsableBarcode(barcode)) {
 			return false;
 		}
 
-		if (barcode.equals(product.getBarcode())) {
+		String normalizedBarcode = barcode.trim();
+
+		if (normalizedBarcode.equals(product.getBarcode())) {
 			return true;
 		}
 
-		return !productRepository.existsByBarcodeAndDeletedAtIsNull(barcode);
+		return !productRepository.existsByBarcodeAndDeletedAtIsNull(normalizedBarcode);
 	}
 
 	private boolean isBarcodeDuplicated(String barcode) {
-		return StringUtils.hasText(barcode)
-			&& productRepository.existsByBarcodeAndDeletedAtIsNull(barcode);
+		return hasUsableBarcode(barcode)
+			&& productRepository.existsByBarcodeAndDeletedAtIsNull(barcode.trim());
 	}
 
 	private String normalizeProductName(String productName) {
@@ -441,5 +450,39 @@ public class HaccpProductImportService {
 		}
 
 		return Math.min(maxPages, MAX_PAGES);
+	}
+
+	private List<HaccpProductItemResponse> deduplicateImportItems(
+		List<HaccpProductItemResponse> haccpItems
+	) {
+		if (haccpItems == null || haccpItems.isEmpty()) {
+			return List.of();
+		}
+
+		LinkedHashMap<String, HaccpProductItemResponse> distinctItems = new LinkedHashMap<>();
+
+		for (HaccpProductItemResponse item : haccpItems) {
+			if (item == null) {
+				continue;
+			}
+
+			distinctItems.putIfAbsent(
+				createImportKey(item),
+				item
+			);
+		}
+
+		return new ArrayList<>(distinctItems.values());
+	}
+
+	private String createImportKey(HaccpProductItemResponse item) {
+		if (hasUsableBarcode(item.barcode())) {
+			return "BARCODE:" + item.barcode().trim();
+		}
+
+		return "NAME:"
+			+ normalizeProductName(haccpProductMapper.extractBrandName(item))
+			+ ":"
+			+ normalizeProductName(item.productName());
 	}
 }

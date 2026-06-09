@@ -22,7 +22,7 @@ public class HaccpProductMapper {
 			null,
 			extractBrandName(item),
 			clean(item.productName()),
-			clean(item.barcode()),
+			toNullableInfo(item.barcode()),
 			EXTERNAL_SOURCE,
 			clean(item.productReportNo()),
 			DEFAULT_PRICE,
@@ -47,7 +47,7 @@ public class HaccpProductMapper {
 			classification.categoryId(),
 			extractBrandName(item),
 			clean(item.productName()),
-			clean(item.barcode()),
+			toNullableInfo(item.barcode()),
 			EXTERNAL_SOURCE,
 			clean(item.productReportNo()),
 			DEFAULT_PRICE,
@@ -124,11 +124,24 @@ public class HaccpProductMapper {
 			return null;
 		}
 
-		if ("알수없음".equals(cleanedValue) || "알 수 없음".equals(cleanedValue)) {
+		if (isUnknownValue(cleanedValue)) {
 			return null;
 		}
 
 		return cleanedValue;
+	}
+
+	private boolean isUnknownValue(String value) {
+		return "알수없음".equals(value)
+			|| "알 수 없음".equals(value)
+			|| "UNKNOWN".equalsIgnoreCase(value)
+			|| "_".equals(value)
+			|| "-".equals(value)
+			|| ".".equals(value)
+			|| ":".equals(value)
+			|| "：".equals(value)
+			|| "/".equals(value)
+			|| ",".equals(value);
 	}
 
 	private String firstText(String first, String second) {
