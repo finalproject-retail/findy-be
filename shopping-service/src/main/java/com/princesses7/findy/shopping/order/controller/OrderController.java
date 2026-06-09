@@ -16,6 +16,7 @@ import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderDetailResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderSummaryResponse;
 import com.princesses7.findy.shopping.order.service.OrderService;
+import com.princesses7.findy.shopping.store.ResolvedStoreId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,12 +30,18 @@ public class OrderController {
 	@PostMapping
 	public ApiResponse<OrderCreateResponse> createOrder(
 		@RequestHeader("X-USER-ID") Long userId,
-		@RequestBody(required = false) CreateOrderRequest request
+		@RequestBody(required = false) CreateOrderRequest request,
+		@ResolvedStoreId long storeId
 	) {
 		Long userCouponId = request == null ? null : request.userCouponId();
 		Integer usedReward = request == null ? null : request.usedReward();
 
-		OrderCreateResponse response = orderService.createOrder(userId, userCouponId, usedReward);
+		OrderCreateResponse response = orderService.createOrder(
+			userId,
+			userCouponId,
+			usedReward,
+			storeId
+		);
 
 		return ApiResponse.ok("주문 생성에 성공했습니다.", response);
 	}
