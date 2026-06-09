@@ -174,6 +174,19 @@ public class ShoppingList extends BaseTimeEntity {
 		shoppingListItems.remove(item);
 	}
 
+	public void returnItemToCart(Long shoppingListItemId) {
+		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
+
+		if (item.isProductItem()) {
+			cart.saveItemForNextShopping(
+				item.getProductId(),
+				item.getQuantity()
+			);
+		}
+
+		shoppingListItems.remove(item);
+	}
+
 	public void cancel() {
 		cart.uncheckAllItems();
 		cart.clearShoppingList();

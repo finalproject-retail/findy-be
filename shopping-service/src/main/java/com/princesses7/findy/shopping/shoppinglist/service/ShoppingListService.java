@@ -211,6 +211,19 @@ public class ShoppingListService {
 	}
 
 	@Transactional
+	public ShoppingListResponse returnShoppingListItemToCart(
+		Long userId,
+		Long shoppingListItemId,
+		long storeId
+	) {
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
+
+		shoppingList.returnItemToCart(shoppingListItemId);
+
+		return toResponse(shoppingList, storeId);
+	}
+
+	@Transactional
 	public void cancelShopping(Long userId, long storeId) {
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
