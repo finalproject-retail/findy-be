@@ -7,6 +7,7 @@ import java.util.List;
 
 import com.princesses7.findy.shopping.global.entity.BaseTimeEntity;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
+import com.princesses7.findy.shopping.product.support.CategoryGridIdResolver;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -109,6 +110,7 @@ public class Product extends BaseTimeEntity {
 		product.categoryConfidence = command.categoryConfidence();
 		product.categoryClassifiedBy = command.categoryClassifiedBy();
 		product.categoryReviewRequired = command.categoryReviewRequired();
+		product.gridId = CategoryGridIdResolver.resolveRandomGridId(command.categoryId());
 
 		product.deletedAt = null;
 		return product;
