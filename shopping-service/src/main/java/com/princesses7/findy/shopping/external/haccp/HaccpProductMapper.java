@@ -1,11 +1,10 @@
 package com.princesses7.findy.shopping.external.haccp;
 
-import java.math.BigDecimal;
-
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
 import com.princesses7.findy.shopping.external.haccp.dto.response.HaccpProductItemResponse;
+import com.princesses7.findy.shopping.external.haccp.support.HaccpCompanyNameParser;
 import com.princesses7.findy.shopping.product.dto.command.ProductImportCommand;
 import com.princesses7.findy.shopping.product.dto.response.ProductCategoryClassificationResponse;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
@@ -66,19 +65,12 @@ public class HaccpProductMapper {
 	}
 
 	public String extractBrandName(HaccpProductItemResponse item) {
-		String seller = firstText(item.seller(), item.manufacture());
-
-		if (!StringUtils.hasText(seller)) {
-			return null;
-		}
-
-		String brandName = seller.split("/")[0]
-			.replace("(주)", "")
-			.replace("㈜", "")
-			.replace("주식회사", "")
-			.trim();
-
-		return toNullableInfo(brandName);
+		return toNullableInfo(
+			HaccpCompanyNameParser.extractBrandName(
+				item.seller(),
+				item.manufacture()
+			)
+		);
 	}
 
 	private String createDescription(HaccpProductItemResponse item) {

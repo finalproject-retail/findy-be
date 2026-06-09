@@ -73,7 +73,6 @@ public class HaccpProductImportService {
 		}
 
 		return importItems(
-			productName.trim(),
 			haccpItems,
 			limit,
 			onlyBarcodeExists,
@@ -101,6 +100,7 @@ public class HaccpProductImportService {
 					null,
 					null,
 					null,
+					null,
 					STATUS_SKIPPED,
 					List.of("검색어가 비어 있습니다.")
 				));
@@ -117,6 +117,7 @@ public class HaccpProductImportService {
 					null,
 					null,
 					null,
+					null,
 					STATUS_SKIPPED,
 					List.of("HACCP 조회 결과가 없습니다.")
 				));
@@ -124,7 +125,6 @@ public class HaccpProductImportService {
 			}
 
 			HaccpProductImportResponse response = importItems(
-				normalizedKeyword,
 				haccpItems,
 				request.resolvedLimitPerKeyword(),
 				request.resolvedOnlyBarcodeExists(),
@@ -182,7 +182,6 @@ public class HaccpProductImportService {
 			String pageKeyword = "page:" + page;
 
 			HaccpProductImportResponse response = importItems(
-				pageKeyword,
 				haccpItems,
 				haccpItems.size(),
 				onlyBarcodeExists,
@@ -212,7 +211,6 @@ public class HaccpProductImportService {
 	}
 
 	private HaccpProductImportResponse importItems(
-		String keyword,
 		List<HaccpProductItemResponse> haccpItems,
 		int limit,
 		boolean onlyBarcodeExists,
@@ -231,6 +229,7 @@ public class HaccpProductImportService {
 					null,
 					null,
 					null,
+					null,
 					STATUS_SKIPPED,
 					List.of("HACCP 상품명이 비어 있습니다.")
 				));
@@ -242,6 +241,7 @@ public class HaccpProductImportService {
 				resultItems.add(new HaccpProductImportItemResponse(
 					null,
 					haccpItem.productName(),
+					haccpProductMapper.extractBrandName(haccpItem),
 					haccpItem.barcode(),
 					STATUS_SKIPPED,
 					List.of("바코드가 없어 자동 등록에서 제외했습니다.")
@@ -272,6 +272,7 @@ public class HaccpProductImportService {
 				resultItems.add(new HaccpProductImportItemResponse(
 					null,
 					enrichmentCommand.productName(),
+					enrichmentCommand.brandName(),
 					enrichmentCommand.barcode(),
 					STATUS_SKIPPED,
 					List.of("신규 상품 생성 옵션이 꺼져 있어 제외했습니다.")
@@ -286,6 +287,7 @@ public class HaccpProductImportService {
 				resultItems.add(new HaccpProductImportItemResponse(
 					null,
 					haccpItem.productName(),
+					haccpProductMapper.extractBrandName(haccpItem),
 					haccpItem.barcode(),
 					STATUS_SKIPPED,
 					List.of(classification.reason())
@@ -300,6 +302,7 @@ public class HaccpProductImportService {
 				resultItems.add(new HaccpProductImportItemResponse(
 					null,
 					createCommand.productName(),
+					createCommand.brandName(),
 					createCommand.barcode(),
 					STATUS_SKIPPED,
 					List.of("이미 다른 상품에 등록된 바코드입니다.")
@@ -401,6 +404,7 @@ public class HaccpProductImportService {
 		return new HaccpProductImportItemResponse(
 			product.getProductId(),
 			product.getProductName(),
+			product.getBrandName(),
 			product.getBarcode(),
 			importStatus,
 			updatedFields
