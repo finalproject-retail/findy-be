@@ -4,6 +4,7 @@ import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEvent
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
+import com.princesses7.findy.shopping.cart.service.CartService;
 import com.princesses7.findy.shopping.category.entity.Category;
 import com.princesses7.findy.shopping.category.repository.CategoryRepository;
 import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
@@ -46,23 +48,30 @@ public class ShoppingListService {
 	private final ProductBarcodeReader productBarcodeReader;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 	private final CategoryRepository categoryRepository;
+	private final CartService cartService;
 
 	@Transactional
-	public ShoppingListResponse createShoppingList(Long userId, long storeId) {
-		Cart cart = getCartByUserId(userId);
+	public ShoppingListResponse createShoppingList(
+		Long userId,
+		long storeId
+	) {
+		Cart cart = cartService.getCartByUserId(userId);
 
-		validateCheckedItemsPurchasable(cart, storeId);
+		return shoppingListRepository.findByCartCartId(cart.getCartId())
+			.map(existingShoppingList -> {
+				validateCheckedItemsPurchasable(existingShoppingList, cart, storeId);
+				existingShoppingList.mergeSelectedCartItems(cart.getCheckedItems());
 
-		ShoppingList shoppingList = ShoppingList.create(cart);
-		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
+				return toResponse(existingShoppingList, storeId);
+			})
+			.orElseGet(() -> {
+				validateCheckedItemsPurchasable(cart, storeId);
 
-		shoppingAnalyticsEventService.publishShoppingListItemsFromCart(
-			userId,
-			savedShoppingList,
-			RecommendationSource.DIRECT
-		);
+				ShoppingList shoppingList = ShoppingList.createFromCart(cart);
+				ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
 
-		return toResponse(savedShoppingList, storeId);
+				return toResponse(savedShoppingList, storeId);
+			});
 	}
 
 	public ShoppingListResponse getShoppingList(Long userId, long storeId) {
@@ -274,6 +283,30 @@ public class ShoppingListService {
 		);
 	}
 
+	private void validateCheckedItemsPurchasable(
+		ShoppingList shoppingList,
+		Cart cart,
+		long storeId
+	) {
+		cart.getCheckedItems().forEach(cartItem -> {
+			int existingQuantity = getShoppingListItemQuantity(
+				shoppingList,
+				cartItem.getProductId()
+			);
+
+			int targetQuantity = Math.max(
+				existingQuantity,
+				cartItem.getQuantity()
+			);
+
+			productSummaryReader.validatePurchasable(
+				cartItem.getProductId(),
+				targetQuantity,
+				storeId
+			);
+		});
+	}
+
 	private ShoppingListItem getShoppingListItem(
 		ShoppingList shoppingList,
 		Long shoppingListItemId
@@ -370,6 +403,7 @@ public class ShoppingListService {
 		List<Long> categoryIds = shoppingList.getShoppingListItems().stream()
 			.filter(ShoppingListItem::isCategoryItem)
 			.map(ShoppingListItem::getCategoryId)
+			.filter(Objects::nonNull)
 			.distinct()
 			.toList();
 
