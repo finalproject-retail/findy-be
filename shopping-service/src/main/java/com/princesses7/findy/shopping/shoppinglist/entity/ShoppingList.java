@@ -64,6 +64,10 @@ public class ShoppingList extends BaseTimeEntity {
 		return shoppingList;
 	}
 
+	public static ShoppingList createFromCart(Cart cart) {
+		return create(cart);
+	}
+
 	public void replaceItemsFromCart() {
 		List<CartItem> checkedItems = cart.getCheckedItems();
 
@@ -78,6 +82,33 @@ public class ShoppingList extends BaseTimeEntity {
 				ShoppingListItem.createFromCartItem(this, cartItem)
 			)
 		);
+	}
+
+	public void mergeSelectedCartItems(List<CartItem> cartItems) {
+		cartItems.forEach(this::mergeSelectedCartItem);
+	}
+
+	private void mergeSelectedCartItem(CartItem cartItem) {
+		findItemByProductId(cartItem.getProductId())
+			.ifPresentOrElse(
+				item -> increaseOnlyWhenCartQuantityIsGreater(item, cartItem),
+				() -> shoppingListItems.add(
+					ShoppingListItem.createFromCartItem(this, cartItem)
+				)
+			);
+	}
+
+	private void increaseOnlyWhenCartQuantityIsGreater(
+		ShoppingListItem item,
+		CartItem cartItem
+	) {
+		int additionalQuantity = cartItem.getQuantity() - item.getQuantity();
+
+		if (additionalQuantity <= 0) {
+			return;
+		}
+
+		item.increaseQuantity(additionalQuantity);
 	}
 
 	public void addSearchedItem(Long productId, int quantity) {
@@ -95,7 +126,7 @@ public class ShoppingList extends BaseTimeEntity {
 	public void addScannedItem(Long productId, int quantity) {
 		validateQuantity(quantity);
 
-		findItemByProduct(productId)
+		findItemByProductId(productId)
 			.ifPresentOrElse(
 				item -> item.scanOrIncreaseQuantity(quantity),
 				() -> shoppingListItems.add(
@@ -108,13 +139,11 @@ public class ShoppingList extends BaseTimeEntity {
 			);
 	}
 
-	private Optional<ShoppingListItem> findItemByProduct(Long productId) {
-		return shoppingListItems.stream()
-			.filter(item -> item.hasSameProduct(productId))
-			.findFirst();
-	}
-
-	public void addCategoryItem(Long categoryId, String categoryName, int quantity) {
+	public void addCategoryItem(
+		Long categoryId,
+		String categoryName,
+		int quantity
+	) {
 		validateQuantity(quantity);
 		validateCategoryName(categoryName);
 
@@ -122,41 +151,44 @@ public class ShoppingList extends BaseTimeEntity {
 			.ifPresentOrElse(
 				item -> item.increaseQuantity(quantity),
 				() -> shoppingListItems.add(
-					ShoppingListItem.createFromCategory(this, categoryId, categoryName, quantity)
+					ShoppingListItem.createFromCategory(
+						this,
+						categoryId,
+						categoryName,
+						quantity
+					)
 				)
 			);
 	}
 
-	public void changeItemChecked(Long shoppingListItemId, boolean checked) {
+	public void changeItemChecked(
+		Long shoppingListItemId,
+		boolean checked
+	) {
 		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
 
 		item.changeChecked(checked);
 	}
 
-	private Optional<ShoppingListItem> findItemByCategory(Long categoryId, String categoryName) {
-		return shoppingListItems.stream()
-			.filter(item -> item.hasSameCategory(categoryId, categoryName))
-			.findFirst();
-	}
-
-	private void validateCategoryName(String categoryName) {
-		if (categoryName == null || categoryName.isBlank()) {
-			throw new ShoppingListException(INVALID_SHOPPING_LIST_CATEGORY);
-		}
-	}
-
 	public void completeScan(Long productId) {
 		ShoppingListItem item = getItemByProductId(productId);
+
 		item.completeScan();
 	}
 
-	public void changeItemQuantity(Long shoppingListItemId, int quantity) {
+	public void changeItemQuantity(
+		Long shoppingListItemId,
+		int quantity
+	) {
 		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
 
 		item.changeQuantity(quantity);
 	}
 
-	public void decreaseQuantityByScan(Long productId, int quantity) {
+	public void decreaseQuantityByScan(
+		Long productId,
+		int quantity
+	) {
 		validateQuantity(quantity);
 
 		ShoppingListItem item = getItemByProductId(productId);
@@ -171,6 +203,7 @@ public class ShoppingList extends BaseTimeEntity {
 
 	public void removeItem(Long shoppingListItemId) {
 		ShoppingListItem item = getShoppingListItem(shoppingListItemId);
+
 		shoppingListItems.remove(item);
 	}
 
@@ -204,9 +237,29 @@ public class ShoppingList extends BaseTimeEntity {
 			.sum();
 	}
 
+	public void moveProductItemsToCartForNextShopping() {
+		shoppingListItems.stream()
+			.filter(ShoppingListItem::isProductItem)
+			.forEach(item ->
+				cart.saveItemForNextShopping(
+					item.getProductId(),
+					item.getQuantity()
+				)
+			);
+	}
+
 	private Optional<ShoppingListItem> findItemByProductId(Long productId) {
 		return shoppingListItems.stream()
 			.filter(item -> item.hasSameProduct(productId))
+			.findFirst();
+	}
+
+	private Optional<ShoppingListItem> findItemByCategory(
+		Long categoryId,
+		String categoryName
+	) {
+		return shoppingListItems.stream()
+			.filter(item -> item.hasSameCategory(categoryId, categoryName))
 			.findFirst();
 	}
 
@@ -228,14 +281,9 @@ public class ShoppingList extends BaseTimeEntity {
 		}
 	}
 
-	public void moveProductItemsToCartForNextShopping() {
-		shoppingListItems.stream()
-			.filter(ShoppingListItem::isProductItem)
-			.forEach(item ->
-				cart.saveItemForNextShopping(
-					item.getProductId(),
-					item.getQuantity()
-				)
-			);
+	private void validateCategoryName(String categoryName) {
+		if (categoryName == null || categoryName.isBlank()) {
+			throw new ShoppingListException(INVALID_SHOPPING_LIST_CATEGORY);
+		}
 	}
 }

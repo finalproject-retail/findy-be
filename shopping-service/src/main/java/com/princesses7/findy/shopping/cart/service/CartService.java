@@ -133,7 +133,7 @@ public class CartService {
 			.orElseGet(() -> cartRepository.save(Cart.create(userId)));
 	}
 
-	private Cart getCartByUserId(Long userId) {
+	public Cart getCartByUserId(Long userId) {
 		return cartRepository.findByUserId(userId)
 			.orElseThrow(() -> new CartException(CART_NOT_FOUND));
 	}
