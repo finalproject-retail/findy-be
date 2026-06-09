@@ -55,6 +55,7 @@ public class ChatbotService {
 	private final ChatbotLogService chatbotLogService;
 	private final ChatbotFallbackMessageProvider chatbotFallbackMessageProvider;
 	private final ChatbotRecipeRecommendationService chatbotRecipeRecommendationService;
+	private final ChatbotRecipeRecommendationPromptBuilder chatbotRecipeRecommendationPromptBuilder;
 
 	@Transactional
 	public ChatbotMessageResponse reply(Long userId, ChatbotMessageRequest request) {
@@ -76,6 +77,7 @@ public class ChatbotService {
 			RagContextResponse ragContext = getRagContext(request.message(), analysis);
 
 			String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
+			String recipeRecommendationPrompt = chatbotRecipeRecommendationPromptBuilder.build(recipeRecommendation);
 			String ragContextPrompt = ragContextPromptBuilder.build(ragContext);
 
 			List<ChatMessage> recentMessages = getRecentMessages(chatSession);
@@ -83,6 +85,7 @@ public class ChatbotService {
 				chatbotPromptProvider.systemPrompt(),
 				recentMessages,
 				shoppingContextPrompt,
+				recipeRecommendationPrompt,
 				ragContextPrompt,
 				request.message()
 			);

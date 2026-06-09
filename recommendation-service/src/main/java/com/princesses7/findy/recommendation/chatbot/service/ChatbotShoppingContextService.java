@@ -101,6 +101,50 @@ public class ChatbotShoppingContextService {
 		);
 	}
 
+	public List<ChatbotProductContextResponse> getProductContextsByKeyword(
+		Long storeId,
+		String keyword,
+		int limit
+	) {
+		Long resolvedStoreId = normalizeStoreId(storeId);
+		int resolvedLimit = normalizeLimit(limit);
+
+		List<ProductSnapshot> products = findProducts(
+			keyword,
+			ChatIntent.PRODUCT_SEARCH,
+			resolvedLimit
+		);
+
+		if (products.isEmpty()) {
+			return List.of();
+		}
+
+		List<Long> productIds = products.stream()
+			.map(ProductSnapshot::getProductId)
+			.toList();
+
+		Map<Long, InventorySnapshot> inventoryMap = findInventoryMap(resolvedStoreId, productIds);
+
+		Map<Long, String> categoryNameMap = findCategoryNameMap(
+			products.stream()
+				.map(ProductSnapshot::getCategoryId)
+				.toList()
+		);
+
+		Map<Long, List<PromotionProductSnapshot>> promotionMap = findPromotionMap(productIds);
+		Map<Long, List<CouponProductSnapshot>> couponMap = findCouponMap(productIds);
+
+		return products.stream()
+			.map(product -> toProductContext(
+				product,
+				categoryNameMap,
+				inventoryMap,
+				promotionMap,
+				couponMap
+			))
+			.toList();
+	}
+
 	private List<ProductSnapshot> findProducts(
 		String keyword,
 		ChatIntent intent,
