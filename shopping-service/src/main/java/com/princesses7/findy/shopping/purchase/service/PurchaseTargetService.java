@@ -2,6 +2,7 @@ package com.princesses7.findy.shopping.purchase.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -15,27 +16,34 @@ import com.princesses7.findy.shopping.purchase.exception.PurchaseException;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
 import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingListItem;
 import com.princesses7.findy.shopping.shoppinglist.repository.ShoppingListRepository;
-
-import lombok.RequiredArgsConstructor;
+import com.princesses7.findy.shopping.store.StoreIdSupport;
 
 @Service
-@RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PurchaseTargetService {
-
-	private static final Long DEFAULT_STORE_ID = 1L;
 
 	private final ShoppingListRepository shoppingListRepository;
 	private final InventoryRepository inventoryRepository;
 
-	public PurchaseTargetResponse getPurchaseTargets(Long userId) {
+	public PurchaseTargetService(
+		ShoppingListRepository shoppingListRepository,
+		InventoryRepository inventoryRepository
+	) {
+		this.shoppingListRepository = shoppingListRepository;
+		this.inventoryRepository = inventoryRepository;
+	}
+
+	public PurchaseTargetResponse getPurchaseTargets(Long userId, long storeId) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new PurchaseException(SHOPPING_LIST_NOT_FOUND));
 
-		List<PurchaseTargetItemResponse> items = shoppingList.getShoppingListItems().stream()
-			.filter(this::hasScannedQuantity)
-			.map(this::toPurchaseTargetItem)
-			.toList();
+		List<PurchaseTargetItemResponse> items = new ArrayList<>();
+		for (ShoppingListItem item : shoppingList.getShoppingListItems()) {
+			if (hasScannedQuantity(item)) {
+				items.add(toPurchaseTargetItem(item, resolvedStoreId));
+			}
+		}
 
 		if (items.isEmpty()) {
 			throw new PurchaseException(NO_SCANNED_ITEM);
@@ -57,20 +65,21 @@ public class PurchaseTargetService {
 		return item.getScannedQuantity() > 0;
 	}
 
-	private PurchaseTargetItemResponse toPurchaseTargetItem(ShoppingListItem item) {
-		Inventory inventory = getInventory(item.getProductId());
+	private PurchaseTargetItemResponse toPurchaseTargetItem(ShoppingListItem item, long storeId) {
+		Inventory inventory = getInventory(item.getProductId(), storeId);
+		Integer stockQuantity = inventory.getStockQuantity();
 
 		return new PurchaseTargetItemResponse(
 			item.getShoppingListItemId(),
 			item.getProductId(),
 			item.getQuantity(),
 			item.getScannedQuantity(),
-			inventory.getStockQuantity()
+			stockQuantity == null ? 0 : stockQuantity
 		);
 	}
 
-	private Inventory getInventory(Long productId) {
-		return inventoryRepository.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)
+	private Inventory getInventory(Long productId, long storeId) {
+		return inventoryRepository.findByProductProductIdAndStoreId(productId, storeId)
 			.orElseThrow(() -> new PurchaseException(PRODUCT_STOCK_NOT_FOUND));
 	}
 }
