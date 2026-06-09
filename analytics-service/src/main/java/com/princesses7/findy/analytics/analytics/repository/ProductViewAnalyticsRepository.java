@@ -17,13 +17,16 @@ public class ProductViewAnalyticsRepository {
 
 	private final JdbcTemplate jdbcTemplate;
 	private final String sourceSchema;
+	private final String userSourceSchema;
 
 	public ProductViewAnalyticsRepository(
 		JdbcTemplate jdbcTemplate,
-		@Value("${analytics.source-schema:shopping_service}") String sourceSchema
+		@Value("${analytics.source-schema:shopping_service}") String sourceSchema,
+		@Value("${analytics.user-source-schema:user_service}") String userSourceSchema
 	) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.sourceSchema = normalizeSourceSchema(sourceSchema);
+		this.userSourceSchema = normalizeSourceSchema(userSourceSchema);
 	}
 
 	public Long countTotalViews(LocalDateTime startDateTime, LocalDateTime endDateTime) {
@@ -33,9 +36,8 @@ public class ProductViewAnalyticsRepository {
 			JOIN %s p ON p.product_id = rvp.product_id
 			WHERE rvp.created_at >= ?
 			  AND rvp.created_at < ?
-			  AND p.deleted_at IS NULL
 			""".formatted(
-			table("recent_view_products"),
+			userTable("recent_view_products"),
 			table("products")
 		);
 
@@ -56,9 +58,8 @@ public class ProductViewAnalyticsRepository {
 			JOIN %s p ON p.product_id = rvp.product_id
 			WHERE rvp.created_at >= ?
 			  AND rvp.created_at < ?
-			  AND p.deleted_at IS NULL
 			""".formatted(
-			table("recent_view_products"),
+			userTable("recent_view_products"),
 			table("products")
 		);
 
@@ -88,7 +89,6 @@ public class ProductViewAnalyticsRepository {
 			JOIN %s p ON p.product_id = rvp.product_id
 			WHERE rvp.created_at >= ?
 			  AND rvp.created_at < ?
-			  AND p.deleted_at IS NULL
 			GROUP BY
 			    p.product_id,
 			    p.product_name,
@@ -97,7 +97,7 @@ public class ProductViewAnalyticsRepository {
 			ORDER BY view_count DESC, p.product_id ASC
 			LIMIT ?
 			""".formatted(
-			table("recent_view_products"),
+			userTable("recent_view_products"),
 			table("products")
 		);
 
@@ -122,6 +122,14 @@ public class ProductViewAnalyticsRepository {
 		}
 
 		return sourceSchema + "." + tableName;
+	}
+
+	private String userTable(String tableName) {
+		if (userSourceSchema.isBlank()) {
+			return tableName;
+		}
+
+		return userSourceSchema + "." + tableName;
 	}
 
 	private String normalizeSourceSchema(String sourceSchema) {
