@@ -6,8 +6,6 @@ import java.util.regex.Pattern;
 
 public final class HaccpCompanyNameParser {
 
-	private static final String UNKNOWN = "알수없음";
-
 	private static final Pattern MULTIPLE_SPACES = Pattern.compile("\\s+");
 
 	private static final Pattern EXPLICIT_DELIMITER_PATTERN = Pattern.compile("\\s*[_:：]\\s*");
@@ -152,7 +150,7 @@ public final class HaccpCompanyNameParser {
 	}
 
 	private static String normalizeBrandName(String companyName) {
-		return normalizeText(companyName)
+		String normalized = normalizeText(companyName)
 			.replace("주식회사", "")
 			.replace("(주)", "")
 			.replace("㈜", "")
@@ -160,6 +158,12 @@ public final class HaccpCompanyNameParser {
 			.replace("(유)", "")
 			.replace("유한회사", "")
 			.trim();
+
+		if (normalized.isBlank()) {
+			return null;
+		}
+
+		return normalized;
 	}
 
 	private static String normalizeText(String value) {
@@ -178,6 +182,7 @@ public final class HaccpCompanyNameParser {
 			|| trimmed.equals(".")
 			|| trimmed.equals(":")
 			|| trimmed.equals("：")
-			|| trimmed.equals(UNKNOWN);
+			|| trimmed.equals("알수없음")
+			|| trimmed.equals("알 수 없음");
 	}
 }
