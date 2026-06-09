@@ -1,11 +1,11 @@
 package com.princesses7.findy.analytics.product.repository;
 
-import java.util.HashMap;
+import java.sql.Types;
 import java.util.List;
-import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
@@ -51,8 +51,8 @@ public class ProductPerformanceSummaryRepository {
 					COUNT(rvp.recent_view_id) AS view_count
 				FROM %s rvp
 				JOIN target_products tp ON tp.product_id = rvp.product_id
-				WHERE rvp.created_at >= :fromAt
-					AND rvp.created_at < :toAt
+				WHERE rvp.viewed_at >= :fromAt
+			       AND rvp.viewed_at < :toAt
 				GROUP BY rvp.product_id
 			),
 			order_summary AS (
@@ -96,10 +96,10 @@ public class ProductPerformanceSummaryRepository {
 			table("order_items")
 		);
 
-		Map<String, Object> params = new HashMap<>();
-		params.put("storeId", storeId);
-		params.put("fromAt", periodRange.fromAt());
-		params.put("toAt", periodRange.toExclusiveAt());
+		MapSqlParameterSource params = new MapSqlParameterSource()
+			.addValue("storeId", storeId, Types.BIGINT)
+			.addValue("fromAt", periodRange.fromAt(), Types.TIMESTAMP)
+			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP);
 
 		return jdbcTemplate.queryForObject(
 			sql,
@@ -139,8 +139,8 @@ public class ProductPerformanceSummaryRepository {
 					COUNT(rvp.recent_view_id) AS view_count
 				FROM %s rvp
 				JOIN target_products tp ON tp.product_id = rvp.product_id
-				WHERE rvp.created_at >= :fromAt
-					AND rvp.created_at < :toAt
+				WHERE rvp.viewed_at >= :fromAt
+			       AND rvp.viewed_at < :toAt
 				GROUP BY rvp.product_id
 			),
 			order_summary AS (
@@ -190,11 +190,11 @@ public class ProductPerformanceSummaryRepository {
 			table("categories")
 		);
 
-		Map<String, Object> params = new HashMap<>();
-		params.put("storeId", storeId);
-		params.put("fromAt", periodRange.fromAt());
-		params.put("toAt", periodRange.toExclusiveAt());
-		params.put("limit", limit);
+		MapSqlParameterSource params = new MapSqlParameterSource()
+			.addValue("storeId", storeId, Types.BIGINT)
+			.addValue("fromAt", periodRange.fromAt(), Types.TIMESTAMP)
+			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP)
+			.addValue("limit", limit, Types.INTEGER);
 
 		return jdbcTemplate.query(
 			sql,
