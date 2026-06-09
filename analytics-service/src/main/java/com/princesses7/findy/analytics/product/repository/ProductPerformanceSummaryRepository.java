@@ -34,7 +34,7 @@ public class ProductPerformanceSummaryRepository {
 			WITH target_products AS (
 				SELECT p.product_id
 				FROM %s p
-				WHERE p.is_deleted = false
+				WHERE p.deleted_at IS NULL
 					AND (:storeId IS NULL OR EXISTS (
 						SELECT 1
 						FROM %s i
@@ -122,7 +122,7 @@ public class ProductPerformanceSummaryRepository {
 			WITH target_products AS (
 				SELECT p.product_id
 				FROM %s p
-				WHERE p.is_deleted = false
+				WHERE p.deleted_at IS NULL
 					AND (:storeId IS NULL OR EXISTS (
 						SELECT 1
 						FROM %s i
