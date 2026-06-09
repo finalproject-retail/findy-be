@@ -6,6 +6,7 @@ public record HaccpProductBulkImportItemResponse(
 	String keyword,
 	Long productId,
 	String productName,
+	String brandName,
 	String barcode,
 	String importStatus,
 	List<String> updatedFields
@@ -19,6 +20,7 @@ public record HaccpProductBulkImportItemResponse(
 			keyword,
 			item.productId(),
 			item.productName(),
+			item.brandName(),
 			item.barcode(),
 			item.importStatus(),
 			item.updatedFields()

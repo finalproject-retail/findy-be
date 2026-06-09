@@ -5,6 +5,7 @@ import java.util.List;
 public record HaccpProductImportItemResponse(
 	Long productId,
 	String productName,
+	String brandName,
 	String barcode,
 	String importStatus,
 	List<String> updatedFields
