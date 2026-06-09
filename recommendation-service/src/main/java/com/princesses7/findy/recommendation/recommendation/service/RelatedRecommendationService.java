@@ -140,10 +140,6 @@ public class RelatedRecommendationService {
 			normalizedSize
 		);
 
-		if (recommendations.isEmpty()) {
-			recommendations = toVectorFallbackRecommendations(vectorCandidates, normalizedSize);
-		}
-
 		recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
 			recommendations,
 			normalizedSize
@@ -242,6 +238,10 @@ public class RelatedRecommendationService {
 				(left, right) -> left
 			));
 
+		if (rerankMap.isEmpty()) {
+			return List.of();
+		}
+
 		return RecommendationResultPolicy.finalizeProductRecommendations(
 			vectorCandidates.stream()
 				.filter(candidate -> rerankMap.containsKey(candidate.product().getProductId()))
@@ -256,23 +256,6 @@ public class RelatedRecommendationService {
 						item.safeReason()
 					);
 				})
-				.toList(),
-			size
-		);
-	}
-
-	private List<ProductRecommendationResponse> toVectorFallbackRecommendations(
-		List<RelatedCandidate> vectorCandidates,
-		int size
-	) {
-		return RecommendationResultPolicy.finalizeProductRecommendations(
-			vectorCandidates.stream()
-				.map(candidate -> ProductRecommendationResponse.from(
-					candidate.product(),
-					candidate.vectorScore(),
-					RecommendationType.RELATED,
-					"AI 재정렬 결과가 부족하여 벡터 유사도 기반으로 추천한 연관 상품입니다."
-				))
 				.toList(),
 			size
 		);
