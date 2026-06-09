@@ -22,14 +22,13 @@ public interface BeaconSignalLogRepository extends JpaRepository<BeaconSignalLog
 		select count(distinct log.userId)
 		from BeaconSignalLogEntity log
 		where log.store.storeId = :storeId
-			and log.timestampIso >= :from
 			and log.nearestGrid is not null
+			and log.timestampIso >= :from
 			and log.timestampIso = (
 				select max(latest.timestampIso)
 				from BeaconSignalLogEntity latest
 				where latest.userId = log.userId
 					and latest.store.storeId = :storeId
-					and latest.timestampIso >= :from
 					and latest.nearestGrid is not null
 			)
 		""")
@@ -46,14 +45,13 @@ public interface BeaconSignalLogRepository extends JpaRepository<BeaconSignalLog
 			count(distinct log.userId) as activeUserCount
 		from BeaconSignalLogEntity log
 		where log.store.storeId = :storeId
-			and log.timestampIso >= :from
 			and log.nearestGrid is not null
+			and log.timestampIso >= :from
 			and log.timestampIso = (
 				select max(latest.timestampIso)
 				from BeaconSignalLogEntity latest
 				where latest.userId = log.userId
 					and latest.store.storeId = :storeId
-					and latest.timestampIso >= :from
 					and latest.nearestGrid is not null
 			)
 		group by log.nearestGrid.gridId, log.nearestGrid.gridX, log.nearestGrid.gridY
