@@ -19,15 +19,37 @@ public class ChatbotPromptContextBuilder {
 		String ragContextPrompt,
 		String currentMessage
 	) {
+		return build(
+			systemPrompt,
+			recentMessages,
+			shoppingContextPrompt,
+			null,
+			ragContextPrompt,
+			currentMessage
+		);
+	}
+
+	public List<OpenAiChatMessage> build(
+		String systemPrompt,
+		List<ChatMessage> recentMessages,
+		String shoppingContextPrompt,
+		String recipeRecommendationPrompt,
+		String ragContextPrompt,
+		String currentMessage
+	) {
 		List<OpenAiChatMessage> messages = new ArrayList<>();
 
 		messages.add(OpenAiChatMessage.system(systemPrompt));
 
-		if (shoppingContextPrompt != null && !shoppingContextPrompt.isBlank()) {
+		if (hasText(shoppingContextPrompt)) {
 			messages.add(OpenAiChatMessage.system(shoppingContextPrompt));
 		}
 
-		if (ragContextPrompt != null && !ragContextPrompt.isBlank()) {
+		if (hasText(recipeRecommendationPrompt)) {
+			messages.add(OpenAiChatMessage.system(recipeRecommendationPrompt));
+		}
+
+		if (hasText(ragContextPrompt)) {
 			messages.add(OpenAiChatMessage.system(ragContextPrompt));
 		}
 
@@ -46,5 +68,9 @@ public class ChatbotPromptContextBuilder {
 		}
 
 		return OpenAiChatMessage.assistant(chatMessage.getContent());
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
 	}
 }
