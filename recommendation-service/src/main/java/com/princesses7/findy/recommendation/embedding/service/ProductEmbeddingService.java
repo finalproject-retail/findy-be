@@ -75,6 +75,33 @@ public class ProductEmbeddingService {
 		);
 	}
 
+	@Transactional
+	public ProductEmbeddingBatchResponse createMissingProductEmbeddings(int limit) {
+		int normalizedLimit = normalizeLimit(limit);
+
+		List<ProductSnapshot> products = productRepository.findMissingEmbeddingProducts(
+			productEmbeddingClient.model(),
+			productEmbeddingClient.dimensions(),
+			PageRequest.of(0, normalizedLimit)
+		);
+
+		int savedCount = 0;
+
+		for (ProductSnapshot product : products) {
+			if (!product.isRecommendable()) {
+				continue;
+			}
+
+			saveProductEmbedding(product);
+			savedCount++;
+		}
+
+		return new ProductEmbeddingBatchResponse(
+			products.size(),
+			savedCount
+		);
+	}
+
 	private ProductEmbedding saveProductEmbedding(ProductSnapshot product) {
 		String categoryName = categoryRepository.findById(product.getCategoryId())
 			.map(CategorySnapshot::getCategoryName)

@@ -72,6 +72,13 @@ management:
       show-details: always
 
 recommendation:
+  embedding:
+    startup-sync-enabled: true
+    startup-sync-limit: 100
+    scheduled-sync-enabled: false
+    cron: "0 0 3 * * *"
+    sync-limit: 100
+
   promotion:
     score:
       embedding-weight: 0.70

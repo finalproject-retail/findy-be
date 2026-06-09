@@ -40,4 +40,24 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 		@Param("keyword") String keyword,
 		Pageable pageable
 	);
+
+	@Query("""
+		SELECT p
+		FROM ProductSnapshot p
+		WHERE p.deleted = FALSE
+			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
+			AND NOT EXISTS (
+				SELECT e
+				FROM ProductEmbedding e
+				WHERE e.productId = p.productId
+					AND e.model = :model
+					AND e.dimensions = :dimensions
+			)
+		ORDER BY p.productId ASC
+		""")
+	List<ProductSnapshot> findMissingEmbeddingProducts(
+		@Param("model") String model,
+		@Param("dimensions") int dimensions,
+		Pageable pageable
+	);
 }
