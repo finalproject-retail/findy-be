@@ -33,7 +33,7 @@ public class ProductViewAnalyticsRepository {
 			JOIN %s p ON p.product_id = rvp.product_id
 			WHERE rvp.created_at >= ?
 			  AND rvp.created_at < ?
-			  AND p.is_deleted = false
+			  AND p.deleted_at IS NULL
 			""".formatted(
 			table("recent_view_products"),
 			table("products")
@@ -56,7 +56,7 @@ public class ProductViewAnalyticsRepository {
 			JOIN %s p ON p.product_id = rvp.product_id
 			WHERE rvp.created_at >= ?
 			  AND rvp.created_at < ?
-			  AND p.is_deleted = false
+			  AND p.deleted_at IS NULL
 			""".formatted(
 			table("recent_view_products"),
 			table("products")
@@ -88,7 +88,7 @@ public class ProductViewAnalyticsRepository {
 			JOIN %s p ON p.product_id = rvp.product_id
 			WHERE rvp.created_at >= ?
 			  AND rvp.created_at < ?
-			  AND p.is_deleted = false
+			  AND p.deleted_at IS NULL
 			GROUP BY
 			    p.product_id,
 			    p.product_name,
