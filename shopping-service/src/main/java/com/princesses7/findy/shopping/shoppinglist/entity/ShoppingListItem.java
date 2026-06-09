@@ -424,7 +424,13 @@ public class ShoppingListItem extends BaseTimeEntity {
 		return categoryName.trim();
 	}
 
-	public boolean isQuantityDecrease(int newQuantity) {
-		return newQuantity < this.quantity;
+	public boolean requiresScanToDecrease(int newQuantity) {
+		validateQuantity(newQuantity);
+
+		if (!isProductItem()) {
+			return false;
+		}
+
+		return newQuantity < this.scannedQuantity;
 	}
 }

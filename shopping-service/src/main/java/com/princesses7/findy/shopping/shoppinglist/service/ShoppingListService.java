@@ -171,7 +171,7 @@ public class ShoppingListService {
 
 		int newQuantity = request.quantity();
 
-		if (shoppingListItem.isQuantityDecrease(newQuantity)) {
+		if (shoppingListItem.requiresScanToDecrease(newQuantity)) {
 			throw new ShoppingListException(DECREASE_QUANTITY_REQUIRES_SCAN);
 		}
 
