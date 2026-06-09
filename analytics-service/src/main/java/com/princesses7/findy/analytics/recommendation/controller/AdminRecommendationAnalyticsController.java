@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/analytics/recommendations")
+@RequestMapping("/api/v1/admin/analytics")
 public class AdminRecommendationAnalyticsController {
 
 	private static final String SUBSTITUTE_RECOMMENDATION_TYPE = "SUBSTITUTE";
@@ -34,7 +34,7 @@ public class AdminRecommendationAnalyticsController {
 	private final RecommendationPurchaseConversionAnalyticsService recommendationPurchaseConversionAnalyticsService;
 	private final RecommendationSelectionRateAnalyticsService recommendationSelectionRateAnalyticsService;
 
-	@GetMapping("/click-rate")
+	@GetMapping("/recommendations/click-rate")
 	public ApiResponse<RecommendationClickRateResponse> getRecommendationClickRateAnalytics(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
