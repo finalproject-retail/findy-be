@@ -34,12 +34,12 @@ public class CartService {
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	@Transactional
-	public CartResponse addCartItem(Long userId, AddCartItemRequest request) {
+	public CartResponse addCartItem(Long userId, AddCartItemRequest request, long storeId) {
 		Cart cart = getOrCreateCart(userId);
 		int quantity = request.quantityOrDefault();
 
 		int targetQuantity = getCartItemQuantity(cart, request.productId()) + quantity;
-		productSummaryReader.validatePurchasable(request.productId(), targetQuantity);
+		productSummaryReader.validatePurchasable(request.productId(), targetQuantity, storeId);
 
 		cart.addItem(request.productId(), quantity);
 
@@ -51,46 +51,47 @@ public class CartService {
 			null
 		);
 
-		return toResponse(cart);
+		return toResponse(cart, storeId);
 	}
 
-	public CartResponse getCart(Long userId) {
+	public CartResponse getCart(Long userId, long storeId) {
 		return cartRepository.findByUserId(userId)
-			.map(this::toResponse)
+			.map(cart -> toResponse(cart, storeId))
 			.orElseGet(() -> CartResponse.empty(userId));
 	}
 
 	@Transactional
-	public CartResponse removeCartItem(Long userId, Long cartItemId) {
+	public CartResponse removeCartItem(Long userId, Long cartItemId, long storeId) {
 		Cart cart = getCartByUserId(userId);
 
 		cart.removeItem(cartItemId);
 
-		return toResponse(cart);
+		return toResponse(cart, storeId);
 	}
 
 	@Transactional
-	public CartResponse syncCartItemStocks(Long userId) {
+	public CartResponse syncCartItemStocks(Long userId, long storeId) {
 		return cartRepository.findByUserId(userId)
 			.map(cart -> {
-				uncheckNotPurchasableItems(cart);
-				return toResponse(cart);
+				uncheckNotPurchasableItems(cart, storeId);
+				return toResponse(cart, storeId);
 			})
 			.orElseGet(() -> CartResponse.empty(userId));
 	}
 
-	private void uncheckNotPurchasableItems(Cart cart) {
+	private void uncheckNotPurchasableItems(Cart cart, long storeId) {
 		cart.getCartItems()
 			.stream()
 			.filter(CartItem::isChecked)
-			.forEach(this::uncheckIfNotPurchasable);
+			.forEach(cartItem -> uncheckIfNotPurchasable(cartItem, storeId));
 	}
 
-	private void uncheckIfNotPurchasable(CartItem cartItem) {
+	private void uncheckIfNotPurchasable(CartItem cartItem, long storeId) {
 		try {
 			productSummaryReader.validatePurchasable(
 				cartItem.getProductId(),
-				cartItem.getQuantity()
+				cartItem.getQuantity(),
+				storeId
 			);
 		} catch (ProductException exception) {
 			cartItem.changeChecked(false);
@@ -101,28 +102,30 @@ public class CartService {
 	public CartResponse changeCartItemQuantity(
 		Long userId,
 		Long cartItemId,
-		ChangeCartItemQuantityRequest request
+		ChangeCartItemQuantityRequest request,
+		long storeId
 	) {
 		Cart cart = getCartByUserId(userId);
 		CartItem cartItem = getCartItem(cart, cartItemId);
 
-		productSummaryReader.validatePurchasable(cartItem.getProductId(), request.quantity());
+		productSummaryReader.validatePurchasable(cartItem.getProductId(), request.quantity(), storeId);
 		cart.changeItemQuantity(cartItemId, request.quantity());
 
-		return toResponse(cart);
+		return toResponse(cart, storeId);
 	}
 
 	@Transactional
 	public CartResponse changeCartItemChecked(
 		Long userId,
 		Long cartItemId,
-		ChangeCartItemCheckedRequest request
+		ChangeCartItemCheckedRequest request,
+		long storeId
 	) {
 		Cart cart = getCartByUserId(userId);
 
 		cart.changeItemChecked(cartItemId, request.checked());
 
-		return toResponse(cart);
+		return toResponse(cart, storeId);
 	}
 
 	private Cart getOrCreateCart(Long userId) {
@@ -150,13 +153,13 @@ public class CartService {
 			.orElse(0);
 	}
 
-	private CartResponse toResponse(Cart cart) {
+	private CartResponse toResponse(Cart cart, long storeId) {
 		List<Long> productIds = cart.getCartItems().stream()
 			.map(CartItem::getProductId)
 			.toList();
 
 		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
-			.getProductSummaryMap(productIds);
+			.getProductSummaryMap(productIds, storeId);
 
 		return CartResponse.from(cart, productMap);
 	}

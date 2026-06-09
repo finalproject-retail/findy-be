@@ -18,6 +18,7 @@ import com.princesses7.findy.shopping.cart.dto.request.ChangeCartItemQuantityReq
 import com.princesses7.findy.shopping.cart.dto.response.CartResponse;
 import com.princesses7.findy.shopping.cart.service.CartService;
 import com.princesses7.findy.shopping.global.response.ApiResponse;
+import com.princesses7.findy.shopping.store.ResolvedStoreId;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -33,30 +34,33 @@ public class CartController {
 	@ResponseStatus(HttpStatus.CREATED)
 	public ApiResponse<CartResponse> addCartItem(
 		@RequestHeader("X-User-Id") Long userId,
-		@Valid @RequestBody AddCartItemRequest request
+		@Valid @RequestBody AddCartItemRequest request,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"장바구니에 상품이 추가되었습니다.",
-			cartService.addCartItem(userId, request)
+			cartService.addCartItem(userId, request, storeId)
 		);
 	}
 
 	@GetMapping
 	public ApiResponse<CartResponse> getCart(
-		@RequestHeader("X-User-Id") Long userId
+		@RequestHeader("X-User-Id") Long userId,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
-			cartService.getCart(userId)
+			cartService.getCart(userId, storeId)
 		);
 	}
 
 	@PatchMapping("/items/stock-sync")
 	public ApiResponse<CartResponse> syncCartItemStocks(
-		@RequestHeader("X-User-Id") Long userId
+		@RequestHeader("X-User-Id") Long userId,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"장바구니 상품 재고가 동기화되었습니다.",
-			cartService.syncCartItemStocks(userId)
+			cartService.syncCartItemStocks(userId, storeId)
 		);
 	}
 
@@ -64,11 +68,12 @@ public class CartController {
 	public ApiResponse<CartResponse> changeCartItemQuantity(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long cartItemId,
-		@Valid @RequestBody ChangeCartItemQuantityRequest request
+		@Valid @RequestBody ChangeCartItemQuantityRequest request,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"장바구니 상품 수량이 변경되었습니다.",
-			cartService.changeCartItemQuantity(userId, cartItemId, request)
+			cartService.changeCartItemQuantity(userId, cartItemId, request, storeId)
 		);
 	}
 
@@ -76,22 +81,24 @@ public class CartController {
 	public ApiResponse<CartResponse> changeCartItemChecked(
 		@RequestHeader("X-User-Id") Long userId,
 		@PathVariable Long cartItemId,
-		@Valid @RequestBody ChangeCartItemCheckedRequest request
+		@Valid @RequestBody ChangeCartItemCheckedRequest request,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"장바구니 상품 선택 상태가 변경되었습니다.",
-			cartService.changeCartItemChecked(userId, cartItemId, request)
+			cartService.changeCartItemChecked(userId, cartItemId, request, storeId)
 		);
 	}
 
 	@DeleteMapping("/items/{cartItemId}")
 	public ApiResponse<CartResponse> removeCartItem(
 		@RequestHeader("X-User-Id") Long userId,
-		@PathVariable Long cartItemId
+		@PathVariable Long cartItemId,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"장바구니 상품이 삭제되었습니다.",
-			cartService.removeCartItem(userId, cartItemId)
+			cartService.removeCartItem(userId, cartItemId, storeId)
 		);
 	}
 }

@@ -28,8 +28,8 @@ public class PurchaseAmountService {
 	private final ProductRepository productRepository;
 	private final PromotionDiscountService promotionDiscountService;
 
-	public PurchaseAmountResponse calculate(Long userId) {
-		PurchaseTargetResponse targetResponse = purchaseTargetService.getPurchaseTargets(userId);
+	public PurchaseAmountResponse calculate(Long userId, long storeId) {
+		PurchaseTargetResponse targetResponse = purchaseTargetService.getPurchaseTargets(userId, storeId);
 
 		List<PurchaseAmountItemResponse> items = targetResponse.items().stream()
 			.map(this::calculateItem)

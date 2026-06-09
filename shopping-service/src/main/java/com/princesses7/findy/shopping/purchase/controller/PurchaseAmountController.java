@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.princesses7.findy.shopping.global.response.ApiResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
 import com.princesses7.findy.shopping.purchase.service.PurchaseAmountService;
+import com.princesses7.findy.shopping.store.ResolvedStoreId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -20,9 +21,10 @@ public class PurchaseAmountController {
 
 	@GetMapping
 	public ApiResponse<PurchaseAmountResponse> calculate(
-		@RequestHeader("X-User-Id") Long userId
+		@RequestHeader("X-User-Id") Long userId,
+		@ResolvedStoreId long storeId
 	) {
-		PurchaseAmountResponse response = purchaseAmountService.calculate(userId);
+		PurchaseAmountResponse response = purchaseAmountService.calculate(userId, storeId);
 
 		return ApiResponse.ok("구매 금액 계산에 성공했습니다.", response);
 	}

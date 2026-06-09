@@ -11,7 +11,6 @@ import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEvent
 import com.princesses7.findy.shopping.cart.service.CartCleanupService;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.service.CouponService;
-import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderDetailResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderItemResponse;
@@ -23,10 +22,8 @@ import com.princesses7.findy.shopping.order.repository.OrderRepository;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountItemResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
 import com.princesses7.findy.shopping.purchase.service.PurchaseAmountService;
-import com.princesses7.findy.shopping.shoppinglist.entity.ShoppingList;
-import com.princesses7.findy.shopping.shoppinglist.exception.ShoppingListException;
-import com.princesses7.findy.shopping.shoppinglist.repository.ShoppingListRepository;
 import com.princesses7.findy.shopping.shoppinglist.service.ShoppingListService;
+import com.princesses7.findy.shopping.store.StoreIdSupport;
 
 import lombok.RequiredArgsConstructor;
 
@@ -34,40 +31,22 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class OrderService {
 
-	private static final Long DEFAULT_STORE_ID = 1L;
-
 	private final PurchaseAmountService purchaseAmountService;
 	private final OrderRepository orderRepository;
 	private final CartCleanupService cartCleanupService;
 	private final CouponService couponService;
 	private final ShoppingListService shoppingListService;
-	private final ShoppingListRepository shoppingListRepository;
-	private final InventoryStockService inventoryStockService;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
-
-	@Transactional
-	public OrderCreateResponse createOrder(Long userId) {
-		return createOrder(userId, null, null, DEFAULT_STORE_ID);
-	}
-
-	@Transactional
-	public OrderCreateResponse createOrder(Long userId, Long userCouponId) {
-		return createOrder(userId, userCouponId, null, DEFAULT_STORE_ID);
-	}
-
-	@Transactional
-	public OrderCreateResponse createOrder(Long userId, Long userCouponId, Integer usedReward) {
-		return createOrder(userId, userCouponId, usedReward, DEFAULT_STORE_ID);
-	}
 
 	@Transactional
 	public OrderCreateResponse createOrder(
 		Long userId,
 		Long userCouponId,
 		Integer usedReward,
-		Long storeId
+		long storeId
 	) {
-		PurchaseAmountResponse amountResponse = purchaseAmountService.calculate(userId);
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+		PurchaseAmountResponse amountResponse = purchaseAmountService.calculate(userId, resolvedStoreId);
 
 		CouponDiscountResult couponDiscount = couponService.applyCoupon(
 			userId,
@@ -103,27 +82,13 @@ public class OrderService {
 
 		cartCleanupService.cleanupPurchasedCartItems(userId, savedOrder.getOrderItems());
 		couponService.useCoupon(userId, userCouponId);
-		shoppingListService.completeShopping(userId);
+		shoppingListService.completeShopping(userId, resolvedStoreId);
 
 		savedOrder.complete();
 
 		shoppingAnalyticsEventService.publishOrderCompleted(userId, savedOrder);
 
 		return toResponse(savedOrder);
-	}
-
-	@Transactional
-	public void completeShopping(Long userId) {
-		ShoppingList shoppingList = shoppingListRepository.findByUserId(userId)
-			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
-
-		inventoryStockService.increaseUnscannedStocksByShoppingListItems(
-			DEFAULT_STORE_ID,
-			shoppingList.getShoppingListItems()
-		);
-
-		shoppingList.cancel();
-		shoppingListRepository.delete(shoppingList);
 	}
 
 	private OrderItem createOrderItem(PurchaseAmountItemResponse item) {

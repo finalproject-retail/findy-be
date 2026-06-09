@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.princesses7.findy.shopping.global.response.ApiResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
+import com.princesses7.findy.shopping.store.ResolvedStoreId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -22,11 +23,12 @@ public class ProductInternalController {
 
 	@GetMapping("/summaries")
 	public ApiResponse<List<ProductSummaryResponse>> getProductSummaries(
-		@RequestParam List<Long> productIds
+		@RequestParam List<Long> productIds,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"상품 요약 조회에 성공했습니다.",
-			productSummaryReader.getExistingProductSummaries(productIds)
+			productSummaryReader.getExistingProductSummaries(productIds, storeId)
 		);
 	}
 }
