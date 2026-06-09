@@ -20,6 +20,7 @@ import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
+import com.princesses7.findy.shopping.store.StoreIdSupport;
 
 import lombok.RequiredArgsConstructor;
 
@@ -28,15 +29,18 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class ProductSummaryReader {
 
-	private static final Long DEFAULT_STORE_ID = 1L;
-
 	private final ProductRepository productRepository;
 	private final InventoryRepository inventoryRepository;
 
-	public Map<Long, ProductSummaryResponse> getProductSummaryMap(Collection<Long> productIds) {
+	public Map<Long, ProductSummaryResponse> getProductSummaryMap(
+		Collection<Long> productIds,
+		long storeId
+	) {
 		if (productIds == null || productIds.isEmpty()) {
 			return Map.of();
 		}
+
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
 		Map<Long, Product> productById = productRepository
 			.findAllByProductIdInAndDeletedAtIsNull(productIds)
@@ -47,7 +51,7 @@ public class ProductSummaryReader {
 			));
 
 		Map<Long, Inventory> inventoryByProductId = inventoryRepository
-			.findAllByProductIdsAndStoreId(productIds, DEFAULT_STORE_ID)
+			.findAllByProductIdsAndStoreId(productIds, resolvedStoreId)
 			.stream()
 			.collect(Collectors.toMap(
 				Inventory::getProductId,
@@ -65,7 +69,9 @@ public class ProductSummaryReader {
 			));
 	}
 
-	public void validatePurchasable(Long productId, int quantity) {
+	public void validatePurchasable(Long productId, int quantity, long storeId) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
 		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
@@ -74,7 +80,7 @@ public class ProductSummaryReader {
 		}
 
 		Inventory inventory = inventoryRepository
-			.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)
+			.findByProductProductIdAndStoreId(productId, resolvedStoreId)
 			.orElseThrow(() -> new ProductException(PRODUCT_STOCK_NOT_FOUND));
 
 		if (inventory.getStockStatus() == StockStatus.OUT_OF_STOCK
@@ -93,10 +99,15 @@ public class ProductSummaryReader {
 		return product;
 	}
 
-	public List<ProductSummaryResponse> getExistingProductSummaries(Collection<Long> productIds) {
+	public List<ProductSummaryResponse> getExistingProductSummaries(
+		Collection<Long> productIds,
+		long storeId
+	) {
 		if (productIds == null || productIds.isEmpty()) {
 			return List.of();
 		}
+
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
 		List<Long> distinctProductIds = productIds.stream()
 			.filter(Objects::nonNull)
@@ -117,7 +128,7 @@ public class ProductSummaryReader {
 			));
 
 		Map<Long, Inventory> inventoryByProductId = inventoryRepository
-			.findAllByProductIdsAndStoreId(distinctProductIds, DEFAULT_STORE_ID)
+			.findAllByProductIdsAndStoreId(distinctProductIds, resolvedStoreId)
 			.stream()
 			.collect(Collectors.toMap(
 				Inventory::getProductId,

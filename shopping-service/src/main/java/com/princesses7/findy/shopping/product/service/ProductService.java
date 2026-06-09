@@ -25,6 +25,7 @@ import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
 import com.princesses7.findy.shopping.search.service.SearchKeywordRankingService;
+import com.princesses7.findy.shopping.store.StoreIdSupport;
 
 import lombok.RequiredArgsConstructor;
 
@@ -36,8 +37,6 @@ public class ProductService {
 	private static final int MAX_PAGE_SIZE = 100;
 	private static final int MAX_SECTION_SIZE = 30;
 	private static final int SECTION_CANDIDATE_MULTIPLIER = 3;
-	private static final long DEFAULT_STORE_ID = 1L;
-
 	private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
 		"productId",
 		"productName",
@@ -56,7 +55,8 @@ public class ProductService {
 		int page,
 		int size,
 		String sortBy,
-		String direction
+		String direction,
+		long storeId
 	) {
 		validatePageRequest(page, size);
 
@@ -70,12 +70,12 @@ public class ProductService {
 		}
 
 		Page<Product> products = findProducts(categoryId, normalizedKeyword, pageable);
-		Page<ProductResponse> responsePage = toProductResponsePage(products, pageable);
+		Page<ProductResponse> responsePage = toProductResponsePage(products, pageable, storeId);
 
 		return ProductPageResponse.from(responsePage);
 	}
 
-	public List<ProductResponse> getNewProducts(int size) {
+	public List<ProductResponse> getNewProducts(int size, long storeId) {
 		validateSectionSize(size);
 
 		Pageable pageable = PageRequest.of(
@@ -85,11 +85,12 @@ public class ProductService {
 		);
 
 		return toProductResponses(
-			productRepository.findByDeletedAtIsNull(pageable).getContent()
+			productRepository.findByDeletedAtIsNull(pageable).getContent(),
+			storeId
 		);
 	}
 
-	public List<ProductResponse> getPopularProducts(int size) {
+	public List<ProductResponse> getPopularProducts(int size, long storeId) {
 		validateSectionSize(size);
 
 		List<Long> productIds = productRankingService.getPopularProductIds(
@@ -97,31 +98,37 @@ public class ProductService {
 		);
 
 		if (productIds.isEmpty()) {
-			return getMartRecommendedProducts(size);
+			return getMartRecommendedProducts(size, storeId);
 		}
 
 		List<Product> popularProducts = findProductsByRanking(productIds, size);
 
 		if (popularProducts.isEmpty()) {
-			return getMartRecommendedProducts(size);
+			return getMartRecommendedProducts(size, storeId);
 		}
 
-		return toProductResponses(popularProducts);
+		return toProductResponses(popularProducts, storeId);
 	}
 
-	public List<ProductResponse> getMartRecommendedProducts(int size) {
+	public List<ProductResponse> getMartRecommendedProducts(int size, long storeId) {
 		validateSectionSize(size);
 
 		return toProductResponses(
-			productRepository.findMartRecommendedProducts(PageRequest.of(0, size))
+			productRepository.findMartRecommendedProducts(PageRequest.of(0, size)),
+			storeId
 		);
 	}
 
-	public ProductDetailResponse getProductDetail(Long productId) {
+	public ProductDetailResponse getProductDetail(Long productId, long storeId) {
 		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
-		Inventory inventory = inventoryRepository.findByProductProductIdAndStoreId(productId, DEFAULT_STORE_ID)
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		Inventory inventory = inventoryRepository.findByProductProductIdAndStoreId(
+				productId,
+				resolvedStoreId
+			)
 			.orElse(null);
 
 		productRankingService.recordView(productId);
@@ -177,9 +184,10 @@ public class ProductService {
 
 	private Page<ProductResponse> toProductResponsePage(
 		Page<Product> products,
-		Pageable pageable
+		Pageable pageable,
+		long storeId
 	) {
-		List<ProductResponse> responses = toProductResponses(products.getContent());
+		List<ProductResponse> responses = toProductResponses(products.getContent(), storeId);
 
 		return new PageImpl<>(
 			responses,
@@ -188,10 +196,12 @@ public class ProductService {
 		);
 	}
 
-	private List<ProductResponse> toProductResponses(List<Product> products) {
+	private List<ProductResponse> toProductResponses(List<Product> products, long storeId) {
 		if (products.isEmpty()) {
 			return List.of();
 		}
+
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
 		List<Long> productIds = products.stream()
 			.map(Product::getProductId)
@@ -199,7 +209,7 @@ public class ProductService {
 
 		Map<Long, Inventory> inventoryMap = inventoryRepository.findAllByProductIdsAndStoreId(
 				productIds,
-				DEFAULT_STORE_ID
+				resolvedStoreId
 			)
 			.stream()
 			.collect(Collectors.toMap(

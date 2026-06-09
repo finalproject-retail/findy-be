@@ -13,6 +13,7 @@ import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse
 import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
 import com.princesses7.findy.shopping.product.service.ProductService;
+import com.princesses7.findy.shopping.store.ResolvedStoreId;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,7 +32,8 @@ public class ProductController {
 		@RequestParam(defaultValue = "20") int size,
 		// TODO: 인기순 정렬은 Redis 랭킹 데이터 연동 시 별도 구현 예정
 		@RequestParam(defaultValue = "createdAt") String sortBy,
-		@RequestParam(defaultValue = "desc") String direction
+		@RequestParam(defaultValue = "desc") String direction,
+		@ResolvedStoreId long storeId
 	) {
 		ProductPageResponse response = productService.getProducts(
 			categoryId,
@@ -39,7 +41,8 @@ public class ProductController {
 			page,
 			size,
 			sortBy,
-			direction
+			direction,
+			storeId
 		);
 
 		return ApiResponse.ok(response);
@@ -47,39 +50,43 @@ public class ProductController {
 
 	@GetMapping("/new")
 	public ApiResponse<List<ProductResponse>> getNewProducts(
-		@RequestParam(defaultValue = "10") int size
+		@RequestParam(defaultValue = "10") int size,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"신상품 조회에 성공했습니다.",
-			productService.getNewProducts(size)
+			productService.getNewProducts(size, storeId)
 		);
 	}
 
 	@GetMapping("/popular")
 	public ApiResponse<List<ProductResponse>> getPopularProducts(
-		@RequestParam(defaultValue = "10") int size
+		@RequestParam(defaultValue = "10") int size,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"인기상품 조회에 성공했습니다.",
-			productService.getPopularProducts(size)
+			productService.getPopularProducts(size, storeId)
 		);
 	}
 
 	@GetMapping("/findy-recommendations")
 	public ApiResponse<List<ProductResponse>> getMartRecommendedProducts(
-		@RequestParam(defaultValue = "10") int size
+		@RequestParam(defaultValue = "10") int size,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"Findy 추천 상품 조회에 성공했습니다.",
-			productService.getMartRecommendedProducts(size)
+			productService.getMartRecommendedProducts(size, storeId)
 		);
 	}
 
 	@GetMapping("/{productId}")
 	public ApiResponse<ProductDetailResponse> getProductDetail(
-		@PathVariable Long productId
+		@PathVariable Long productId,
+		@ResolvedStoreId long storeId
 	) {
-		ProductDetailResponse response = productService.getProductDetail(productId);
+		ProductDetailResponse response = productService.getProductDetail(productId, storeId);
 
 		return ApiResponse.ok("상품 상세 조회에 성공했습니다.", response);
 	}

@@ -54,7 +54,8 @@ class ProductServiceTest {
 			0,
 			10,
 			"createdAt",
-			"desc"
+			"desc",
+			1L
 		);
 
 		assertThat(response).isNotNull();
@@ -81,7 +82,8 @@ class ProductServiceTest {
 			0,
 			10,
 			"createdAt",
-			"desc"
+			"desc",
+			1L
 		);
 
 		assertThat(response).isNotNull();
@@ -106,7 +108,8 @@ class ProductServiceTest {
 			0,
 			10,
 			"createdAt",
-			"desc"
+			"desc",
+			1L
 		);
 
 		assertThat(response).isNotNull();
@@ -129,7 +132,8 @@ class ProductServiceTest {
 			0,
 			10,
 			"createdAt",
-			"desc"
+			"desc",
+			1L
 		);
 
 		assertThat(response).isNotNull();
