@@ -20,16 +20,22 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :fromDateTime
-			AND created_at < :toDateTime
-			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
-			AND (:productId IS NULL OR product_id = :productId)
+		WHERE created_at >= :startDateTime
+			AND created_at < :endDateTime
+			AND (
+				CAST(:recommendationType AS VARCHAR) IS NULL
+				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+			)
+			AND (
+				CAST(:productId AS BIGINT) IS NULL
+				OR product_id = CAST(:productId AS BIGINT)
+			)
 		""", nativeQuery = true)
 	RecommendationPurchaseConversionSummaryProjection findSummary(
 		@Param("recommendationType") String recommendationType,
 		@Param("productId") Long productId,
-		@Param("fromDateTime") LocalDateTime fromDateTime,
-		@Param("toDateTime") LocalDateTime toDateTime
+		@Param("startDateTime") LocalDateTime startDateTime,
+		@Param("endDateTime") LocalDateTime endDateTime
 	);
 
 	@Query(value = """
@@ -39,18 +45,24 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :fromDateTime
-			AND created_at < :toDateTime
-			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
-			AND (:productId IS NULL OR product_id = :productId)
+		WHERE created_at >= :startDateTime
+			AND created_at < :endDateTime
+			AND (
+				CAST(:recommendationType AS VARCHAR) IS NULL
+				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+			)
+			AND (
+				CAST(:productId AS BIGINT) IS NULL
+				OR product_id = CAST(:productId AS BIGINT)
+			)
 		GROUP BY CAST(created_at AS DATE)
 		ORDER BY CAST(created_at AS DATE) ASC
 		""", nativeQuery = true)
 	List<RecommendationPurchaseConversionDailyProjection> findDailyTrends(
 		@Param("recommendationType") String recommendationType,
 		@Param("productId") Long productId,
-		@Param("fromDateTime") LocalDateTime fromDateTime,
-		@Param("toDateTime") LocalDateTime toDateTime
+		@Param("startDateTime") LocalDateTime startDateTime,
+		@Param("endDateTime") LocalDateTime endDateTime
 	);
 
 	@Query(value = """
@@ -62,10 +74,16 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :fromDateTime
-			AND created_at < :toDateTime
-			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
-			AND (:productId IS NULL OR product_id = :productId)
+		WHERE created_at >= :startDateTime
+			AND created_at < :endDateTime
+			AND (
+				CAST(:recommendationType AS VARCHAR) IS NULL
+				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+			)
+			AND (
+				CAST(:productId AS BIGINT) IS NULL
+				OR product_id = CAST(:productId AS BIGINT)
+			)
 		GROUP BY recommendation_type, product_id
 		ORDER BY
 			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) DESC,
@@ -76,8 +94,8 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 	List<RecommendationPurchaseConversionProductProjection> findTopProducts(
 		@Param("recommendationType") String recommendationType,
 		@Param("productId") Long productId,
-		@Param("fromDateTime") LocalDateTime fromDateTime,
-		@Param("toDateTime") LocalDateTime toDateTime,
+		@Param("startDateTime") LocalDateTime startDateTime,
+		@Param("endDateTime") LocalDateTime endDateTime,
 		@Param("limit") int limit
 	);
 }

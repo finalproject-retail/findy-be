@@ -29,33 +29,33 @@ public class RecommendationPurchaseConversionAnalyticsService {
 	private final AnalyticsPeriodResolver analyticsPeriodResolver;
 
 	public RecommendationPurchaseConversionResponse getPurchaseConversionAnalytics(
-		LocalDate fromDate,
-		LocalDate toDate,
+		LocalDate startDate,
+		LocalDate endDate,
 		String recommendationType,
 		Long productId,
 		Integer limit
 	) {
-		PeriodRange periodRange = analyticsPeriodResolver.resolve(fromDate, toDate);
+		PeriodRange periodRange = analyticsPeriodResolver.resolve(startDate, endDate);
 		int resolvedLimit = analyticsPeriodResolver.resolveLimit(limit);
 		String normalizedRecommendationType = normalizeRecommendationType(recommendationType);
 
-		LocalDateTime fromDateTime = periodRange.fromDate().atStartOfDay();
-		LocalDateTime toDateTime = periodRange.toDate().plusDays(1).atStartOfDay();
+		LocalDateTime startDateTime = periodRange.startDate().atStartOfDay();
+		LocalDateTime endDateTime = periodRange.endDate().plusDays(1).atStartOfDay();
 
 		RecommendationPurchaseConversionSummaryProjection summary =
 			recommendationPurchaseConversionAnalyticsRepository.findSummary(
 				normalizedRecommendationType,
 				productId,
-				fromDateTime,
-				toDateTime
+				startDateTime,
+				endDateTime
 			);
 
 		List<RecommendationPurchaseConversionDailyResponse> dailyTrends =
 			recommendationPurchaseConversionAnalyticsRepository.findDailyTrends(
 					normalizedRecommendationType,
 					productId,
-					fromDateTime,
-					toDateTime
+					startDateTime,
+					endDateTime
 				)
 				.stream()
 				.map(RecommendationPurchaseConversionDailyResponse::from)
@@ -65,8 +65,8 @@ public class RecommendationPurchaseConversionAnalyticsService {
 			recommendationPurchaseConversionAnalyticsRepository.findTopProducts(
 					normalizedRecommendationType,
 					productId,
-					fromDateTime,
-					toDateTime,
+					startDateTime,
+					endDateTime,
 					resolvedLimit
 				)
 				.stream()

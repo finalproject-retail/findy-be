@@ -20,13 +20,16 @@ public class ProductPerformanceSummaryRepository {
 
 	private final NamedParameterJdbcTemplate jdbcTemplate;
 	private final String sourceSchema;
+	private final String userSourceSchema;
 
 	public ProductPerformanceSummaryRepository(
 		NamedParameterJdbcTemplate jdbcTemplate,
-		@Value("${analytics.source-schema:shopping_service}") String sourceSchema
+		@Value("${analytics.source-schema:shopping_service}") String sourceSchema,
+		@Value("${analytics.user-source-schema:user_service}") String userSourceSchema
 	) {
 		this.jdbcTemplate = jdbcTemplate;
 		this.sourceSchema = normalizeSourceSchema(sourceSchema);
+		this.userSourceSchema = normalizeSourceSchema(userSourceSchema);
 	}
 
 	public ProductPerformanceSummaryQueryResult findSummary(PeriodRange periodRange, Long storeId) {
@@ -86,7 +89,7 @@ public class ProductPerformanceSummaryRepository {
 			""".formatted(
 			table("products"),
 			table("inventories"),
-			table("recent_view_products"),
+			userTable("recent_view_products"),
 			table("order_items"),
 			table("orders"),
 			table("orders"),
@@ -180,7 +183,7 @@ public class ProductPerformanceSummaryRepository {
 			""".formatted(
 			table("products"),
 			table("inventories"),
-			table("recent_view_products"),
+			userTable("recent_view_products"),
 			table("order_items"),
 			table("orders"),
 			table("products"),
@@ -228,5 +231,13 @@ public class ProductPerformanceSummaryRepository {
 		}
 
 		return sourceSchema;
+	}
+
+	private String userTable(String tableName) {
+		if (userSourceSchema.isBlank()) {
+			return tableName;
+		}
+
+		return userSourceSchema + "." + tableName;
 	}
 }

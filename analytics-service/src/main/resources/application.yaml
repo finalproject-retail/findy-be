@@ -56,3 +56,4 @@ management:
 
 analytics:
   source-schema: ${ANALYTICS_SOURCE_SCHEMA:shopping_service}
+  user-source-schema: ${ANALYTICS_USER_SOURCE_SCHEMA:user_service}

@@ -27,11 +27,11 @@ public class AdminZoneVisitRateAnalyticsController {
 	public ApiResponse<ZoneVisitRateAnalyticsResponse> getZoneVisitRates(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate fromDate,
+		LocalDate startDate,
 
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate toDate,
+		LocalDate endDate,
 
 		@RequestParam
 		@NotNull
@@ -48,8 +48,8 @@ public class AdminZoneVisitRateAnalyticsController {
 		Boolean includeMovement
 	) {
 		ZoneVisitRateAnalyticsResponse response = zoneVisitRateAnalyticsService.getZoneVisitRates(
-			fromDate,
-			toDate,
+			startDate,
+			endDate,
 			storeId,
 			zoneId,
 			minStaySeconds,

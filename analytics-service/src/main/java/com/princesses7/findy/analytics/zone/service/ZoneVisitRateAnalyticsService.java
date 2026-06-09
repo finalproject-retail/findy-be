@@ -27,14 +27,14 @@ public class ZoneVisitRateAnalyticsService {
 	private final AnalyticsPeriodResolver analyticsPeriodResolver;
 
 	public ZoneVisitRateAnalyticsResponse getZoneVisitRates(
-		LocalDate fromDate,
-		LocalDate toDate,
+		LocalDate startDate,
+		LocalDate endDate,
 		Long storeId,
 		Long zoneId,
 		Integer minStaySeconds,
 		Boolean includeMovement
 	) {
-		PeriodRange periodRange = analyticsPeriodResolver.resolve(fromDate, toDate);
+		PeriodRange periodRange = analyticsPeriodResolver.resolve(startDate, endDate);
 		int resolvedMinStaySeconds = resolveMinStaySeconds(minStaySeconds);
 		boolean resolvedIncludeMovement = Boolean.TRUE.equals(includeMovement);
 

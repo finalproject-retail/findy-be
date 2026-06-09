@@ -19,19 +19,28 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 			COUNT(*) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount"
 		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :fromDateTime
-			AND created_at < :toDateTime
+		WHERE created_at >= :startDateTime
+			AND created_at < :endDateTime
 			AND recommendation_type IN ('SUBSTITUTE', 'PROMOTION')
-			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
-			AND (:productId IS NULL OR product_id = :productId)
-			AND (:sourceProductId IS NULL OR source_product_id = :sourceProductId)
+			AND (
+				CAST(:recommendationType AS VARCHAR) IS NULL
+				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+			)
+			AND (
+				CAST(:productId AS BIGINT) IS NULL
+				OR product_id = CAST(:productId AS BIGINT)
+			)
+			AND (
+				CAST(:sourceProductId AS BIGINT) IS NULL
+				OR source_product_id = CAST(:sourceProductId AS BIGINT)
+			)
 		""", nativeQuery = true)
 	RecommendationSelectionRateSummaryProjection findSummary(
 		@Param("recommendationType") String recommendationType,
 		@Param("productId") Long productId,
 		@Param("sourceProductId") Long sourceProductId,
-		@Param("fromDateTime") LocalDateTime fromDateTime,
-		@Param("toDateTime") LocalDateTime toDateTime
+		@Param("startDateTime") LocalDateTime startDateTime,
+		@Param("endDateTime") LocalDateTime endDateTime
 	);
 
 	@Query(value = """
@@ -40,12 +49,21 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 			COUNT(*) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount"
 		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :fromDateTime
-			AND created_at < :toDateTime
+		WHERE created_at >= :startDateTime
+			AND created_at < :endDateTime
 			AND recommendation_type IN ('SUBSTITUTE', 'PROMOTION')
-			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
-			AND (:productId IS NULL OR product_id = :productId)
-			AND (:sourceProductId IS NULL OR source_product_id = :sourceProductId)
+			AND (
+				CAST(:recommendationType AS VARCHAR) IS NULL
+				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+			)
+			AND (
+				CAST(:productId AS BIGINT) IS NULL
+				OR product_id = CAST(:productId AS BIGINT)
+			)
+			AND (
+				CAST(:sourceProductId AS BIGINT) IS NULL
+				OR source_product_id = CAST(:sourceProductId AS BIGINT)
+			)
 		GROUP BY CAST(created_at AS DATE)
 		ORDER BY CAST(created_at AS DATE) ASC
 		""", nativeQuery = true)
@@ -53,8 +71,8 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 		@Param("recommendationType") String recommendationType,
 		@Param("productId") Long productId,
 		@Param("sourceProductId") Long sourceProductId,
-		@Param("fromDateTime") LocalDateTime fromDateTime,
-		@Param("toDateTime") LocalDateTime toDateTime
+		@Param("startDateTime") LocalDateTime startDateTime,
+		@Param("endDateTime") LocalDateTime endDateTime
 	);
 
 	@Query(value = """
@@ -66,12 +84,21 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 			COUNT(*) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount"
 		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :fromDateTime
-			AND created_at < :toDateTime
+		WHERE created_at >= :startDateTime
+			AND created_at < :endDateTime
 			AND recommendation_type IN ('SUBSTITUTE', 'PROMOTION')
-			AND (:recommendationType IS NULL OR recommendation_type = :recommendationType)
-			AND (:productId IS NULL OR product_id = :productId)
-			AND (:sourceProductId IS NULL OR source_product_id = :sourceProductId)
+			AND (
+				CAST(:recommendationType AS VARCHAR) IS NULL
+				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+			)
+			AND (
+				CAST(:productId AS BIGINT) IS NULL
+				OR product_id = CAST(:productId AS BIGINT)
+			)
+			AND (
+				CAST(:sourceProductId AS BIGINT) IS NULL
+				OR source_product_id = CAST(:sourceProductId AS BIGINT)
+			)
 		GROUP BY recommendation_type, source_product_id, product_id
 		ORDER BY
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) DESC,
@@ -83,8 +110,8 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 		@Param("recommendationType") String recommendationType,
 		@Param("productId") Long productId,
 		@Param("sourceProductId") Long sourceProductId,
-		@Param("fromDateTime") LocalDateTime fromDateTime,
-		@Param("toDateTime") LocalDateTime toDateTime,
+		@Param("startDateTime") LocalDateTime startDateTime,
+		@Param("endDateTime") LocalDateTime endDateTime,
 		@Param("limit") int limit
 	);
 }

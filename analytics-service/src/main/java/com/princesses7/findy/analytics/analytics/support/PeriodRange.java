@@ -4,18 +4,18 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record PeriodRange(
-	LocalDate fromDate,
-	LocalDate toDate,
+	LocalDate startDate,
+	LocalDate endDate,
 	LocalDateTime fromAt,
 	LocalDateTime toExclusiveAt
 ) {
 
-	public static PeriodRange of(LocalDate fromDate, LocalDate toDate) {
+	public static PeriodRange of(LocalDate startDate, LocalDate endDate) {
 		return new PeriodRange(
-			fromDate,
-			toDate,
-			fromDate.atStartOfDay(),
-			toDate.plusDays(1).atStartOfDay()
+			startDate,
+			endDate,
+			startDate.atStartOfDay(),
+			endDate.plusDays(1).atStartOfDay()
 		);
 	}
 }
