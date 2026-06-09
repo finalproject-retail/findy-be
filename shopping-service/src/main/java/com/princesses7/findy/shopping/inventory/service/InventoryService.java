@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.inventory.service;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,7 +16,8 @@ import lombok.RequiredArgsConstructor;
 public class InventoryService {
 
 	private static final Long DEFAULT_STORE_ID = 1L;
-	private static final int DEFAULT_STOCK_QUANTITY = 30;
+	private static final int MIN_DEFAULT_STOCK_QUANTITY = 2;
+	private static final int MAX_DEFAULT_STOCK_QUANTITY = 30;
 
 	private final InventoryRepository inventoryRepository;
 
@@ -30,9 +33,14 @@ public class InventoryService {
 		Inventory inventory = Inventory.createDefault(
 			product,
 			DEFAULT_STORE_ID,
-			DEFAULT_STOCK_QUANTITY
+			createRandomDefaultStockQuantity()
 		);
 
 		inventoryRepository.save(inventory);
+	}
+
+	private int createRandomDefaultStockQuantity() {
+		return ThreadLocalRandom.current()
+			.nextInt(MIN_DEFAULT_STOCK_QUANTITY, MAX_DEFAULT_STOCK_QUANTITY + 1);
 	}
 }
