@@ -29,27 +29,27 @@ public class RecommendationSelectionRateAnalyticsService {
 	private final AnalyticsPeriodResolver analyticsPeriodResolver;
 
 	public RecommendationSelectionRateResponse getSelectionRateAnalytics(
-		LocalDate fromDate,
-		LocalDate toDate,
+		LocalDate startDate,
+		LocalDate endDate,
 		String recommendationType,
 		Long productId,
 		Long sourceProductId,
 		Integer limit
 	) {
-		PeriodRange periodRange = analyticsPeriodResolver.resolve(fromDate, toDate);
+		PeriodRange periodRange = analyticsPeriodResolver.resolve(startDate, endDate);
 		int resolvedLimit = analyticsPeriodResolver.resolveLimit(limit);
 		String normalizedRecommendationType = normalizeRecommendationType(recommendationType);
 
-		LocalDateTime fromDateTime = periodRange.fromDate().atStartOfDay();
-		LocalDateTime toDateTime = periodRange.toDate().plusDays(1).atStartOfDay();
+		LocalDateTime startDateTime = periodRange.startDate().atStartOfDay();
+		LocalDateTime endDateTime = periodRange.endDate().plusDays(1).atStartOfDay();
 
 		RecommendationSelectionRateSummaryProjection summary =
 			recommendationSelectionRateAnalyticsRepository.findSummary(
 				normalizedRecommendationType,
 				productId,
 				sourceProductId,
-				fromDateTime,
-				toDateTime
+				startDateTime,
+				endDateTime
 			);
 
 		List<RecommendationSelectionRateDailyResponse> dailyTrends =
@@ -57,8 +57,8 @@ public class RecommendationSelectionRateAnalyticsService {
 					normalizedRecommendationType,
 					productId,
 					sourceProductId,
-					fromDateTime,
-					toDateTime
+					startDateTime,
+					endDateTime
 				)
 				.stream()
 				.map(RecommendationSelectionRateDailyResponse::from)
@@ -69,8 +69,8 @@ public class RecommendationSelectionRateAnalyticsService {
 					normalizedRecommendationType,
 					productId,
 					sourceProductId,
-					fromDateTime,
-					toDateTime,
+					startDateTime,
+					endDateTime,
 					resolvedLimit
 				)
 				.stream()

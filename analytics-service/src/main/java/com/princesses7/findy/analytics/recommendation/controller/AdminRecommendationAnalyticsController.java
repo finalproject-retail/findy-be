@@ -38,11 +38,11 @@ public class AdminRecommendationAnalyticsController {
 	public ApiResponse<RecommendationClickRateResponse> getRecommendationClickRateAnalytics(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate fromDate,
+		LocalDate startDate,
 
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate toDate,
+		LocalDate endDate,
 
 		@RequestParam(required = false)
 		String recommendationType,
@@ -54,8 +54,8 @@ public class AdminRecommendationAnalyticsController {
 	) {
 		RecommendationClickRateResponse response =
 			recommendationClickRateAnalyticsService.getClickRateAnalytics(
-				fromDate,
-				toDate,
+				startDate,
+				endDate,
 				recommendationType,
 				limit
 			);

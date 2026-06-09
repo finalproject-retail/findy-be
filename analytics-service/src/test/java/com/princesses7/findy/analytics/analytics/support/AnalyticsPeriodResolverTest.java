@@ -22,8 +22,8 @@ class AnalyticsPeriodResolverTest {
 
 		PeriodRange periodRange = analyticsPeriodResolver.resolve(fromDate, toDate);
 
-		assertThat(periodRange.fromDate()).isEqualTo(fromDate);
-		assertThat(periodRange.toDate()).isEqualTo(toDate);
+		assertThat(periodRange.startDate()).isEqualTo(fromDate);
+		assertThat(periodRange.endDate()).isEqualTo(toDate);
 		assertThat(periodRange.fromAt()).isEqualTo(fromDate.atStartOfDay());
 		assertThat(periodRange.toExclusiveAt()).isEqualTo(toDate.plusDays(1).atStartOfDay());
 	}

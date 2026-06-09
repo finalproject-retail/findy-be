@@ -11,8 +11,8 @@ public record PeriodResponse(
 
 	public static PeriodResponse from(PeriodRange periodRange) {
 		return new PeriodResponse(
-			periodRange.fromDate(),
-			periodRange.toDate()
+			periodRange.startDate(),
+			periodRange.endDate()
 		);
 	}
 }

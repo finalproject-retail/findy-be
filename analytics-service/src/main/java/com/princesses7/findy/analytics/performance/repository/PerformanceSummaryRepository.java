@@ -39,8 +39,8 @@ public class PerformanceSummaryRepository {
 		String sql = """
 			WITH days AS (
 				SELECT generate_series(
-					CAST(:fromDate AS date),
-					CAST(:toDate AS date),
+					CAST(:startDate AS date),
+					CAST(:endDate AS date),
 					INTERVAL '1 day'
 				)::date AS metric_date
 			),
@@ -59,8 +59,8 @@ public class PerformanceSummaryRepository {
 					analysis_date AS metric_date,
 					COALESCE(SUM(stockout_count), 0) AS out_of_stock_count
 				FROM %s
-				WHERE analysis_date >= :fromDate
-					AND analysis_date <= :toDate
+				WHERE analysis_date >= :startDate
+					AND analysis_date <= :endDate
 					AND (:storeId IS NULL OR store_id = :storeId)
 				GROUP BY analysis_date
 			),
@@ -152,8 +152,8 @@ public class PerformanceSummaryRepository {
 		Long storeId
 	) {
 		return new MapSqlParameterSource()
-			.addValue("fromDate", periodRange.fromDate(), Types.DATE)
-			.addValue("toDate", periodRange.toDate(), Types.DATE)
+			.addValue("startDate", periodRange.startDate(), Types.DATE)
+			.addValue("endDate", periodRange.endDate(), Types.DATE)
 			.addValue("fromAt", periodRange.fromAt(), Types.TIMESTAMP)
 			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP)
 			.addValue("storeId", storeId, Types.BIGINT);

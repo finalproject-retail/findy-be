@@ -55,8 +55,8 @@ public class ProductViewAnalyticsService {
 		List<ProductViewRankingItemResponse> products = toRankingResponses(rankings, totalViewCount);
 
 		return new ProductViewAnalyticsResponse(
-			periodRange.fromDate(),
-			periodRange.toDate(),
+			periodRange.startDate(),
+			periodRange.endDate(),
 			totalViewCount,
 			viewedProductCount,
 			resolvedLimit,

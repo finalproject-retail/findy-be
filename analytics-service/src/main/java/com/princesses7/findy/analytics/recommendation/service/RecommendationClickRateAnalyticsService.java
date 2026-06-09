@@ -29,27 +29,27 @@ public class RecommendationClickRateAnalyticsService {
 	private final AnalyticsPeriodResolver analyticsPeriodResolver;
 
 	public RecommendationClickRateResponse getClickRateAnalytics(
-		LocalDate fromDate,
-		LocalDate toDate,
+		LocalDate startDate,
+		LocalDate endDate,
 		String recommendationType,
 		Integer limit
 	) {
-		PeriodRange periodRange = analyticsPeriodResolver.resolve(fromDate, toDate);
+		PeriodRange periodRange = analyticsPeriodResolver.resolve(startDate, endDate);
 		int resolvedLimit = analyticsPeriodResolver.resolveLimit(limit);
 		String normalizedRecommendationType = normalizeRecommendationType(recommendationType);
 
 		RecommendationClickRateSummaryProjection summary =
 			recommendationClickRateAnalyticsRepository.findSummary(
 				normalizedRecommendationType,
-				periodRange.fromDate(),
-				periodRange.toDate()
+				periodRange.startDate(),
+				periodRange.endDate()
 			);
 
 		List<RecommendationClickRateDailyResponse> dailyTrends =
 			recommendationClickRateAnalyticsRepository.findDailyTrend(
 					normalizedRecommendationType,
-					periodRange.fromDate(),
-					periodRange.toDate()
+					periodRange.startDate(),
+					periodRange.endDate()
 				)
 				.stream()
 				.map(RecommendationClickRateDailyResponse::from)
@@ -58,8 +58,8 @@ public class RecommendationClickRateAnalyticsService {
 		List<RecommendationClickRateProductResponse> products =
 			recommendationClickRateAnalyticsRepository.findTopProducts(
 					normalizedRecommendationType,
-					periodRange.fromDate(),
-					periodRange.toDate(),
+					periodRange.startDate(),
+					periodRange.endDate(),
 					PageRequest.of(0, resolvedLimit)
 				)
 				.stream()

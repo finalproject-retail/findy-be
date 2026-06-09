@@ -26,8 +26,8 @@ public interface RecommendationClickRateAnalyticsRepository
 		""")
 	RecommendationClickRateSummaryProjection findSummary(
 		@Param("recommendationType") String recommendationType,
-		@Param("fromDate") LocalDate fromDate,
-		@Param("toDate") LocalDate toDate
+		@Param("startDate") LocalDate fromDate,
+		@Param("endDate") LocalDate toDate
 	);
 
 	@Query("""
@@ -43,8 +43,8 @@ public interface RecommendationClickRateAnalyticsRepository
 		""")
 	List<RecommendationClickRateDailyProjection> findDailyTrend(
 		@Param("recommendationType") String recommendationType,
-		@Param("fromDate") LocalDate fromDate,
-		@Param("toDate") LocalDate toDate
+		@Param("startDate") LocalDate fromDate,
+		@Param("endDate") LocalDate toDate
 	);
 
 	@Query("""
@@ -65,8 +65,8 @@ public interface RecommendationClickRateAnalyticsRepository
 		""")
 	List<RecommendationClickRateProductProjection> findTopProducts(
 		@Param("recommendationType") String recommendationType,
-		@Param("fromDate") LocalDate fromDate,
-		@Param("toDate") LocalDate toDate,
+		@Param("startDate") LocalDate fromDate,
+		@Param("endDate") LocalDate toDate,
 		Pageable pageable
 	);
 }
