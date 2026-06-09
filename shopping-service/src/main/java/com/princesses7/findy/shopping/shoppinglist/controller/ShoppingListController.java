@@ -121,6 +121,22 @@ public class ShoppingListController {
 		);
 	}
 
+	@PostMapping("/items/{shoppingListItemId}/return-to-cart")
+	public ApiResponse<ShoppingListResponse> returnShoppingListItemToCart(
+		@RequestHeader("X-User-Id") Long userId,
+		@PathVariable Long shoppingListItemId,
+		@ResolvedStoreId long storeId
+	) {
+		return ApiResponse.ok(
+			"쇼핑리스트 상품이 장바구니로 이동되었습니다.",
+			shoppingListService.returnShoppingListItemToCart(
+				userId,
+				shoppingListItemId,
+				storeId
+			)
+		);
+	}
+
 	@DeleteMapping
 	public ApiResponse<Void> cancelShopping(
 		@RequestHeader("X-User-Id") Long userId,
