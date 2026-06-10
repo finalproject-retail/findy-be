@@ -16,7 +16,9 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.princesses7.findy.shopping.external.kca.KcaProductInfoClient;
 import com.princesses7.findy.shopping.external.kca.KcaProductPriceClient;
+import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductInfoItemResponse;
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceItemResponse;
 import com.princesses7.findy.shopping.external.kca.dto.response.KcaProductPriceResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
@@ -42,8 +44,10 @@ public class KcaMissingPriceSyncService {
 	private static final BigDecimal REVIEW_THRESHOLD = new BigDecimal("0.3000");
 	private static final DateTimeFormatter KCA_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 	private static final int LATEST_INSPECT_DAY_SEARCH_WEEKS = 26;
+	private static final int LATEST_INSPECT_DAY_SAMPLE_SIZE = 20;
 
 	private final KcaProductPriceClient kcaProductPriceClient;
+	private final KcaProductInfoClient kcaProductInfoClient;
 	private final ProductRepository productRepository;
 	private final ProductExternalMappingRepository mappingRepository;
 	private final ProductExternalPriceRepository priceRepository;
@@ -86,6 +90,24 @@ public class KcaMissingPriceSyncService {
 		String entpId,
 		String goodId
 	) {
+		if (hasText(entpId) || hasText(goodId)) {
+			return findProductPricesByFilter(goodInspectDay, entpId, goodId);
+		}
+
+		List<KcaProductInfoItemResponse> productInfos = kcaProductInfoClient.getProductInfos();
+
+		if (hasText(goodInspectDay)) {
+			return kcaProductPriceClient.getProductPricesByProductInfos(goodInspectDay, productInfos);
+		}
+
+		return findLatestProductPrices(productInfos);
+	}
+
+	private KcaProductPriceResponse findProductPricesByFilter(
+		String goodInspectDay,
+		String entpId,
+		String goodId
+	) {
 		if (hasText(goodInspectDay)) {
 			return kcaProductPriceClient.getProductPrices(goodInspectDay, entpId, goodId);
 		}
@@ -102,6 +124,28 @@ public class KcaMissingPriceSyncService {
 
 			if (response.items() != null && !response.items().isEmpty()) {
 				return response;
+			}
+		}
+
+		return new KcaProductPriceResponse(null, "latest inspect day not found", List.of());
+	}
+
+	private KcaProductPriceResponse findLatestProductPrices(List<KcaProductInfoItemResponse> productInfos) {
+		if (productInfos == null || productInfos.isEmpty()) {
+			return new KcaProductPriceResponse(null, "empty product infos", List.of());
+		}
+
+		LocalDate inspectDay = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.FRIDAY));
+
+		for (int index = 0; index < LATEST_INSPECT_DAY_SEARCH_WEEKS; index++) {
+			String candidateInspectDay = inspectDay.minusWeeks(index).format(KCA_DATE_FORMATTER);
+
+			if (kcaProductPriceClient.hasAnyProductPrice(
+				candidateInspectDay,
+				productInfos,
+				LATEST_INSPECT_DAY_SAMPLE_SIZE
+			)) {
+				return kcaProductPriceClient.getProductPricesByProductInfos(candidateInspectDay, productInfos);
 			}
 		}
 
