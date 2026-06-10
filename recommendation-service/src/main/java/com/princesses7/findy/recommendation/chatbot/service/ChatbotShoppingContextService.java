@@ -3,6 +3,7 @@ package com.princesses7.findy.recommendation.chatbot.service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.chatbot.dto.ChatbotIntentAnalysis;
+import com.princesses7.findy.recommendation.chatbot.dto.ChatbotNaturalProductQuery;
 import com.princesses7.findy.recommendation.chatbot.dto.request.ChatbotMessageRequest;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotCouponContextResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotProductContextResponse;
@@ -42,12 +44,14 @@ public class ChatbotShoppingContextService {
 	private static final int DEFAULT_LIMIT = 5;
 	private static final int MAX_LIMIT = 10;
 	private static final int LOW_STOCK_THRESHOLD = 5;
+	private static final int NATURAL_RECOMMENDATION_CANDIDATE_LIMIT = 30;
 
 	private final ProductSnapshotRepository productRepository;
 	private final InventorySnapshotRepository inventoryRepository;
 	private final CategorySnapshotRepository categoryRepository;
 	private final PromotionProductSnapshotRepository promotionProductRepository;
 	private final CouponProductSnapshotRepository couponProductRepository;
+	private final ChatbotNaturalProductQueryExtractor naturalProductQueryExtractor;
 
 	public ChatbotShoppingContextResponse getContext(
 		ChatbotMessageRequest request,
@@ -62,7 +66,12 @@ public class ChatbotShoppingContextService {
 		String keyword = analysis.keyword();
 		ChatIntent intent = analysis.intent();
 
-		List<ProductSnapshot> products = findProducts(keyword, intent, limit);
+		List<ProductSnapshot> products = findProducts(
+			keyword,
+			intent,
+			limit,
+			request.message()
+		);
 
 		if (products.isEmpty()) {
 			return ChatbotShoppingContextResponse.empty(storeId, keyword, intent);
@@ -112,7 +121,8 @@ public class ChatbotShoppingContextService {
 		List<ProductSnapshot> products = findProducts(
 			keyword,
 			ChatIntent.PRODUCT_SEARCH,
-			resolvedLimit
+			resolvedLimit,
+			keyword
 		);
 
 		if (products.isEmpty()) {
@@ -148,8 +158,16 @@ public class ChatbotShoppingContextService {
 	private List<ProductSnapshot> findProducts(
 		String keyword,
 		ChatIntent intent,
-		int limit
+		int limit,
+		String originalMessage
 	) {
+		if (intent == ChatIntent.GENERAL_PRODUCT_RECOMMENDATION) {
+			return findNaturalRecommendationProducts(
+				naturalProductQueryExtractor.extract(originalMessage),
+				limit
+			);
+		}
+
 		if (!hasText(keyword) && intent == ChatIntent.PROMOTION_INQUIRY) {
 			return findPromotionProducts(limit);
 		}
@@ -183,6 +201,139 @@ public class ChatbotShoppingContextService {
 		}
 
 		return distinctRecommendableProducts(products, limit);
+	}
+
+	private List<ProductSnapshot> findNaturalRecommendationProducts(
+		ChatbotNaturalProductQuery query,
+		int limit
+	) {
+		if (query == null || !query.hasSearchKeywords()) {
+			return productRepository.findByDeletedFalse(PageRequest.of(0, limit));
+		}
+
+		List<ProductSnapshot> candidates = new ArrayList<>();
+
+		for (String keyword : query.searchKeywords()) {
+			if (!hasText(keyword)) {
+				continue;
+			}
+
+			candidates.addAll(productRepository.searchByKeyword(
+				keyword,
+				PageRequest.of(0, NATURAL_RECOMMENDATION_CANDIDATE_LIMIT)
+			));
+		}
+
+		List<Long> categoryIds = findCategoryIds(query.categoryKeywords());
+
+		if (!categoryIds.isEmpty()) {
+			candidates.addAll(productRepository.findByCategoryIdInAndDeletedFalse(
+				categoryIds,
+				PageRequest.of(0, NATURAL_RECOMMENDATION_CANDIDATE_LIMIT)
+			));
+		}
+
+		List<ProductSnapshot> recommendableProducts = distinctRecommendableProducts(
+			candidates,
+			NATURAL_RECOMMENDATION_CANDIDATE_LIMIT
+		);
+
+		if (recommendableProducts.isEmpty()) {
+			return productRepository.findByDeletedFalse(PageRequest.of(0, limit));
+		}
+
+		Map<Long, String> categoryNameMap = findCategoryNameMap(
+			recommendableProducts.stream()
+				.map(ProductSnapshot::getCategoryId)
+				.toList()
+		);
+
+		return recommendableProducts.stream()
+			.sorted(Comparator
+				.comparingInt((ProductSnapshot product) -> calculateNaturalRecommendationScore(
+					product,
+					categoryNameMap.get(product.getCategoryId()),
+					query
+				))
+				.reversed()
+				.thenComparing(ProductSnapshot::getSalePrice, Comparator.nullsLast(Integer::compareTo)))
+			.limit(limit)
+			.toList();
+	}
+
+	private int calculateNaturalRecommendationScore(
+		ProductSnapshot product,
+		String categoryName,
+		ChatbotNaturalProductQuery query
+	) {
+		String searchableText = normalizeKeyword(
+			nullToEmpty(product.getProductName())
+				+ " "
+				+ nullToEmpty(product.getBrandName())
+				+ " "
+				+ nullToEmpty(product.getDescription())
+				+ " "
+				+ nullToEmpty(product.getBadgeText())
+				+ " "
+				+ nullToEmpty(categoryName)
+		);
+
+		int score = 0;
+
+		for (String keyword : query.categoryKeywords()) {
+			if (containsKeyword(searchableText, keyword)) {
+				score += 40;
+			}
+		}
+
+		for (String keyword : query.productKeywords()) {
+			if (containsKeyword(searchableText, keyword)) {
+				score += 50;
+			}
+		}
+
+		for (String keyword : query.preferenceKeywords()) {
+			if (containsKeyword(searchableText, keyword)) {
+				score += 20;
+			}
+		}
+
+		if (product.getDiscountRate() != null && product.getDiscountRate().signum() > 0) {
+			score += 3;
+		}
+
+		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
+			score += 1;
+		}
+
+		return score;
+	}
+
+	private boolean containsKeyword(
+		String searchableText,
+		String keyword
+	) {
+		if (!hasText(keyword)) {
+			return false;
+		}
+
+		return searchableText.contains(normalizeKeyword(keyword));
+	}
+
+	private List<Long> findCategoryIds(List<String> categoryKeywords) {
+		if (categoryKeywords == null || categoryKeywords.isEmpty()) {
+			return List.of();
+		}
+
+		return categoryKeywords.stream()
+			.filter(this::hasText)
+			.flatMap(categoryKeyword -> categoryRepository
+				.findByCategoryNameContainingIgnoreCaseAndActiveTrue(categoryKeyword)
+				.stream())
+			.filter(CategorySnapshot::isActive)
+			.map(CategorySnapshot::getCategoryId)
+			.distinct()
+			.toList();
 	}
 
 	private List<ProductSnapshot> findPromotionProducts(int limit) {
@@ -389,6 +540,20 @@ public class ChatbotShoppingContextService {
 		}
 
 		return Math.min(limit, MAX_LIMIT);
+	}
+
+	private String normalizeKeyword(String value) {
+		if (value == null) {
+			return "";
+		}
+
+		return value.toLowerCase()
+			.replaceAll("\\s+", "")
+			.trim();
+	}
+
+	private String nullToEmpty(String value) {
+		return value == null ? "" : value;
 	}
 
 	private boolean hasText(String value) {
