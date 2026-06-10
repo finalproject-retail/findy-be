@@ -1,9 +1,12 @@
 package com.princesses7.findy.shopping.product.external.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -26,9 +29,9 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class NaverProductEnrichmentService {
 
-	private static final BigDecimal MATCHED_THRESHOLD = new BigDecimal("0.7500");
+	private static final BigDecimal MATCHED_THRESHOLD = new BigDecimal("0.6000");
 	private static final BigDecimal REVIEW_THRESHOLD = new BigDecimal("0.5000");
-	private static final int NAVER_DISPLAY = 5;
+	private static final int NAVER_DISPLAY = 10;
 
 	private final ProductRepository productRepository;
 	private final NaverShoppingClient naverShoppingClient;
@@ -59,13 +62,13 @@ public class NaverProductEnrichmentService {
 
 	private NaverProductEnrichmentItemResponse enrichProduct(Product product) {
 		try {
-			NaverShoppingResponse response = naverShoppingClient.search(product.getProductName(), NAVER_DISPLAY, 1);
+			List<NaverShoppingItemResponse> searchItems = searchWithFallback(product);
 
-			if (response == null || response.items() == null || response.items().isEmpty()) {
+			if (searchItems.isEmpty()) {
 				return NaverProductEnrichmentItemResponse.skipped(product, "네이버 검색 결과 없음");
 			}
 
-			Optional<NaverMatchCandidate> bestCandidate = findBestCandidate(product, response.items());
+			Optional<NaverMatchCandidate> bestCandidate = findBestCandidate(product, searchItems);
 
 			if (bestCandidate.isEmpty()) {
 				return NaverProductEnrichmentItemResponse.skipped(product, "유효한 네이버 매칭 후보 없음");
@@ -91,9 +94,8 @@ public class NaverProductEnrichmentService {
 
 			Integer beforePrice = product.getOriginalPrice();
 			String beforeImageUrl = product.getImageUrl();
-			List<String> updatedFields = product.enrichFromNaverIfMissing(
+			List<String> updatedFields = product.enrichPriceFromNaverIfMissing(
 				parsePrice(candidate.item().lprice()),
-				candidate.item().image(),
 				candidate.item().productId()
 			);
 
@@ -118,6 +120,72 @@ public class NaverProductEnrichmentService {
 				exception.getClass().getSimpleName() + ": " + exception.getMessage()
 			);
 		}
+	}
+
+	private List<NaverShoppingItemResponse> searchWithFallback(Product product) {
+		Set<String> productIds = new LinkedHashSet<>();
+		List<NaverShoppingItemResponse> results = new ArrayList<>();
+
+		for (String query : buildSearchQueries(product)) {
+			if (query.isBlank()) {
+				continue;
+			}
+
+			NaverShoppingResponse response = naverShoppingClient.search(query, NAVER_DISPLAY, 1);
+
+			if (response == null || response.items() == null || response.items().isEmpty()) {
+				continue;
+			}
+
+			for (NaverShoppingItemResponse item : response.items()) {
+				String productId = item.productId();
+
+				if (productId == null || productId.isBlank() || !productIds.add(productId)) {
+					continue;
+				}
+
+				results.add(item);
+			}
+
+			if (!results.isEmpty()) {
+				return results;
+			}
+		}
+
+		return results;
+	}
+
+	private List<String> buildSearchQueries(Product product) {
+		String productName = nullToEmpty(product.getProductName()).trim();
+		String nameWithoutSpec = removeParenthesesAndVolume(productName).trim();
+		String coreName = removeBrandPrefix(nameWithoutSpec, product.getBrandName()).trim();
+		String brandCoreName = (nullToEmpty(product.getBrandName()) + " " + coreName).trim();
+
+		return List.of(
+			productName,
+			nameWithoutSpec,
+			brandCoreName
+		);
+	}
+
+	private String removeParenthesesAndVolume(String value) {
+		return value
+			.replaceAll("\\([^)]*\\)", " ")
+			.replaceAll("\\[[^]]*\\]", " ")
+			.replaceAll("\\b\\d+(\\.\\d+)?\\s?(g|kg|ml|l|개입|입|매|봉|팩|캔|병)\\b", " ")
+			.replaceAll("\\s+", " ");
+	}
+
+	private String removeBrandPrefix(String value, String brandName) {
+		if (brandName == null || brandName.isBlank()) {
+			return value;
+		}
+
+		return value.replaceFirst("^\\s*" + java.util.regex.Pattern.quote(brandName) + "\\s+", "");
+	}
+
+	private String nullToEmpty(String value) {
+		return value == null ? "" : value;
 	}
 
 	private Optional<NaverMatchCandidate> findBestCandidate(
