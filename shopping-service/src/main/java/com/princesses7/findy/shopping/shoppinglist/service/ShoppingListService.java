@@ -15,7 +15,6 @@ import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEvent
 import com.princesses7.findy.shopping.cart.entity.Cart;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
-import com.princesses7.findy.shopping.cart.service.CartService;
 import com.princesses7.findy.shopping.category.entity.Category;
 import com.princesses7.findy.shopping.category.repository.CategoryRepository;
 import com.princesses7.findy.shopping.inventory.service.InventoryStockService;
@@ -48,36 +47,37 @@ public class ShoppingListService {
 	private final ProductBarcodeReader productBarcodeReader;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 	private final CategoryRepository categoryRepository;
-	private final CartService cartService;
 
 	@Transactional
-	public ShoppingListResponse createShoppingList(
-		Long userId,
-		long storeId
-	) {
-		Cart cart = cartService.getCartByUserId(userId);
+	public ShoppingListResponse createShoppingList(Long userId, long storeId) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+		Cart cart = getCartByUserId(userId);
 
-		return shoppingListRepository.findByCartCartId(cart.getCartId())
-			.map(existingShoppingList -> {
-				validateCheckedItemsPurchasable(existingShoppingList, cart, storeId);
-				existingShoppingList.mergeSelectedCartItems(cart.getCheckedItems());
+		validateCheckedItemsPurchasable(cart, resolvedStoreId);
 
-				return toResponse(existingShoppingList, storeId);
-			})
-			.orElseGet(() -> {
-				validateCheckedItemsPurchasable(cart, storeId);
+		ShoppingList shoppingList = ShoppingList.create(cart);
 
-				ShoppingList shoppingList = ShoppingList.createFromCart(cart);
-				ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
+		inventoryStockService.decreaseStocksByCartItems(
+			resolvedStoreId,
+			cart.getCheckedItems()
+		);
 
-				return toResponse(savedShoppingList, storeId);
-			});
+		ShoppingList savedShoppingList = shoppingListRepository.save(shoppingList);
+
+		shoppingAnalyticsEventService.publishShoppingListItemsFromCart(
+			userId,
+			savedShoppingList,
+			RecommendationSource.DIRECT
+		);
+
+		return toResponse(savedShoppingList, resolvedStoreId);
 	}
 
 	public ShoppingListResponse getShoppingList(Long userId, long storeId) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -86,12 +86,21 @@ public class ShoppingListService {
 		AddShoppingListItemRequest request,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		int quantity = request.quantityOrDefault();
-		int targetQuantity = getShoppingListItemQuantity(shoppingList, request.productId())
-			+ quantity;
 
-		productSummaryReader.validatePurchasable(request.productId(), targetQuantity, storeId);
+		productSummaryReader.validatePurchasable(
+			request.productId(),
+			quantity,
+			resolvedStoreId
+		);
+
+		inventoryStockService.decreaseStock(
+			resolvedStoreId,
+			request.productId(),
+			quantity
+		);
 
 		shoppingList.addSearchedItem(
 			request.productId(),
@@ -105,7 +114,7 @@ public class ShoppingListService {
 			request.originalProductId()
 		);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -114,6 +123,7 @@ public class ShoppingListService {
 		AddCategoryShoppingListItemRequest request,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		CategoryItemTarget target = resolveCategoryTarget(request);
 
@@ -123,7 +133,7 @@ public class ShoppingListService {
 			request.quantityOrDefault()
 		);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -132,23 +142,29 @@ public class ShoppingListService {
 		ScanShoppingListItemRequest request,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		Long productId = productBarcodeReader.getProductIdByBarcode(request.barcode());
 		int quantity = request.quantityOrDefault();
-		int targetQuantity = calculateScannedTargetQuantity(
+
+		int additionalStockQuantity = calculateAdditionalStockQuantityForScan(
 			shoppingList,
 			productId,
 			quantity
 		);
 
-		productSummaryReader.validatePurchasable(productId, targetQuantity, storeId);
+		decreaseStockIfNeeded(
+			resolvedStoreId,
+			productId,
+			additionalStockQuantity
+		);
 
 		shoppingList.addScannedItem(
 			productId,
 			quantity
 		);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -157,15 +173,23 @@ public class ShoppingListService {
 		ScanShoppingListItemRequest request,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		Long productId = productBarcodeReader.getProductIdByBarcode(request.barcode());
+		int quantity = request.quantityOrDefault();
 
 		shoppingList.decreaseQuantityByScan(
 			productId,
-			request.quantityOrDefault()
+			quantity
 		);
 
-		return toResponse(shoppingList, storeId);
+		inventoryStockService.increaseStock(
+			resolvedStoreId,
+			productId,
+			quantity
+		);
+
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -175,18 +199,29 @@ public class ShoppingListService {
 		ChangeShoppingListItemQuantityRequest request,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		ShoppingListItem shoppingListItem = shoppingList.getShoppingListItem(shoppingListItemId);
 
 		int newQuantity = request.quantity();
 
-		if (shoppingListItem.requiresScanToDecrease(newQuantity)) {
+		if (newQuantity < shoppingListItem.getQuantity()) {
 			throw new ShoppingListException(DECREASE_QUANTITY_REQUIRES_SCAN);
+		}
+
+		if (shoppingListItem.isProductItem()) {
+			int additionalQuantity = newQuantity - shoppingListItem.getQuantity();
+
+			decreaseStockIfNeeded(
+				resolvedStoreId,
+				shoppingListItem.getProductId(),
+				additionalQuantity
+			);
 		}
 
 		shoppingListItem.changeQuantity(newQuantity);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -196,6 +231,7 @@ public class ShoppingListService {
 		ChangeShoppingListItemCheckedRequest request,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		shoppingList.changeItemChecked(
@@ -203,7 +239,7 @@ public class ShoppingListService {
 			request.checked()
 		);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -212,11 +248,18 @@ public class ShoppingListService {
 		Long shoppingListItemId,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		ShoppingListItem shoppingListItem = shoppingList.getShoppingListItem(shoppingListItemId);
+
+		restoreStockIfProductItem(
+			resolvedStoreId,
+			shoppingListItem
+		);
 
 		shoppingList.removeItem(shoppingListItemId);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
@@ -225,17 +268,24 @@ public class ShoppingListService {
 		Long shoppingListItemId,
 		long storeId
 	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		ShoppingListItem shoppingListItem = shoppingList.getShoppingListItem(shoppingListItemId);
+
+		restoreStockIfProductItem(
+			resolvedStoreId,
+			shoppingListItem
+		);
 
 		shoppingList.returnItemToCart(shoppingListItemId);
 
-		return toResponse(shoppingList, storeId);
+		return toResponse(shoppingList, resolvedStoreId);
 	}
 
 	@Transactional
 	public void cancelShopping(Long userId, long storeId) {
-		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		inventoryStockService.increaseStocks(
 			resolvedStoreId,
@@ -251,8 +301,8 @@ public class ShoppingListService {
 
 	@Transactional
 	public void completeShopping(Long userId, long storeId) {
-		ShoppingList shoppingList = getShoppingListByUserId(userId);
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+		ShoppingList shoppingList = getShoppingListByUserId(userId);
 
 		inventoryStockService.increaseUnscannedStocksByShoppingListItems(
 			resolvedStoreId,
@@ -283,61 +333,48 @@ public class ShoppingListService {
 		);
 	}
 
-	private void validateCheckedItemsPurchasable(
-		ShoppingList shoppingList,
-		Cart cart,
-		long storeId
-	) {
-		cart.getCheckedItems().forEach(cartItem -> {
-			int existingQuantity = getShoppingListItemQuantity(
-				shoppingList,
-				cartItem.getProductId()
-			);
-
-			int targetQuantity = Math.max(
-				existingQuantity,
-				cartItem.getQuantity()
-			);
-
-			productSummaryReader.validatePurchasable(
-				cartItem.getProductId(),
-				targetQuantity,
-				storeId
-			);
-		});
-	}
-
-	private ShoppingListItem getShoppingListItem(
-		ShoppingList shoppingList,
-		Long shoppingListItemId
-	) {
-		return shoppingList.getShoppingListItems().stream()
-			.filter(item -> item.hasSameId(shoppingListItemId))
-			.findFirst()
-			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_ITEM_NOT_FOUND));
-	}
-
-	private int getShoppingListItemQuantity(ShoppingList shoppingList, Long productId) {
-		return shoppingList.getShoppingListItems().stream()
-			.filter(item -> item.hasSameProduct(productId))
-			.mapToInt(ShoppingListItem::getQuantity)
-			.findFirst()
-			.orElse(0);
-	}
-
-	private int calculateScannedTargetQuantity(
+	private int calculateAdditionalStockQuantityForScan(
 		ShoppingList shoppingList,
 		Long productId,
 		int scanQuantity
 	) {
 		return shoppingList.getShoppingListItems().stream()
+			.filter(ShoppingListItem::isProductItem)
 			.filter(item -> item.hasSameProduct(productId))
 			.findFirst()
 			.map(item -> Math.max(
-				item.getQuantity(),
-				item.getScannedQuantity() + scanQuantity
+				item.getScannedQuantity() + scanQuantity - item.getQuantity(),
+				0
 			))
 			.orElse(scanQuantity);
+	}
+
+	private void decreaseStockIfNeeded(
+		long storeId,
+		Long productId,
+		int quantity
+	) {
+		if (quantity < 1) {
+			return;
+		}
+
+		productSummaryReader.validatePurchasable(productId, quantity, storeId);
+		inventoryStockService.decreaseStock(storeId, productId, quantity);
+	}
+
+	private void restoreStockIfProductItem(
+		long storeId,
+		ShoppingListItem shoppingListItem
+	) {
+		if (!shoppingListItem.isProductItem()) {
+			return;
+		}
+
+		inventoryStockService.increaseStock(
+			storeId,
+			shoppingListItem.getProductId(),
+			shoppingListItem.getQuantity()
+		);
 	}
 
 	private CategoryItemTarget resolveCategoryTarget(
