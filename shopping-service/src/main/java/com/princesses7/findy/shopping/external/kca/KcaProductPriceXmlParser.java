@@ -60,6 +60,10 @@ public class KcaProductPriceXmlParser {
 
 	private List<KcaProductPriceItemResponse> parseItems(Document document) {
 		NodeList itemNodes = document.getElementsByTagName(PRICE_ITEM_TAG);
+		if (itemNodes.getLength() == 0) {
+			itemNodes = findPriceItemNodes(document);
+		}
+
 		List<KcaProductPriceItemResponse> items = new ArrayList<>();
 
 		for (int index = 0; index < itemNodes.getLength(); index++) {
@@ -84,6 +88,37 @@ public class KcaProductPriceXmlParser {
 		}
 
 		return items;
+	}
+
+	private NodeList findPriceItemNodes(Document document) {
+		NodeList nodes = document.getElementsByTagName("*");
+		List<Node> priceItemNodes = new ArrayList<>();
+
+		for (int index = 0; index < nodes.getLength(); index++) {
+			Node node = nodes.item(index);
+
+			if (hasDirectChild(node, "goodInspectDay")
+				&& hasDirectChild(node, "goodId")
+				&& hasDirectChild(node, "goodPrice")) {
+				priceItemNodes.add(node);
+			}
+		}
+
+		return new NodeList() {
+			@Override
+			public Node item(int index) {
+				return priceItemNodes.get(index);
+			}
+
+			@Override
+			public int getLength() {
+				return priceItemNodes.size();
+			}
+		};
+	}
+
+	private boolean hasDirectChild(Node parentNode, String tagName) {
+		return getText(parentNode, tagName) != null;
 	}
 
 	private DocumentBuilderFactory createSecureDocumentBuilderFactory() throws Exception {
