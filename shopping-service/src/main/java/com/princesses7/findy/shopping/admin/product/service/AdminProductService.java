@@ -43,6 +43,9 @@ public class AdminProductService {
 		"categoryId",
 		"originalPrice",
 		"saleStatus",
+		"categoryConfidence",
+		"categoryClassifiedBy",
+		"categoryReviewRequired",
 		"createdAt",
 		"updatedAt"
 	);
@@ -54,6 +57,7 @@ public class AdminProductService {
 		String keyword,
 		Long categoryId,
 		SaleStatus saleStatus,
+		Boolean categoryReviewRequired,
 		int page,
 		int size,
 		String sortBy,
@@ -73,6 +77,7 @@ public class AdminProductService {
 			normalizedKeyword,
 			categoryId,
 			saleStatus,
+			categoryReviewRequired,
 			pageable
 		);
 
@@ -83,12 +88,14 @@ public class AdminProductService {
 		String keyword,
 		Long categoryId,
 		SaleStatus saleStatus,
+		Boolean categoryReviewRequired,
 		Pageable pageable
 	) {
 		if (keyword == null) {
 			return productRepository.findAdminProductsWithoutKeyword(
 				categoryId,
 				saleStatus,
+				categoryReviewRequired,
 				pageable
 			);
 		}
@@ -97,6 +104,7 @@ public class AdminProductService {
 			keyword,
 			categoryId,
 			saleStatus,
+			categoryReviewRequired,
 			pageable
 		);
 	}
