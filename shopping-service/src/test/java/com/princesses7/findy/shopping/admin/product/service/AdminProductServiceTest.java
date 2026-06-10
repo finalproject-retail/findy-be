@@ -46,6 +46,7 @@ class AdminProductServiceTest {
 			eq("우유"),
 			eq(10L),
 			eq(SaleStatus.ON_SALE),
+			isNull(),
 			any(Pageable.class)
 		)).thenReturn(Page.empty());
 
@@ -53,6 +54,7 @@ class AdminProductServiceTest {
 			" 우유 ",
 			10L,
 			SaleStatus.ON_SALE,
+			null,
 			0,
 			20,
 			"createdAt",
@@ -66,6 +68,7 @@ class AdminProductServiceTest {
 			eq("우유"),
 			eq(10L),
 			eq(SaleStatus.ON_SALE),
+			isNull(),
 			any(Pageable.class)
 		);
 	}
@@ -76,11 +79,13 @@ class AdminProductServiceTest {
 		when(productRepository.findAdminProductsWithoutKeyword(
 			isNull(),
 			isNull(),
+			isNull(),
 			any(Pageable.class)
 		)).thenReturn(Page.empty());
 
 		AdminProductPageResponse response = adminProductService.getProducts(
 			" ",
+			null,
 			null,
 			null,
 			0,
@@ -94,6 +99,73 @@ class AdminProductServiceTest {
 		verify(productRepository).findAdminProductsWithoutKeyword(
 			isNull(),
 			isNull(),
+			isNull(),
+			any(Pageable.class)
+		);
+	}
+
+	@Test
+	@DisplayName("관리자 상품 목록 조회 시 AI 카테고리 검토 대상 필터를 적용한다")
+	void getProductsWithCategoryReviewRequiredFilter() {
+		when(productRepository.findAdminProductsWithoutKeyword(
+			isNull(),
+			isNull(),
+			eq(true),
+			any(Pageable.class)
+		)).thenReturn(Page.empty());
+
+		AdminProductPageResponse response = adminProductService.getProducts(
+			null,
+			null,
+			null,
+			true,
+			0,
+			20,
+			"categoryConfidence",
+			"asc"
+		);
+
+		assertThat(response).isNotNull();
+		assertThat(response.products()).isEmpty();
+
+		verify(productRepository).findAdminProductsWithoutKeyword(
+			isNull(),
+			isNull(),
+			eq(true),
+			any(Pageable.class)
+		);
+	}
+
+	@Test
+	@DisplayName("관리자 상품 목록 조회 시 검색어와 AI 카테고리 검토 대상 필터를 함께 적용한다")
+	void getProductsWithKeywordAndCategoryReviewRequiredFilter() {
+		when(productRepository.findAdminProductsWithKeyword(
+			eq("카레"),
+			isNull(),
+			isNull(),
+			eq(true),
+			any(Pageable.class)
+		)).thenReturn(Page.empty());
+
+		AdminProductPageResponse response = adminProductService.getProducts(
+			" 카레 ",
+			null,
+			null,
+			true,
+			0,
+			20,
+			"categoryConfidence",
+			"asc"
+		);
+
+		assertThat(response).isNotNull();
+		assertThat(response.products()).isEmpty();
+
+		verify(productRepository).findAdminProductsWithKeyword(
+			eq("카레"),
+			isNull(),
+			isNull(),
+			eq(true),
 			any(Pageable.class)
 		);
 	}
@@ -133,6 +205,7 @@ class AdminProductServiceTest {
 			null,
 			null,
 			null,
+			null,
 			0,
 			101,
 			"createdAt",
@@ -146,6 +219,7 @@ class AdminProductServiceTest {
 	@DisplayName("관리자 상품 목록 조회 시 지원하지 않는 정렬 기준이면 예외가 발생한다")
 	void throwExceptionWhenInvalidSortType() {
 		assertThatThrownBy(() -> adminProductService.getProducts(
+			null,
 			null,
 			null,
 			null,
