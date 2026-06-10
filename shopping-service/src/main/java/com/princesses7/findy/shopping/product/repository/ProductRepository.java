@@ -95,9 +95,35 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		FROM Product p
 		WHERE p.deletedAt IS NULL
 		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
+		  AND EXISTS (
+		  	SELECT 1
+		  	FROM Inventory i
+		  	WHERE i.product = p
+		  	  AND i.storeId = :storeId
+		  	  AND i.stockQuantity > 0
+		  )
 		ORDER BY p.createdAt DESC, p.productId ASC
 		""")
-	List<Product> findMartRecommendedProducts(Pageable pageable);
+	List<Product> findMartRecommendedProducts(
+		@Param("storeId") Long storeId,
+		Pageable pageable
+	);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+		  AND (
+		       p.originalPrice IS NULL
+		       OR p.originalPrice <= 0
+		       OR p.imageUrl IS NULL
+		       OR p.imageUrl = ''
+		       OR p.externalProductId IS NULL
+		       OR p.externalProductId = ''
+		  )
+		ORDER BY p.productId ASC
+		""")
+	List<Product> findNaverEnrichmentTargets(Pageable pageable);
 
 	@Query("""
 		SELECT p
