@@ -113,9 +113,14 @@ public class ProductService {
 	public List<ProductResponse> getMartRecommendedProducts(int size, long storeId) {
 		validateSectionSize(size);
 
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
 		return toProductResponses(
-			productRepository.findMartRecommendedProducts(PageRequest.of(0, size)),
-			storeId
+			productRepository.findMartRecommendedProducts(
+				resolvedStoreId,
+				PageRequest.of(0, size)
+			),
+			resolvedStoreId
 		);
 	}
 
