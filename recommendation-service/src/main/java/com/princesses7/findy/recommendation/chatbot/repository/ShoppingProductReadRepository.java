@@ -148,7 +148,6 @@ public class ShoppingProductReadRepository {
 				p.allergy_info,
 				p.badge_text,
 				p.sale_status,
-				pl.access_grid_id AS grid_id,
 				i.stock_quantity,
 				CASE
 					WHEN i.stock_quantity IS NULL THEN 'UNKNOWN'
@@ -162,9 +161,6 @@ public class ShoppingProductReadRepository {
 			LEFT JOIN shopping_service.inventories i
 				ON i.product_id = p.product_id
 				AND i.store_id = :storeId
-			LEFT JOIN shopping_service.product_locations pl
-				ON pl.product_id = p.product_id
-				AND pl.store_id = :storeId
 			""";
 	}
 
@@ -185,7 +181,7 @@ public class ShoppingProductReadRepository {
 			rs.getString("allergy_info"),
 			rs.getString("badge_text"),
 			rs.getString("sale_status"),
-			(Long)rs.getObject("grid_id"),
+			null,
 			(Integer)rs.getObject("stock_quantity"),
 			rs.getString("stock_status")
 		);
