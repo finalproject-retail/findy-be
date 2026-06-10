@@ -49,4 +49,12 @@ public class NaverProductEnrichmentController {
 	public ApiResponse<NaverProductEnrichmentAsyncStatusResponse> getAsyncStatus() {
 		return ApiResponse.ok(asyncService.getStatus());
 	}
+
+	@PostMapping("/async/stop")
+	public ApiResponse<NaverProductEnrichmentAsyncStatusResponse> stopAsync() {
+		return ApiResponse.ok(
+			"네이버 상품 보강 작업을 중지했습니다.",
+			asyncService.stop()
+		);
+	}
 }

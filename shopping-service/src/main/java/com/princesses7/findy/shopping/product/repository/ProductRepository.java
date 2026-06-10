@@ -120,12 +120,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
-		  AND (
-		       p.originalPrice IS NULL
-		       OR p.originalPrice <= 0
-		       OR p.imageUrl IS NULL
-		       OR p.imageUrl = ''
-		  )
+		  AND (p.originalPrice IS NULL OR p.originalPrice <= 0)
 		ORDER BY p.productId ASC
 		""")
 	List<Product> findNaverEnrichmentTargets(Pageable pageable);
