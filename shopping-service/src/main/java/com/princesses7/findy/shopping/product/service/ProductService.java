@@ -19,8 +19,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.shopping.inventory.entity.Inventory;
 import com.princesses7.findy.shopping.inventory.repository.InventoryRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductLocationResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductStockResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
@@ -125,8 +127,7 @@ public class ProductService {
 	}
 
 	public ProductDetailResponse getProductDetail(Long productId, long storeId) {
-		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
-			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
+		Product product = findActiveProduct(productId);
 
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
@@ -139,6 +140,37 @@ public class ProductService {
 		productRankingService.recordView(productId);
 
 		return ProductDetailResponse.from(product, inventory);
+	}
+
+	public ProductLocationResponse getProductLocation(Long productId, long storeId) {
+		Product product = findActiveProduct(productId);
+
+		if (product.getGridId() == null) {
+			throw new ProductException(PRODUCT_LOCATION_NOT_FOUND);
+		}
+
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		return ProductLocationResponse.from(product, resolvedStoreId);
+	}
+
+	public ProductStockResponse getProductStock(Long productId, long storeId) {
+		Product product = findActiveProduct(productId);
+
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		Inventory inventory = inventoryRepository.findByProductProductIdAndStoreId(
+				productId,
+				resolvedStoreId
+			)
+			.orElseThrow(() -> new ProductException(PRODUCT_STOCK_NOT_FOUND));
+
+		return ProductStockResponse.from(product, inventory);
+	}
+
+	private Product findActiveProduct(Long productId) {
+		return productRepository.findByProductIdAndDeletedAtIsNull(productId)
+			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 	}
 
 	private Page<Product> findProducts(

@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.global.response.ApiResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductDetailResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductLocationResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductPageResponse;
 import com.princesses7.findy.shopping.product.dto.response.ProductResponse;
+import com.princesses7.findy.shopping.product.dto.response.ProductStockResponse;
 import com.princesses7.findy.shopping.product.service.ProductService;
 import com.princesses7.findy.shopping.store.ResolvedStoreId;
 
@@ -89,5 +91,25 @@ public class ProductController {
 		ProductDetailResponse response = productService.getProductDetail(productId, storeId);
 
 		return ApiResponse.ok("상품 상세 조회에 성공했습니다.", response);
+	}
+
+	@GetMapping("/{productId}/location")
+	public ApiResponse<ProductLocationResponse> getProductLocation(
+		@PathVariable Long productId,
+		@ResolvedStoreId long storeId
+	) {
+		ProductLocationResponse response = productService.getProductLocation(productId, storeId);
+
+		return ApiResponse.ok("상품 위치 조회에 성공했습니다.", response);
+	}
+
+	@GetMapping("/{productId}/stock")
+	public ApiResponse<ProductStockResponse> getProductStock(
+		@PathVariable Long productId,
+		@ResolvedStoreId long storeId
+	) {
+		ProductStockResponse response = productService.getProductStock(productId, storeId);
+
+		return ApiResponse.ok("상품 재고 조회에 성공했습니다.", response);
 	}
 }
