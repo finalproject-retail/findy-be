@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,11 +20,12 @@ import lombok.RequiredArgsConstructor;
 @Validated
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/analytics/products")
 public class ProductPerformanceSummaryController {
 
 	private final ProductPerformanceSummaryService productPerformanceSummaryService;
 
-	@GetMapping("/api/v1/admin/analytics/products/performance-summary")
+	@GetMapping("/performance-summary")
 	public ApiResponse<ProductPerformanceSummaryResponse> getProductPerformanceSummary(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
