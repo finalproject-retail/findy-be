@@ -115,4 +115,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		ORDER BY p.productId ASC
 		""")
 	List<Product> findPriceMissingProducts(Pageable pageable);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+		  AND (
+		       p.originalPrice IS NULL
+		       OR p.originalPrice <= 0
+		       OR p.imageUrl IS NULL
+		       OR p.imageUrl = ''
+		  )
+		ORDER BY p.productId ASC
+		""")
+	List<Product> findNaverEnrichmentTargets(Pageable pageable);
 }

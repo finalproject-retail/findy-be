@@ -200,6 +200,36 @@ public class Product extends BaseTimeEntity {
 		return true;
 	}
 
+	public List<String> enrichFromNaverIfMissing(
+		Integer price,
+		String imageUrl,
+		String externalProductId
+	) {
+		List<String> updatedFields = new ArrayList<>();
+
+		if (isPriceMissing() && price != null && price > 0) {
+			this.originalPrice = price;
+			updatedFields.add("originalPrice");
+		}
+
+		if (isBlank(this.imageUrl) && hasText(imageUrl)) {
+			this.imageUrl = imageUrl;
+			updatedFields.add("imageUrl");
+		}
+
+		if (isBlank(this.externalSource) && hasText(externalProductId)) {
+			this.externalSource = "NAVER";
+			updatedFields.add("externalSource");
+		}
+
+		if (isBlank(this.externalProductId) && hasText(externalProductId)) {
+			this.externalProductId = externalProductId;
+			updatedFields.add("externalProductId");
+		}
+
+		return updatedFields;
+	}
+
 	private boolean hasText(String value) {
 		return value != null && !value.isBlank();
 	}
