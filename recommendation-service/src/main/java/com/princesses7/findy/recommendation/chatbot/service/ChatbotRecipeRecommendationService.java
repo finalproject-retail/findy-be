@@ -1,16 +1,18 @@
 package com.princesses7.findy.recommendation.chatbot.service;
 
-import java.util.Collection;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.chatbot.dto.ChatbotIntentAnalysis;
+import com.princesses7.findy.recommendation.chatbot.dto.ChatbotShoppingProduct;
+import com.princesses7.findy.recommendation.chatbot.dto.IngredientProductJudgeItem;
 import com.princesses7.findy.recommendation.chatbot.dto.RecipeIngredientAnalysis;
 import com.princesses7.findy.recommendation.chatbot.dto.RecipeIngredientItem;
 import com.princesses7.findy.recommendation.chatbot.dto.request.ChatbotMessageRequest;
@@ -18,13 +20,8 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotRecipeIn
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotRecipeProductRecommendationResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotRecipeRecommendationResponse;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
-import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
-import com.princesses7.findy.recommendation.inventory.repository.InventorySnapshotRepository;
-import com.princesses7.findy.recommendation.preference.entity.CategorySnapshot;
-import com.princesses7.findy.recommendation.preference.repository.CategorySnapshotRepository;
-import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
-import com.princesses7.findy.recommendation.product.repository.ProductSnapshotRepository;
-import com.princesses7.findy.recommendation.recommendation.support.RecommendationResultPolicy;
+import com.princesses7.findy.recommendation.chatbot.external.IngredientProductJudgeClient;
+import com.princesses7.findy.recommendation.chatbot.repository.ShoppingProductReadRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -35,11 +32,12 @@ public class ChatbotRecipeRecommendationService {
 
 	private static final long DEFAULT_STORE_ID = 1L;
 	private static final int PRODUCT_LIMIT_PER_INGREDIENT = 5;
+	private static final int CANDIDATE_LIMIT_PER_INGREDIENT = 20;
+	private static final double MIN_JUDGE_CONFIDENCE = 0.65;
 
 	private final ChatbotRecipeIngredientExtractor recipeIngredientExtractor;
-	private final ProductSnapshotRepository productRepository;
-	private final InventorySnapshotRepository inventoryRepository;
-	private final CategorySnapshotRepository categoryRepository;
+	private final ShoppingProductReadRepository shoppingProductReadRepository;
+	private final IngredientProductJudgeClient ingredientProductJudgeClient;
 
 	public ChatbotRecipeRecommendationResponse recommend(
 		Long userId,
@@ -66,7 +64,12 @@ public class ChatbotRecipeRecommendationService {
 
 		List<ChatbotRecipeIngredientRecommendationResponse> ingredients = recipeIngredientAnalysis.ingredients()
 			.stream()
-			.map(ingredient -> recommendIngredient(userId, storeId, ingredient))
+			.map(ingredient -> recommendIngredient(
+				userId,
+				storeId,
+				recipeIngredientAnalysis.recipeName(),
+				ingredient
+			))
 			.toList();
 
 		return new ChatbotRecipeRecommendationResponse(
@@ -79,21 +82,13 @@ public class ChatbotRecipeRecommendationService {
 	private ChatbotRecipeIngredientRecommendationResponse recommendIngredient(
 		Long userId,
 		Long storeId,
+		String recipeName,
 		RecipeIngredientItem ingredient
 	) {
-		List<ProductSnapshot> products = findProductsByIngredient(ingredient.ingredientName());
-
-		Map<Long, InventorySnapshot> inventoryMap = findInventoryMap(
+		List<ChatbotShoppingProduct> products = findProductsByIngredient(
+			recipeName,
 			storeId,
-			products.stream()
-				.map(ProductSnapshot::getProductId)
-				.toList()
-		);
-
-		Map<Long, String> categoryNameMap = findCategoryNameMap(
-			products.stream()
-				.map(ProductSnapshot::getCategoryId)
-				.toList()
+			ingredient.ingredientName()
 		);
 
 		List<ChatbotRecipeProductRecommendationResponse> recommendedProducts = products.stream()
@@ -101,8 +96,6 @@ public class ChatbotRecipeRecommendationService {
 				userId,
 				storeId,
 				product,
-				categoryNameMap.getOrDefault(product.getCategoryId(), ""),
-				inventoryMap.get(product.getProductId()),
 				isFirstProduct(products, product)
 			))
 			.toList();
@@ -114,68 +107,108 @@ public class ChatbotRecipeRecommendationService {
 		);
 	}
 
-	private List<ProductSnapshot> findProductsByIngredient(String ingredientName) {
+	private List<ChatbotShoppingProduct> findProductsByIngredient(
+		String recipeName,
+		Long storeId,
+		String ingredientName
+	) {
 		if (ingredientName == null || ingredientName.isBlank()) {
 			return List.of();
 		}
 
-		List<ProductSnapshot> products = productRepository.searchByKeyword(
-			ingredientName,
-			PageRequest.of(0, PRODUCT_LIMIT_PER_INGREDIENT)
+		List<ChatbotShoppingProduct> candidates = distinctRecommendableProducts(
+			shoppingProductReadRepository.searchIngredientCandidates(
+				ingredientName,
+				storeId,
+				CANDIDATE_LIMIT_PER_INGREDIENT
+			),
+			CANDIDATE_LIMIT_PER_INGREDIENT
 		);
 
-		Map<Long, ProductSnapshot> productMap = new LinkedHashMap<>();
+		if (candidates.isEmpty()) {
+			return List.of();
+		}
 
-		for (ProductSnapshot product : products) {
-			if (RecommendationResultPolicy.isDisplayableProduct(product)) {
-				productMap.putIfAbsent(product.getProductId(), product);
+		List<IngredientProductJudgeItem> judgedItems = ingredientProductJudgeClient.judge(
+			recipeName,
+			ingredientName,
+			candidates,
+			PRODUCT_LIMIT_PER_INGREDIENT
+		);
+
+		if (judgedItems.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, IngredientProductJudgeItem> suitableJudgeMap = judgedItems.stream()
+			.filter(IngredientProductJudgeItem::isSuitable)
+			.filter(item -> item.safeConfidence() >= MIN_JUDGE_CONFIDENCE)
+			.collect(Collectors.toMap(
+				IngredientProductJudgeItem::productId,
+				item -> item,
+				(left, right) -> left,
+				LinkedHashMap::new
+			));
+
+		if (suitableJudgeMap.isEmpty()) {
+			return List.of();
+		}
+
+		Set<Long> candidateProductIds = candidates.stream()
+			.map(ChatbotShoppingProduct::productId)
+			.collect(Collectors.toSet());
+
+		return suitableJudgeMap.values()
+			.stream()
+			.filter(item -> candidateProductIds.contains(item.productId()))
+			.sorted(
+				Comparator.comparing(IngredientProductJudgeItem::safeConfidence)
+					.reversed()
+			)
+			.map(item -> findCandidate(candidates, item.productId()))
+			.filter(product -> product != null)
+			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
+			.toList();
+	}
+
+	private ChatbotShoppingProduct findCandidate(
+		List<ChatbotShoppingProduct> candidates,
+		Long productId
+	) {
+		if (productId == null) {
+			return null;
+		}
+
+		return candidates.stream()
+			.filter(candidate -> productId.equals(candidate.productId()))
+			.findFirst()
+			.orElse(null);
+	}
+
+	private List<ChatbotShoppingProduct> distinctRecommendableProducts(
+		List<ChatbotShoppingProduct> products,
+		int limit
+	) {
+		Map<Long, ChatbotShoppingProduct> productMap = new LinkedHashMap<>();
+
+		for (ChatbotShoppingProduct product : products) {
+			if (product != null && product.isRecommendable()) {
+				productMap.putIfAbsent(product.productId(), product);
 			}
 		}
 
 		return productMap.values()
 			.stream()
-			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
+			.limit(limit)
 			.toList();
 	}
 
-	private Map<Long, InventorySnapshot> findInventoryMap(
-		Long storeId,
-		Collection<Long> productIds
-	) {
-		if (productIds.isEmpty()) {
-			return Map.of();
-		}
-
-		return inventoryRepository.findByStoreIdAndProductIdIn(storeId, productIds)
-			.stream()
-			.collect(Collectors.toMap(
-				InventorySnapshot::getProductId,
-				inventory -> inventory,
-				(left, right) -> left
-			));
-	}
-
-	private Map<Long, String> findCategoryNameMap(Collection<Long> categoryIds) {
-		if (categoryIds.isEmpty()) {
-			return Map.of();
-		}
-
-		return categoryRepository.findByCategoryIdIn(categoryIds)
-			.stream()
-			.filter(CategorySnapshot::isActive)
-			.collect(Collectors.toMap(
-				CategorySnapshot::getCategoryId,
-				CategorySnapshot::getCategoryName,
-				(left, right) -> left
-			));
-	}
-
 	private boolean isFirstProduct(
-		List<ProductSnapshot> products,
-		ProductSnapshot product
+		List<ChatbotShoppingProduct> products,
+		ChatbotShoppingProduct product
 	) {
 		return !products.isEmpty()
-			&& products.get(0).getProductId().equals(product.getProductId());
+			&& products.get(0).productId().equals(product.productId());
 	}
 
 	private Long normalizeStoreId(Long storeId) {

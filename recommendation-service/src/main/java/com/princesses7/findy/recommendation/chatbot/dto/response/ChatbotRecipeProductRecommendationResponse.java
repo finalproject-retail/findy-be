@@ -2,6 +2,7 @@ package com.princesses7.findy.recommendation.chatbot.dto.response;
 
 import java.math.BigDecimal;
 
+import com.princesses7.findy.recommendation.chatbot.dto.ChatbotShoppingProduct;
 import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
 import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 
@@ -48,6 +49,30 @@ public record ChatbotRecipeProductRecommendationResponse(
 		);
 	}
 
+	public static ChatbotRecipeProductRecommendationResponse from(
+		Long userId,
+		Long storeId,
+		ChatbotShoppingProduct product,
+		boolean selected
+	) {
+		return new ChatbotRecipeProductRecommendationResponse(
+			product.productId(),
+			product.productName(),
+			product.brandName(),
+			product.imageUrl(),
+			product.categoryId(),
+			product.categoryName(),
+			product.originalPrice(),
+			product.salePrice(),
+			product.discountRate(),
+			product.stockQuantity(),
+			product.stockStatus(),
+			createStockText(product),
+			selected,
+			createSubstituteEndpoint(userId, storeId, product.productId())
+		);
+	}
+
 	private static String createSubstituteEndpoint(
 		Long userId,
 		Long storeId,
@@ -71,5 +96,21 @@ public record ChatbotRecipeProductRecommendationResponse(
 		}
 
 		return "재고 " + inventory.getStockQuantity() + "개";
+	}
+
+	private static String createStockText(ChatbotShoppingProduct product) {
+		if (product.stockQuantity() == null) {
+			return "재고 정보 없음";
+		}
+
+		if (product.stockQuantity() <= 0 || "OUT_OF_STOCK".equals(product.stockStatus())) {
+			return "품절";
+		}
+
+		if (product.stockQuantity() <= 5 || "LOW_STOCK".equals(product.stockStatus())) {
+			return "품절임박 " + product.stockQuantity() + "개";
+		}
+
+		return "재고 " + product.stockQuantity() + "개";
 	}
 }
