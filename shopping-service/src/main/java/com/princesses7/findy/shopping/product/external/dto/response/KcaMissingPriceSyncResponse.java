@@ -8,23 +8,21 @@ public record KcaMissingPriceSyncResponse(
 	int reviewRequiredCount,
 	int skippedCount,
 	int appliedCount,
-	int page,
-	int size,
-	long offset,
-	int externalTotalCount,
-	boolean hasNext,
+	String goodInspectDay,
+	int sourceItemCount,
+	int aggregatedItemCount,
 	List<KcaMissingPriceSyncItemResponse> items
 ) {
 
 	public static KcaMissingPriceSyncResponse from(List<KcaMissingPriceSyncItemResponse> items) {
-		return from(items, 0, items.size(), items.size());
+		return from(items, null, items.size(), items.size());
 	}
 
 	public static KcaMissingPriceSyncResponse from(
 		List<KcaMissingPriceSyncItemResponse> items,
-		int page,
-		int size,
-		int externalTotalCount
+		String goodInspectDay,
+		int sourceItemCount,
+		int aggregatedItemCount
 	) {
 		int matchedCount = countByStatus(items, "MATCHED");
 		int reviewRequiredCount = countByStatus(items, "REVIEW_REQUIRED");
@@ -32,8 +30,6 @@ public record KcaMissingPriceSyncResponse(
 		int appliedCount = (int)items.stream()
 			.filter(KcaMissingPriceSyncItemResponse::applied)
 			.count();
-		long offset = (long)page * size;
-		boolean hasNext = offset + items.size() < externalTotalCount;
 
 		return new KcaMissingPriceSyncResponse(
 			items.size(),
@@ -41,11 +37,9 @@ public record KcaMissingPriceSyncResponse(
 			reviewRequiredCount,
 			skippedCount,
 			appliedCount,
-			page,
-			size,
-			offset,
-			externalTotalCount,
-			hasNext,
+			goodInspectDay,
+			sourceItemCount,
+			aggregatedItemCount,
 			items
 		);
 	}

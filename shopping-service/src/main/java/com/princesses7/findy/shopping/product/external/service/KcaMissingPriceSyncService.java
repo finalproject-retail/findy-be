@@ -1,10 +1,15 @@
 package com.princesses7.findy.shopping.product.external.service;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.data.domain.PageRequest;
@@ -32,9 +37,11 @@ import lombok.RequiredArgsConstructor;
 public class KcaMissingPriceSyncService {
 
 	private static final String EXTERNAL_SOURCE = "KCA";
+	private static final String AGGREGATED_STORE_ID = "AGGREGATED";
 	private static final BigDecimal MATCHED_THRESHOLD = new BigDecimal("0.7000");
 	private static final BigDecimal REVIEW_THRESHOLD = new BigDecimal("0.3000");
 	private static final DateTimeFormatter KCA_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
+	private static final int LATEST_INSPECT_DAY_SEARCH_WEEKS = 26;
 
 	private final KcaProductPriceClient kcaProductPriceClient;
 	private final ProductRepository productRepository;
@@ -46,36 +53,139 @@ public class KcaMissingPriceSyncService {
 	public KcaMissingPriceSyncResponse syncMissingPrices(
 		String goodInspectDay,
 		String entpId,
-		String goodId,
-		int page,
-		Integer size,
-		Integer limit
+		String goodId
 	) {
-		KcaProductPriceResponse priceResponse = kcaProductPriceClient.getProductPrices(
+		KcaProductPriceResponse priceResponse = findProductPrices(
 			goodInspectDay,
 			entpId,
 			goodId
 		);
 
-		int resolvedPage = resolvePage(page);
-		int resolvedSize = resolveSize(size, limit);
-
 		if (priceResponse.items() == null || priceResponse.items().isEmpty()) {
-			return KcaMissingPriceSyncResponse.from(List.of(), resolvedPage, resolvedSize, 0);
+			return KcaMissingPriceSyncResponse.from(List.of(), resolveInspectDay(priceResponse), 0, 0);
 		}
 
 		List<Product> priceMissingProducts = productRepository.findPriceMissingProducts(PageRequest.of(0, 1000));
-		int externalTotalCount = priceResponse.items().size();
-		long offset = (long)resolvedPage * resolvedSize;
+		List<KcaProductPriceItemResponse> aggregatedItems = aggregateByProduct(priceResponse.items());
 
-		List<KcaMissingPriceSyncItemResponse> results = priceResponse.items()
+		List<KcaMissingPriceSyncItemResponse> results = aggregatedItems
 			.stream()
-			.skip(offset)
-			.limit(resolvedSize)
 			.map(priceItem -> syncPriceItem(priceItem, priceMissingProducts))
 			.toList();
 
-		return KcaMissingPriceSyncResponse.from(results, resolvedPage, resolvedSize, externalTotalCount);
+		return KcaMissingPriceSyncResponse.from(
+			results,
+			resolveInspectDay(priceResponse),
+			priceResponse.items().size(),
+			aggregatedItems.size()
+		);
+	}
+
+	private KcaProductPriceResponse findProductPrices(
+		String goodInspectDay,
+		String entpId,
+		String goodId
+	) {
+		if (hasText(goodInspectDay)) {
+			return kcaProductPriceClient.getProductPrices(goodInspectDay, entpId, goodId);
+		}
+
+		LocalDate inspectDay = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.FRIDAY));
+
+		for (int index = 0; index < LATEST_INSPECT_DAY_SEARCH_WEEKS; index++) {
+			String candidateInspectDay = inspectDay.minusWeeks(index).format(KCA_DATE_FORMATTER);
+			KcaProductPriceResponse response = kcaProductPriceClient.getProductPrices(
+				candidateInspectDay,
+				entpId,
+				goodId
+			);
+
+			if (response.items() != null && !response.items().isEmpty()) {
+				return response;
+			}
+		}
+
+		return new KcaProductPriceResponse(null, "latest inspect day not found", List.of());
+	}
+
+	private List<KcaProductPriceItemResponse> aggregateByProduct(List<KcaProductPriceItemResponse> items) {
+		Map<String, List<KcaProductPriceItemResponse>> itemsByProduct = new LinkedHashMap<>();
+
+		for (KcaProductPriceItemResponse item : items) {
+			String key = resolveProductKey(item);
+
+			if (!hasText(key)) {
+				continue;
+			}
+
+			itemsByProduct.computeIfAbsent(key, ignored -> new ArrayList<>())
+				.add(item);
+		}
+
+		return itemsByProduct.values()
+			.stream()
+			.map(this::aggregateProductItems)
+			.flatMap(Optional::stream)
+			.toList();
+	}
+
+	private Optional<KcaProductPriceItemResponse> aggregateProductItems(List<KcaProductPriceItemResponse> items) {
+		if (items.isEmpty()) {
+			return Optional.empty();
+		}
+
+		KcaProductPriceItemResponse representative = items.get(0);
+		Integer medianPrice = calculateMedianPrice(items);
+
+		if (medianPrice == null) {
+			return Optional.empty();
+		}
+
+		return Optional.of(new KcaProductPriceItemResponse(
+			representative.goodInspectDay(),
+			representative.goodId(),
+			representative.goodName(),
+			AGGREGATED_STORE_ID,
+			AGGREGATED_STORE_ID,
+			representative.productEntpCode(),
+			representative.productEntpName(),
+			String.valueOf(medianPrice),
+			null,
+			null,
+			null,
+			null,
+			null,
+			representative.inputDttm()
+		));
+	}
+
+	private Integer calculateMedianPrice(List<KcaProductPriceItemResponse> items) {
+		List<Integer> prices = items.stream()
+			.map(KcaProductPriceItemResponse::goodPrice)
+			.map(this::parsePrice)
+			.filter(price -> price != null && price > 0)
+			.sorted()
+			.toList();
+
+		if (prices.isEmpty()) {
+			return null;
+		}
+
+		int middleIndex = prices.size() / 2;
+
+		if (prices.size() % 2 == 1) {
+			return prices.get(middleIndex);
+		}
+
+		return (prices.get(middleIndex - 1) + prices.get(middleIndex)) / 2;
+	}
+
+	private String resolveProductKey(KcaProductPriceItemResponse item) {
+		if (hasText(item.goodId())) {
+			return item.goodId();
+		}
+
+		return item.goodName();
 	}
 
 	private KcaMissingPriceSyncItemResponse syncPriceItem(
@@ -234,26 +344,6 @@ public class KcaMissingPriceSyncService {
 		));
 	}
 
-	private int resolvePage(int page) {
-		if (page <= 0) {
-			return 0;
-		}
-
-		return page;
-	}
-
-	private int resolveSize(Integer size, Integer limit) {
-		if (size != null && size > 0) {
-			return size;
-		}
-
-		if (limit == null || limit <= 0) {
-			return 50;
-		}
-
-		return limit;
-	}
-
 	private Integer parsePrice(String value) {
 		if (value == null || value.isBlank()) {
 			return null;
@@ -276,6 +366,18 @@ public class KcaMissingPriceSyncService {
 		} catch (Exception exception) {
 			return null;
 		}
+	}
+
+	private String resolveInspectDay(KcaProductPriceResponse response) {
+		if (response.items() == null || response.items().isEmpty()) {
+			return null;
+		}
+
+		return response.items().get(0).goodInspectDay();
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
 	}
 
 	private record ProductMatchCandidate(
