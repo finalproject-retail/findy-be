@@ -2,6 +2,8 @@ package com.retail.map_service.domain.path;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -51,8 +53,43 @@ public final class AislePathfinder {
 		Long toGridId,
 		StoreGridMap storeGridMap
 	) {
+		return findPathGridIds(fromGridId, toGridId, storeGridMap, List.of());
+	}
+
+	/**
+	 * 최단 경로를 찾되, 동일 칸 수일 때 {@code priorPathGridIds}와 겹침·즉시 되돌아감을 최소화.
+	 */
+	public static List<Long> findPathGridIds(
+		Long fromGridId,
+		Long toGridId,
+		StoreGridMap storeGridMap,
+		List<Long> priorPathGridIds
+	) {
 		if (!storeGridMap.isWalkable(fromGridId) || !storeGridMap.isWalkable(toGridId)) {
 			return List.of();
+		}
+
+		if (priorPathGridIds == null || priorPathGridIds.isEmpty()) {
+			return bfsPathByGridId(fromGridId, toGridId, storeGridMap);
+		}
+
+		Map<Long, Integer> distances = bfsDistancesByGridId(fromGridId, toGridId, storeGridMap);
+		if (!distances.containsKey(toGridId)) {
+			return List.of();
+		}
+
+		Set<Long> priorPathSet = new HashSet<>(priorPathGridIds);
+		Long immediateBacktrackGridId = resolveImmediateBacktrackGridId(fromGridId, priorPathGridIds);
+		List<Long> path = reconstructShortestPathWithTieBreak(
+			fromGridId,
+			toGridId,
+			storeGridMap,
+			distances,
+			priorPathSet,
+			immediateBacktrackGridId
+		);
+		if (!path.isEmpty()) {
+			return path;
 		}
 
 		return bfsPathByGridId(fromGridId, toGridId, storeGridMap);
@@ -103,6 +140,153 @@ public final class AislePathfinder {
 		}
 
 		return null;
+	}
+
+	private static Long resolveImmediateBacktrackGridId(Long fromGridId, List<Long> priorPathGridIds) {
+		if (priorPathGridIds.size() < 2) {
+			return null;
+		}
+
+		Long lastGridId = priorPathGridIds.get(priorPathGridIds.size() - 1);
+		if (!fromGridId.equals(lastGridId)) {
+			return null;
+		}
+
+		return priorPathGridIds.get(priorPathGridIds.size() - 2);
+	}
+
+	private static Map<Long, Integer> bfsDistancesByGridId(
+		Long fromGridId,
+		Long toGridId,
+		StoreGridMap storeGridMap
+	) {
+		Map<Long, Integer> distances = new HashMap<>();
+		Set<Long> visited = new HashSet<>();
+		visited.add(fromGridId);
+		Queue<Long> queue = new ArrayDeque<>();
+		queue.add(fromGridId);
+		distances.put(fromGridId, 0);
+
+		while (!queue.isEmpty()) {
+			Long currentGridId = queue.poll();
+			if (currentGridId.equals(toGridId)) {
+				break;
+			}
+
+			int nextDistance = distances.get(currentGridId) + 1;
+			for (Long neighborGridId : neighborGridIds(currentGridId, storeGridMap)) {
+				if (!storeGridMap.isWalkable(neighborGridId) || !visited.add(neighborGridId)) {
+					continue;
+				}
+
+				distances.put(neighborGridId, nextDistance);
+				queue.add(neighborGridId);
+			}
+		}
+
+		return distances;
+	}
+
+	private static List<Long> reconstructShortestPathWithTieBreak(
+		Long fromGridId,
+		Long toGridId,
+		StoreGridMap storeGridMap,
+		Map<Long, Integer> distances,
+		Set<Long> priorPathSet,
+		Long immediateBacktrackGridId
+	) {
+		List<Long> path = new ArrayList<>();
+		path.add(fromGridId);
+		if (searchShortestPathWithTieBreak(
+			fromGridId,
+			toGridId,
+			storeGridMap,
+			distances,
+			priorPathSet,
+			immediateBacktrackGridId,
+			path
+		)) {
+			return path;
+		}
+
+		return List.of();
+	}
+
+	/** 최단거리 DAG 위에서 tie-break 후보를 순서대로 시도한다 (greedy 단일 선택은 막다른 길 가능). */
+	private static boolean searchShortestPathWithTieBreak(
+		Long currentGridId,
+		Long toGridId,
+		StoreGridMap storeGridMap,
+		Map<Long, Integer> distances,
+		Set<Long> priorPathSet,
+		Long immediateBacktrackGridId,
+		List<Long> path
+	) {
+		if (currentGridId.equals(toGridId)) {
+			return true;
+		}
+
+		int nextDistance = distances.get(currentGridId) + 1;
+		List<Long> candidates = new ArrayList<>();
+		List<Integer> scores = new ArrayList<>();
+
+		for (Long neighborGridId : neighborGridIds(currentGridId, storeGridMap)) {
+			if (!storeGridMap.isWalkable(neighborGridId)) {
+				continue;
+			}
+
+			Integer neighborDistance = distances.get(neighborGridId);
+			if (neighborDistance == null || neighborDistance != nextDistance) {
+				continue;
+			}
+
+			candidates.add(neighborGridId);
+			scores.add(tieBreakScore(neighborGridId, priorPathSet, immediateBacktrackGridId));
+		}
+
+		if (candidates.isEmpty()) {
+			return false;
+		}
+
+		Integer[] candidateOrder = new Integer[candidates.size()];
+		for (int i = 0; i < candidateOrder.length; i++) {
+			candidateOrder[i] = i;
+		}
+		Arrays.sort(candidateOrder, Comparator.comparingInt(scores::get));
+
+		for (int candidateIndex : candidateOrder) {
+			Long neighborGridId = candidates.get(candidateIndex);
+			path.add(neighborGridId);
+			if (searchShortestPathWithTieBreak(
+				neighborGridId,
+				toGridId,
+				storeGridMap,
+				distances,
+				priorPathSet,
+				immediateBacktrackGridId,
+				path
+			)) {
+				return true;
+			}
+			path.remove(path.size() - 1);
+		}
+
+		return false;
+	}
+
+	private static int tieBreakScore(
+		Long neighborGridId,
+		Set<Long> priorPathSet,
+		Long immediateBacktrackGridId
+	) {
+		int score = 0;
+		if (priorPathSet.contains(neighborGridId)) {
+			score += 1_000;
+		}
+		if (neighborGridId.equals(immediateBacktrackGridId)) {
+			score += 10_000;
+		}
+		return score;
 	}
 
 	private static List<Long> bfsPathByGridId(

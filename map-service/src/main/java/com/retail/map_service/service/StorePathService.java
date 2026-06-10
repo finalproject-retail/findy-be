@@ -87,7 +87,8 @@ public class StorePathService {
 			List<Long> legGridIds = AislePathfinder.findPathGridIds(
 				cursorGridId,
 				goalGridId,
-				storeGridMap
+				storeGridMap,
+				fullPathGridIds
 			);
 			if (legGridIds.size() < 2) {
 				throw new BaseException(
