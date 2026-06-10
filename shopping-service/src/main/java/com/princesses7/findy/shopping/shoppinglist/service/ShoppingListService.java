@@ -123,8 +123,7 @@ public class ShoppingListService {
 		AddCategoryShoppingListItemRequest request,
 		long storeId
 	) {
-		long resolvedStoreId = StoreIdSupport.resolve(storeId);
-		ShoppingList shoppingList = getShoppingListByUserId(userId);
+		ShoppingList shoppingList = getOrCreateShoppingListByUserId(userId);
 		CategoryItemTarget target = resolveCategoryTarget(request);
 
 		shoppingList.addCategoryItem(
@@ -133,7 +132,7 @@ public class ShoppingListService {
 			request.quantityOrDefault()
 		);
 
-		return toResponse(shoppingList, resolvedStoreId);
+		return toResponse(shoppingList, storeId);
 	}
 
 	@Transactional
@@ -321,6 +320,20 @@ public class ShoppingListService {
 	private ShoppingList getShoppingListByUserId(Long userId) {
 		return shoppingListRepository.findByUserId(userId)
 			.orElseThrow(() -> new ShoppingListException(SHOPPING_LIST_NOT_FOUND));
+	}
+
+	private ShoppingList getOrCreateShoppingListByUserId(Long userId) {
+		return shoppingListRepository.findByUserId(userId)
+			.orElseGet(() -> createEmptyShoppingList(userId));
+	}
+
+	private ShoppingList createEmptyShoppingList(Long userId) {
+		Cart cart = cartRepository.findByUserId(userId)
+			.orElseGet(() -> cartRepository.save(Cart.create(userId)));
+
+		ShoppingList shoppingList = ShoppingList.createEmpty(cart);
+
+		return shoppingListRepository.save(shoppingList);
 	}
 
 	private void validateCheckedItemsPurchasable(Cart cart, long storeId) {
