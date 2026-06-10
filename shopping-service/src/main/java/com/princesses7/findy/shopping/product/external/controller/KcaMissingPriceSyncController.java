@@ -23,11 +23,13 @@ public class KcaMissingPriceSyncController {
 		@RequestParam String goodInspectDay,
 		@RequestParam(required = false) String entpId,
 		@RequestParam(required = false) String goodId,
-		@RequestParam(defaultValue = "50") int limit
+		@RequestParam(defaultValue = "0") int page,
+		@RequestParam(required = false) Integer size,
+		@RequestParam(required = false) Integer limit
 	) {
 		return ApiResponse.ok(
 			"한국소비자원 가격 기반 미입력 상품 가격 보정에 성공했습니다.",
-			kcaMissingPriceSyncService.syncMissingPrices(goodInspectDay, entpId, goodId, limit)
+			kcaMissingPriceSyncService.syncMissingPrices(goodInspectDay, entpId, goodId, page, size, limit)
 		);
 	}
 }

@@ -47,7 +47,9 @@ public class KcaMissingPriceSyncService {
 		String goodInspectDay,
 		String entpId,
 		String goodId,
-		int limit
+		int page,
+		Integer size,
+		Integer limit
 	) {
 		KcaProductPriceResponse priceResponse = kcaProductPriceClient.getProductPrices(
 			goodInspectDay,
@@ -55,19 +57,25 @@ public class KcaMissingPriceSyncService {
 			goodId
 		);
 
+		int resolvedPage = resolvePage(page);
+		int resolvedSize = resolveSize(size, limit);
+
 		if (priceResponse.items() == null || priceResponse.items().isEmpty()) {
-			return KcaMissingPriceSyncResponse.from(List.of());
+			return KcaMissingPriceSyncResponse.from(List.of(), resolvedPage, resolvedSize, 0);
 		}
 
 		List<Product> priceMissingProducts = productRepository.findPriceMissingProducts(PageRequest.of(0, 1000));
+		int externalTotalCount = priceResponse.items().size();
+		long offset = (long)resolvedPage * resolvedSize;
 
 		List<KcaMissingPriceSyncItemResponse> results = priceResponse.items()
 			.stream()
-			.limit(resolveLimit(limit))
+			.skip(offset)
+			.limit(resolvedSize)
 			.map(priceItem -> syncPriceItem(priceItem, priceMissingProducts))
 			.toList();
 
-		return KcaMissingPriceSyncResponse.from(results);
+		return KcaMissingPriceSyncResponse.from(results, resolvedPage, resolvedSize, externalTotalCount);
 	}
 
 	private KcaMissingPriceSyncItemResponse syncPriceItem(
@@ -226,8 +234,20 @@ public class KcaMissingPriceSyncService {
 		));
 	}
 
-	private int resolveLimit(int limit) {
-		if (limit <= 0) {
+	private int resolvePage(int page) {
+		if (page <= 0) {
+			return 0;
+		}
+
+		return page;
+	}
+
+	private int resolveSize(Integer size, Integer limit) {
+		if (size != null && size > 0) {
+			return size;
+		}
+
+		if (limit == null || limit <= 0) {
 			return 50;
 		}
 
