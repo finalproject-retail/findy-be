@@ -399,8 +399,8 @@ public class UserMovementVisualizationRepository {
 		Integer limit
 	) {
 		MapSqlParameterSource params = new MapSqlParameterSource()
-			.addValue("startedAt", periodRange.startedAt())
-			.addValue("endedAt", periodRange.endedAt())
+			.addValue("startedAt", periodRange.fromAt())
+			.addValue("endedAt", periodRange.toExclusiveAt())
 			.addValue("storeId", storeId)
 			.addValue("minStaySeconds", minStaySeconds)
 			.addValue("limit", limit);
