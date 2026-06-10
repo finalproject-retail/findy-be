@@ -25,7 +25,8 @@ import lombok.RequiredArgsConstructor;
 @Transactional(readOnly = true)
 public class ZoneCongestionAnalyticsService {
 
-	private static final int DEFAULT_INTERVAL_MINUTES = 5;
+	// TODO: 테스트용으로 임의 설정한 값이므로 추후 수정 필요
+	private static final int DEFAULT_INTERVAL_MINUTES = 1;
 
 	private final AnalyticsPeriodResolver analyticsPeriodResolver;
 	private final ZoneCongestionAnalyticsRepository zoneCongestionAnalyticsRepository;
