@@ -11,18 +11,22 @@ public record KcaMissingPriceSyncResponse(
 	String goodInspectDay,
 	int sourceItemCount,
 	int aggregatedItemCount,
+	String kcaResultCode,
+	String kcaResultMessage,
 	List<KcaMissingPriceSyncItemResponse> items
 ) {
 
 	public static KcaMissingPriceSyncResponse from(List<KcaMissingPriceSyncItemResponse> items) {
-		return from(items, null, items.size(), items.size());
+		return from(items, null, items.size(), items.size(), null, null);
 	}
 
 	public static KcaMissingPriceSyncResponse from(
 		List<KcaMissingPriceSyncItemResponse> items,
 		String goodInspectDay,
 		int sourceItemCount,
-		int aggregatedItemCount
+		int aggregatedItemCount,
+		String kcaResultCode,
+		String kcaResultMessage
 	) {
 		int matchedCount = countByStatus(items, "MATCHED");
 		int reviewRequiredCount = countByStatus(items, "REVIEW_REQUIRED");
@@ -40,6 +44,8 @@ public record KcaMissingPriceSyncResponse(
 			goodInspectDay,
 			sourceItemCount,
 			aggregatedItemCount,
+			kcaResultCode,
+			kcaResultMessage,
 			items
 		);
 	}

@@ -66,7 +66,14 @@ public class KcaMissingPriceSyncService {
 		);
 
 		if (priceResponse.items() == null || priceResponse.items().isEmpty()) {
-			return KcaMissingPriceSyncResponse.from(List.of(), resolveInspectDay(priceResponse), 0, 0);
+			return KcaMissingPriceSyncResponse.from(
+				List.of(),
+				resolveInspectDay(priceResponse),
+				0,
+				0,
+				priceResponse.resultCode(),
+				priceResponse.resultMessage()
+			);
 		}
 
 		List<Product> priceMissingProducts = productRepository.findPriceMissingProducts(PageRequest.of(0, 1000));
@@ -81,7 +88,9 @@ public class KcaMissingPriceSyncService {
 			results,
 			resolveInspectDay(priceResponse),
 			priceResponse.items().size(),
-			aggregatedItems.size()
+			aggregatedItems.size(),
+			priceResponse.resultCode(),
+			priceResponse.resultMessage()
 		);
 	}
 
