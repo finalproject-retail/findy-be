@@ -19,15 +19,12 @@ import lombok.RequiredArgsConstructor;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping({
-	"/api/v1/admin/analytics",
-	"/api/v1/analytics"
-})
+@RequestMapping("/api/v1/analytics/performance-summary")
 public class AdminPerformanceSummaryController {
 
 	private final PerformanceSummaryService performanceSummaryService;
 
-	@GetMapping("/performance-summary")
+	@GetMapping
 	public ApiResponse<PerformanceSummaryResponse> getSummary(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
@@ -49,7 +46,7 @@ public class AdminPerformanceSummaryController {
 		return ApiResponse.ok("성과 요약 조회에 성공했습니다.", response);
 	}
 
-	@GetMapping("/performance-summary/period")
+	@GetMapping("/period")
 	public ApiResponse<PerformancePeriodSummaryResponse> getPeriodSummary(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

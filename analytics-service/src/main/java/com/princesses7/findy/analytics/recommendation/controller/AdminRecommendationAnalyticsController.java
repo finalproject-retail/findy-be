@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 @Validated
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1/admin/analytics")
+@RequestMapping("/api/v1/analytics")
 public class AdminRecommendationAnalyticsController {
 
 	private static final String SUBSTITUTE_RECOMMENDATION_TYPE = "SUBSTITUTE";

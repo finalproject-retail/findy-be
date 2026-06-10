@@ -5,6 +5,7 @@ import java.time.LocalDate;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,11 +20,12 @@ import lombok.RequiredArgsConstructor;
 @Validated
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/api/v1/analytics/inventories")
 public class AdminStockoutAnalyticsController {
 
 	private final StockoutAnalyticsService stockoutAnalyticsService;
 
-	@GetMapping("/api/v1/admin/analytics/inventories/stockouts")
+	@GetMapping("/stockouts")
 	public ApiResponse<StockoutAnalyticsResponse> getStockoutAnalytics(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
