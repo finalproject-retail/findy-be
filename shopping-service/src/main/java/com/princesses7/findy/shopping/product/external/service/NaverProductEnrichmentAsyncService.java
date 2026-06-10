@@ -22,6 +22,7 @@ public class NaverProductEnrichmentAsyncService {
 	private static final String STATUS_RUNNING = "RUNNING";
 	private static final String STATUS_COMPLETED = "COMPLETED";
 	private static final String STATUS_FAILED = "FAILED";
+	private static final String STATUS_STOPPED = "STOPPED";
 	private static final String STATUS_ALREADY_RUNNING = "ALREADY_RUNNING";
 
 	private final NaverProductEnrichmentService enrichmentService;
@@ -90,6 +91,17 @@ public class NaverProductEnrichmentAsyncService {
 		return status.get();
 	}
 
+	public NaverProductEnrichmentAsyncStatusResponse stop() {
+		if (!running.compareAndSet(true, false)) {
+			return status.get();
+		}
+
+		NaverProductEnrichmentAsyncStatusResponse current = status.get();
+		NaverProductEnrichmentAsyncStatusResponse stopped = updateStatus(current, STATUS_STOPPED, false, null);
+		status.set(stopped);
+		return stopped;
+	}
+
 	private void run(
 		int startOffset,
 		int limit,
@@ -110,7 +122,11 @@ public class NaverProductEnrichmentAsyncService {
 					return;
 				}
 
-				offset = startOffset;
+				if (result.appliedCount() > 0) {
+					offset = startOffset;
+				} else {
+					offset = result.nextOffset();
+				}
 				sleep(delayMillis);
 			}
 		} catch (Exception exception) {
