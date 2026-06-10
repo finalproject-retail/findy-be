@@ -32,8 +32,8 @@ import lombok.RequiredArgsConstructor;
 public class KcaMissingPriceSyncService {
 
 	private static final String EXTERNAL_SOURCE = "KCA";
-	private static final BigDecimal MATCHED_THRESHOLD = new BigDecimal("0.8500");
-	private static final BigDecimal REVIEW_THRESHOLD = new BigDecimal("0.5500");
+	private static final BigDecimal MATCHED_THRESHOLD = new BigDecimal("0.7000");
+	private static final BigDecimal REVIEW_THRESHOLD = new BigDecimal("0.3000");
 	private static final DateTimeFormatter KCA_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
 	private final KcaProductPriceClient kcaProductPriceClient;
