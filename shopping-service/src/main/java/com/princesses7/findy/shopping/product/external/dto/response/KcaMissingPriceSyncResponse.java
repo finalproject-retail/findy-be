@@ -24,6 +24,9 @@ public record KcaMissingPriceSyncResponse(
 
 	public static KcaMissingPriceSyncResponse from(List<KcaMissingPriceSyncItemResponse> items) {
 		return from(items, null, items.size(), items.size(), null, null, 0, 0, 0, items.size(), null, false);
+	}
+
+	public static KcaMissingPriceSyncResponse from(
 		List<KcaMissingPriceSyncItemResponse> items,
 		String goodInspectDay,
 		int sourceItemCount,
