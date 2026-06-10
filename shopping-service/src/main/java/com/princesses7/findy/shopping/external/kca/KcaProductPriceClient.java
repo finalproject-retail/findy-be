@@ -49,6 +49,62 @@ public class KcaProductPriceClient {
 		String entpId,
 		String goodId
 	) {
+		KcaProductPriceResponse response = getProductPricesWithoutEnrichment(goodInspectDay, entpId, goodId);
+
+		if (!xmlParser.isSuccess(response)) {
+			return response;
+		}
+
+		return enrichProductInfo(response);
+	}
+
+	public KcaProductPriceResponse getProductPricesByProductInfos(
+		String goodInspectDay,
+		List<KcaProductInfoItemResponse> productInfos
+	) {
+		if (productInfos == null || productInfos.isEmpty()) {
+			return new KcaProductPriceResponse(null, "empty product infos", List.of());
+		}
+
+		Map<String, KcaProductInfoItemResponse> productInfoMap = productInfos.stream()
+			.collect(Collectors.toMap(
+				KcaProductInfoItemResponse::goodId,
+				productInfo -> productInfo,
+				(first, second) -> first
+			));
+
+		List<KcaProductPriceItemResponse> items = productInfos.stream()
+			.map(productInfo -> getProductPricesWithoutEnrichment(goodInspectDay, null, productInfo.goodId()))
+			.filter(xmlParser::isSuccess)
+			.flatMap(response -> response.items().stream())
+			.map(item -> enrichItem(item, productInfoMap.get(item.goodId())))
+			.toList();
+
+		return new KcaProductPriceResponse("00", "ok", items);
+	}
+
+	public boolean hasAnyProductPrice(
+		String goodInspectDay,
+		List<KcaProductInfoItemResponse> productInfos,
+		int sampleSize
+	) {
+		if (productInfos == null || productInfos.isEmpty()) {
+			return false;
+		}
+
+		return productInfos.stream()
+			.limit(Math.max(sampleSize, 1))
+			.map(productInfo -> getProductPricesWithoutEnrichment(goodInspectDay, null, productInfo.goodId()))
+			.anyMatch(response -> xmlParser.isSuccess(response)
+				&& response.items() != null
+				&& !response.items().isEmpty());
+	}
+
+	private KcaProductPriceResponse getProductPricesWithoutEnrichment(
+		String goodInspectDay,
+		String entpId,
+		String goodId
+	) {
 		try {
 			String xml = kcaProductPriceRestClient.get()
 				.uri(buildProductPriceUri(goodInspectDay, entpId, goodId))
@@ -67,7 +123,7 @@ public class KcaProductPriceClient {
 				return response;
 			}
 
-			return enrichProductInfo(response);
+			return response;
 		} catch (Exception exception) {
 			log.warn("KCA product price API request failed. message={}", exception.getMessage());
 
