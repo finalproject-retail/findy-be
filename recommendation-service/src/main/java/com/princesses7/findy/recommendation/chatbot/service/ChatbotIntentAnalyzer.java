@@ -98,21 +98,24 @@ public class ChatbotIntentAnalyzer {
 			intent는 반드시 아래 값 중 하나만 사용한다.
 			- GENERAL
 			- RECIPE_INGREDIENT_RECOMMENDATION
+			- GENERAL_PRODUCT_RECOMMENDATION
 			- PRODUCT_SEARCH
 			- INVENTORY_INQUIRY
 			- PROMOTION_INQUIRY
 			- COUPON_INQUIRY
 			
 			분석 기준:
-			- 상품 존재 여부, 상품 추천, 상품 검색을 요청하면 PRODUCT_SEARCH
+			- 특정 요리를 만들고 싶다고 하거나 요리 재료를 요청하면 RECIPE_INGREDIENT_RECOMMENDATION
+			- 맛, 취향, 상황, 상품군을 기준으로 여러 상품을 추천해 달라고 하면 GENERAL_PRODUCT_RECOMMENDATION
+			- 특정 상품명 검색, 상품 존재 여부, 상품 조회를 요청하면 PRODUCT_SEARCH
 			- 재고, 품절, 남은 수량을 물어보면 INVENTORY_INQUIRY
 			- 할인, 행사, 프로모션, 특가를 물어보면 PROMOTION_INQUIRY
 			- 쿠폰을 물어보면 COUPON_INQUIRY
-			- 특정 요리를 만들고 싶다고 하거나 요리 재료를 요청하면 RECIPE_INGREDIENT_RECOMMENDATION
 			- 단순 인사, 일반 대화는 GENERAL
 			
 			keyword 기준:
-			- 상품명, 카테고리명, 요리명 등 핵심 검색어만 추출한다.
+			- 상품명, 카테고리명, 맛, 상황, 취향 등 핵심 검색어만 추출한다.
+			- 요청 표현은 제거하고 검색에 필요한 짧은 표현만 남긴다.
 			- 핵심 검색어가 없으면 null로 둔다.
 			- 문장 전체를 keyword에 넣지 않는다.
 			

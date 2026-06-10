@@ -8,6 +8,7 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotCouponCo
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotProductContextResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotPromotionContextResponse;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotShoppingContextResponse;
+import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 
 @Component
 public class ChatbotShoppingContextPromptBuilder {
@@ -18,15 +19,7 @@ public class ChatbotShoppingContextPromptBuilder {
 		}
 
 		if (!shoppingContext.hasData()) {
-			return """
-				Findy 쇼핑 데이터 조회 결과:
-				- 사용자의 질문과 관련된 상품/재고/행사/쿠폰 데이터를 찾지 못했다.
-				
-				답변 지침:
-				- 실제로 조회된 상품이 없다고 안내한다.
-				- 상품명이나 카테고리를 더 구체적으로 입력해 달라고 안내한다.
-				- 존재하지 않는 상품, 재고, 쿠폰, 행사를 지어내지 않는다.
-				""";
+			return buildEmptyPrompt(shoppingContext);
 		}
 
 		StringBuilder builder = new StringBuilder();
@@ -44,6 +37,17 @@ public class ChatbotShoppingContextPromptBuilder {
 			- 사용자가 행사/할인을 물어보면 행사 정보와 상품 할인율을 함께 안내한다.
 			
 			""");
+
+		if (shoppingContext.intent() == ChatIntent.GENERAL_PRODUCT_RECOMMENDATION) {
+			builder.append("""
+				일반 상품 추천 답변 지침:
+				- 사용자의 맛/취향/상황 요청에 맞는 상품을 3~5개 정도만 짧게 추천한다.
+				- 상품명, 판매가, 재고 상태를 간단히 안내한다.
+				- 실제 조회된 상품 목록에 없는 상품은 절대 만들지 않는다.
+				- 프론트에서 상품 카드를 보여줄 수 있으므로 답변을 너무 길게 나열하지 않는다.
+				
+				""");
+		}
 
 		builder.append("조회 매장 ID: ").append(shoppingContext.storeId()).append('\n');
 		builder.append("LLM 추출 키워드: ").append(nullToDash(shoppingContext.keyword())).append('\n');
@@ -70,6 +74,31 @@ public class ChatbotShoppingContextPromptBuilder {
 			appendCoupons(builder, product.coupons());
 
 			builder.append('\n');
+		}
+
+		return builder.toString();
+	}
+
+	private String buildEmptyPrompt(ChatbotShoppingContextResponse shoppingContext) {
+		StringBuilder builder = new StringBuilder();
+
+		builder.append("""
+			Findy 쇼핑 데이터 조회 결과:
+			- 사용자의 질문과 관련된 상품/재고/행사/쿠폰 데이터를 찾지 못했다.
+			
+			답변 지침:
+			- 실제로 조회된 상품이 없다고 안내한다.
+			- 상품명이나 카테고리를 더 구체적으로 입력해 달라고 안내한다.
+			- 존재하지 않는 상품, 재고, 쿠폰, 행사를 지어내지 않는다.
+			""");
+
+		if (shoppingContext.intent() == ChatIntent.GENERAL_PRODUCT_RECOMMENDATION) {
+			builder.append("""
+				
+				일반 상품 추천 실패 답변 지침:
+				- 조건에 맞는 추천 상품을 찾지 못했다고 짧게 안내한다.
+				- 상품군이나 취향을 조금 더 구체적으로 입력해 달라고 안내한다.
+				""");
 		}
 
 		return builder.toString();
