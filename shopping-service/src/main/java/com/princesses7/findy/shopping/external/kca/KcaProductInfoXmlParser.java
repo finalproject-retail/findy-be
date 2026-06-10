@@ -50,7 +50,7 @@ public class KcaProductInfoXmlParser {
 		List<KcaProductInfoItemResponse> items = new ArrayList<>();
 
 		if (resultNodes.getLength() == 0) {
-			return items;
+			return parseItemsByFields(document);
 		}
 
 		Node resultNode = resultNodes.item(0);
@@ -63,6 +63,29 @@ public class KcaProductInfoXmlParser {
 				continue;
 			}
 
+			String goodId = getText(itemNode, "goodId");
+
+			if (goodId == null || goodId.isBlank()) {
+				continue;
+			}
+
+			items.add(new KcaProductInfoItemResponse(
+				goodId,
+				getText(itemNode, "goodName"),
+				getText(itemNode, "productEntpCode"),
+				getText(itemNode, "productEntpName")
+			));
+		}
+
+		return items;
+	}
+
+	private List<KcaProductInfoItemResponse> parseItemsByFields(Document document) {
+		NodeList nodes = document.getElementsByTagName("*");
+		List<KcaProductInfoItemResponse> items = new ArrayList<>();
+
+		for (int index = 0; index < nodes.getLength(); index++) {
+			Node itemNode = nodes.item(index);
 			String goodId = getText(itemNode, "goodId");
 
 			if (goodId == null || goodId.isBlank()) {
@@ -93,11 +116,21 @@ public class KcaProductInfoXmlParser {
 	private String getText(Document document, String tagName) {
 		NodeList nodes = document.getElementsByTagName(tagName);
 
-		if (nodes.getLength() == 0 || nodes.item(0) == null) {
-			return null;
+		if (nodes.getLength() > 0 && nodes.item(0) != null) {
+			return nodes.item(0).getTextContent();
 		}
 
-		return nodes.item(0).getTextContent();
+		NodeList allNodes = document.getElementsByTagName("*");
+
+		for (int index = 0; index < allNodes.getLength(); index++) {
+			Node node = allNodes.item(index);
+
+			if (tagName.equalsIgnoreCase(node.getNodeName())) {
+				return node.getTextContent();
+			}
+		}
+
+		return null;
 	}
 
 	private String getText(Node parentNode, String tagName) {
@@ -106,7 +139,7 @@ public class KcaProductInfoXmlParser {
 		for (int index = 0; index < childNodes.getLength(); index++) {
 			Node childNode = childNodes.item(index);
 
-			if (tagName.equals(childNode.getNodeName())) {
+			if (tagName.equalsIgnoreCase(childNode.getNodeName())) {
 				return childNode.getTextContent();
 			}
 		}

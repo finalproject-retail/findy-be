@@ -134,11 +134,21 @@ public class KcaProductPriceXmlParser {
 	private String getText(Document document, String tagName) {
 		NodeList nodes = document.getElementsByTagName(tagName);
 
-		if (nodes.getLength() == 0 || nodes.item(0) == null) {
-			return null;
+		if (nodes.getLength() > 0 && nodes.item(0) != null) {
+			return nodes.item(0).getTextContent();
 		}
 
-		return nodes.item(0).getTextContent();
+		NodeList allNodes = document.getElementsByTagName("*");
+
+		for (int index = 0; index < allNodes.getLength(); index++) {
+			Node node = allNodes.item(index);
+
+			if (tagName.equalsIgnoreCase(node.getNodeName())) {
+				return node.getTextContent();
+			}
+		}
+
+		return null;
 	}
 
 	private String getText(Node parentNode, String tagName) {
@@ -147,7 +157,7 @@ public class KcaProductPriceXmlParser {
 		for (int index = 0; index < childNodes.getLength(); index++) {
 			Node childNode = childNodes.item(index);
 
-			if (tagName.equals(childNode.getNodeName())) {
+			if (tagName.equalsIgnoreCase(childNode.getNodeName())) {
 				return childNode.getTextContent();
 			}
 		}
