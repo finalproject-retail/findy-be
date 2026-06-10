@@ -18,8 +18,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ZoneCongestionAnalyticsRepository {
 
+	// TODO: 테스트용으로 임의 설정한 값이므로 추후 수정 필요
 	private static final int DEFAULT_OPEN_LOG_SECONDS = 600;
-	private static final int CONGESTED_USER_COUNT = 6;
+	private static final int CONGESTED_USER_COUNT = 3;
 
 	private final NamedParameterJdbcTemplate jdbcTemplate;
 
