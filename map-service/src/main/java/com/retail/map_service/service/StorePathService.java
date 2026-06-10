@@ -40,7 +40,12 @@ public class StorePathService {
 			gridRepository.findByStore_StoreIdOrderByGridIdAsc(storeId)
 		);
 
-		Long currentGridId = resolveCurrentGridId(userId, storeId, storeGridMap);
+		Long currentGridId = resolveCurrentGridId(
+			userId,
+			storeId,
+			storeGridMap,
+			request.currentGridId()
+		);
 		List<Long> destinationGridIds = dedupePreserveOrder(request.destinationGridIds());
 		destinationGridIds.forEach(gridId -> validateGridExists(storeGridMap, gridId, storeId));
 		destinationGridIds.forEach(gridId -> {
@@ -114,9 +119,19 @@ public class StorePathService {
 	}
 
 	/**
-	 * 1) 최신 비콘 {@code nearest_grid_id}, 2) 비콘 없으면 매장 {@code START} 격자.
+	 * 1) 요청 {@code currentGridId}, 2) 최신 비콘, 3) 비콘 없으면 매장 {@code START} 격자.
 	 */
-	private Long resolveCurrentGridId(Long userId, Long storeId, StoreGridMap storeGridMap) {
+	private Long resolveCurrentGridId(
+		Long userId,
+		Long storeId,
+		StoreGridMap storeGridMap,
+		Long requestedCurrentGridId
+	) {
+		if (requestedCurrentGridId != null) {
+			validateGridExists(storeGridMap, requestedCurrentGridId, storeId);
+			return requestedCurrentGridId;
+		}
+
 		Long fromBeacon = beaconSignalLogRepository
 			.findTopByUserIdAndStore_StoreIdOrderByTimestampIsoDesc(userId, storeId)
 			.map(BeaconSignalLogEntity::getNearestGrid)
