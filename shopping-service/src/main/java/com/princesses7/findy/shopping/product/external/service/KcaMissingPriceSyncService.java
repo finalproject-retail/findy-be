@@ -32,7 +32,9 @@ import com.princesses7.findy.shopping.product.external.repository.ProductExterna
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -57,50 +59,149 @@ public class KcaMissingPriceSyncService {
 	public KcaMissingPriceSyncResponse syncMissingPrices(
 		String goodInspectDay,
 		String entpId,
-		String goodId
+		String goodId,
+		int offset,
+		int limit,
+		Integer maxProducts
 	) {
-		KcaProductPriceResponse priceResponse = findProductPrices(
-			goodInspectDay,
-			entpId,
-			goodId
-		);
+		try {
+			ProductPriceFetchResult fetchResult = findProductPrices(
+				goodInspectDay,
+				entpId,
+				goodId,
+				offset,
+				resolveLimit(limit, maxProducts),
+				maxProducts
+			);
+			KcaProductPriceResponse priceResponse = fetchResult.response();
 
-		if (priceResponse.items() == null || priceResponse.items().isEmpty()) {
-			return KcaMissingPriceSyncResponse.from(List.of(), resolveInspectDay(priceResponse), 0, 0);
+			if (priceResponse.items() == null || priceResponse.items().isEmpty()) {
+				return KcaMissingPriceSyncResponse.from(
+					List.of(),
+					resolveInspectDay(priceResponse),
+					0,
+					0,
+					priceResponse.resultCode(),
+					priceResponse.resultMessage(),
+					fetchResult.productInfoCount(),
+					fetchResult.processedProductCount(),
+					fetchResult.offset(),
+					fetchResult.limit(),
+					fetchResult.nextOffset(),
+					fetchResult.hasNext()
+				);
+			}
+
+			List<Product> priceMissingProducts = productRepository.findPriceMissingProducts(PageRequest.of(0, 1000));
+			List<KcaProductPriceItemResponse> aggregatedItems = aggregateByProduct(priceResponse.items());
+
+			List<KcaMissingPriceSyncItemResponse> results = aggregatedItems
+				.stream()
+				.map(priceItem -> syncPriceItem(priceItem, priceMissingProducts))
+				.toList();
+
+			return KcaMissingPriceSyncResponse.from(
+				results,
+				resolveInspectDay(priceResponse),
+				priceResponse.items().size(),
+				aggregatedItems.size(),
+				priceResponse.resultCode(),
+				priceResponse.resultMessage(),
+				fetchResult.productInfoCount(),
+				fetchResult.processedProductCount(),
+				fetchResult.offset(),
+				fetchResult.limit(),
+				fetchResult.nextOffset(),
+				fetchResult.hasNext()
+			);
+		} catch (Exception exception) {
+			log.warn("KCA missing price sync failed.", exception);
+
+			return KcaMissingPriceSyncResponse.from(
+				List.of(),
+				null,
+				0,
+				0,
+				"SYNC_FAILED",
+				exception.getClass().getSimpleName() + ": " + exception.getMessage(),
+				0,
+				0,
+				resolveOffset(offset),
+				resolveLimit(limit, maxProducts),
+				null,
+				false
+			);
 		}
-
-		List<Product> priceMissingProducts = productRepository.findPriceMissingProducts(PageRequest.of(0, 1000));
-		List<KcaProductPriceItemResponse> aggregatedItems = aggregateByProduct(priceResponse.items());
-
-		List<KcaMissingPriceSyncItemResponse> results = aggregatedItems
-			.stream()
-			.map(priceItem -> syncPriceItem(priceItem, priceMissingProducts))
-			.toList();
-
-		return KcaMissingPriceSyncResponse.from(
-			results,
-			resolveInspectDay(priceResponse),
-			priceResponse.items().size(),
-			aggregatedItems.size()
-		);
 	}
 
-	private KcaProductPriceResponse findProductPrices(
+	private ProductPriceFetchResult findProductPrices(
 		String goodInspectDay,
 		String entpId,
-		String goodId
+		String goodId,
+		int offset,
+		int limit,
+		Integer maxProducts
 	) {
 		if (hasText(entpId) || hasText(goodId)) {
-			return findProductPricesByFilter(goodInspectDay, entpId, goodId);
+			return ProductPriceFetchResult.single(findProductPricesByFilter(goodInspectDay, entpId, goodId));
 		}
 
 		List<KcaProductInfoItemResponse> productInfos = kcaProductInfoClient.getProductInfos();
+		List<KcaProductInfoItemResponse> batchProductInfos = sliceProductInfos(productInfos, offset, limit);
+		ProductBatch batch = ProductBatch.from(productInfos.size(), batchProductInfos.size(), offset, limit);
 
 		if (hasText(goodInspectDay)) {
-			return kcaProductPriceClient.getProductPricesByProductInfos(goodInspectDay, productInfos);
+			return new ProductPriceFetchResult(
+				kcaProductPriceClient.getProductPricesByProductInfos(goodInspectDay, batchProductInfos),
+				batch.productInfoCount(),
+				batch.processedProductCount(),
+				batch.offset(),
+				batch.limit(),
+				batch.nextOffset(),
+				batch.hasNext()
+			);
 		}
 
-		return findLatestProductPrices(productInfos);
+		return findLatestProductPrices(productInfos, batchProductInfos, batch);
+	}
+
+	private List<KcaProductInfoItemResponse> sliceProductInfos(
+		List<KcaProductInfoItemResponse> productInfos,
+		int offset,
+		int limit
+	) {
+		if (productInfos == null || productInfos.isEmpty()) {
+			return List.of();
+		}
+
+		int resolvedOffset = resolveOffset(offset);
+
+		if (resolvedOffset >= productInfos.size()) {
+			return List.of();
+		}
+
+		int resolvedLimit = Math.max(limit, 1);
+
+		return productInfos.stream()
+			.skip(resolvedOffset)
+			.limit(resolvedLimit)
+			.toList();
+	}
+
+	private int resolveOffset(int offset) {
+		return Math.max(offset, 0);
+	}
+
+	private int resolveLimit(int limit, Integer maxProducts) {
+		if (maxProducts != null && maxProducts > 0) {
+			return maxProducts;
+		}
+
+		if (limit <= 0) {
+			return 50;
+		}
+
+		return limit;
 	}
 
 	private KcaProductPriceResponse findProductPricesByFilter(
@@ -130,9 +231,21 @@ public class KcaMissingPriceSyncService {
 		return new KcaProductPriceResponse(null, "latest inspect day not found", List.of());
 	}
 
-	private KcaProductPriceResponse findLatestProductPrices(List<KcaProductInfoItemResponse> productInfos) {
+	private ProductPriceFetchResult findLatestProductPrices(
+		List<KcaProductInfoItemResponse> productInfos,
+		List<KcaProductInfoItemResponse> batchProductInfos,
+		ProductBatch batch
+	) {
 		if (productInfos == null || productInfos.isEmpty()) {
-			return new KcaProductPriceResponse(null, "empty product infos", List.of());
+			return new ProductPriceFetchResult(
+				new KcaProductPriceResponse(null, "empty product infos", List.of()),
+				0,
+				0,
+				batch.offset(),
+				batch.limit(),
+				null,
+				false
+			);
 		}
 
 		LocalDate inspectDay = LocalDate.now().with(TemporalAdjusters.previousOrSame(DayOfWeek.FRIDAY));
@@ -145,11 +258,27 @@ public class KcaMissingPriceSyncService {
 				productInfos,
 				LATEST_INSPECT_DAY_SAMPLE_SIZE
 			)) {
-				return kcaProductPriceClient.getProductPricesByProductInfos(candidateInspectDay, productInfos);
+				return new ProductPriceFetchResult(
+					kcaProductPriceClient.getProductPricesByProductInfos(candidateInspectDay, batchProductInfos),
+					batch.productInfoCount(),
+					batch.processedProductCount(),
+					batch.offset(),
+					batch.limit(),
+					batch.nextOffset(),
+					batch.hasNext()
+				);
 			}
 		}
 
-		return new KcaProductPriceResponse(null, "latest inspect day not found", List.of());
+		return new ProductPriceFetchResult(
+			new KcaProductPriceResponse(null, "latest inspect day not found", List.of()),
+			batch.productInfoCount(),
+			batch.processedProductCount(),
+			batch.offset(),
+			batch.limit(),
+			batch.nextOffset(),
+			batch.hasNext()
+		);
 	}
 
 	private List<KcaProductPriceItemResponse> aggregateByProduct(List<KcaProductPriceItemResponse> items) {
@@ -428,5 +557,51 @@ public class KcaMissingPriceSyncService {
 		Product product,
 		ProductMatchResult ruleResult
 	) {
+	}
+
+	private record ProductPriceFetchResult(
+		KcaProductPriceResponse response,
+		int productInfoCount,
+		int processedProductCount,
+		int offset,
+		int limit,
+		Integer nextOffset,
+		boolean hasNext
+	) {
+
+		private static ProductPriceFetchResult single(KcaProductPriceResponse response) {
+			return new ProductPriceFetchResult(response, 0, 0, 0, 1, null, false);
+		}
+	}
+
+	private record ProductBatch(
+		int productInfoCount,
+		int processedProductCount,
+		int offset,
+		int limit,
+		Integer nextOffset,
+		boolean hasNext
+	) {
+
+		private static ProductBatch from(
+			int productInfoCount,
+			int processedProductCount,
+			int offset,
+			int limit
+		) {
+			int resolvedOffset = Math.max(offset, 0);
+			int resolvedLimit = Math.max(limit, 1);
+			int nextOffset = resolvedOffset + processedProductCount;
+			boolean hasNext = nextOffset < productInfoCount;
+
+			return new ProductBatch(
+				productInfoCount,
+				processedProductCount,
+				resolvedOffset,
+				resolvedLimit,
+				hasNext ? nextOffset : null,
+				hasNext
+			);
+		}
 	}
 }
