@@ -53,12 +53,18 @@ public class ShoppingList extends BaseTimeEntity {
 	}
 
 	public static ShoppingList create(Cart cart) {
+		ShoppingList shoppingList = createEmpty(cart);
+		shoppingList.replaceItemsFromCart();
+
+		return shoppingList;
+	}
+
+	public static ShoppingList createEmpty(Cart cart) {
 		if (cart.hasShoppingList()) {
 			throw new ShoppingListException(SHOPPING_LIST_ALREADY_EXISTS);
 		}
 
 		ShoppingList shoppingList = new ShoppingList(cart.getUserId(), cart);
-		shoppingList.replaceItemsFromCart();
 		cart.assignShoppingList(shoppingList);
 
 		return shoppingList;
