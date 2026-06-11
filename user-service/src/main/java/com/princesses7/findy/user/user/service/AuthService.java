@@ -27,7 +27,7 @@ public class AuthService {
 		UserEntity user = userRepository.findByEmail(request.getEmail())
 			.orElseThrow(() -> new BaseException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 일치하지 않습니다."));
 
-		if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+		if (user.getPassword() == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
 			throw new BaseException(ErrorCode.UNAUTHORIZED, "아이디 또는 비밀번호가 일치하지 않습니다.");
 		}
 

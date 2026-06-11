@@ -2,9 +2,11 @@ package com.princesses7.findy.user;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+@ConfigurationPropertiesScan
 @SpringBootApplication
 public class UserServiceApplication {
 

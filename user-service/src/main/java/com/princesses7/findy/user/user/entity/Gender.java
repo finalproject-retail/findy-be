@@ -3,7 +3,7 @@ package com.princesses7.findy.user.user.entity;
 import com.fasterxml.jackson.annotation.JsonCreator;
 
 public enum Gender {
-	MALE, FEMALE;
+	MALE, FEMALE, UNKNOWN;
 
 	@JsonCreator
 	public static Gender from(String value) {

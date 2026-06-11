@@ -38,6 +38,15 @@ public enum ErrorCode {
 	UNSUPPORTED_SOCIAL_PROVIDER(HttpStatus.BAD_REQUEST, "SOCIAL_002", "지원하지 않는 소셜 로그인 제공자입니다."),
 	SOCIAL_ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "SOCIAL_003", "연결된 소셜 계정이 없습니다."),
 	SOCIAL_ACCOUNT_ALREADY_CONNECTED(HttpStatus.CONFLICT, "SOCIAL_004", "이미 연결된 소셜 계정입니다."),
+	SOCIAL_EMAIL_NOT_PROVIDED(HttpStatus.BAD_REQUEST, "SOCIAL_005", "소셜 계정 이메일을 확인할 수 없습니다."),
+	SOCIAL_CLIENT_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, "SOCIAL_006", "소셜 로그인 설정이 필요합니다."),
+
+	// Email Verification
+	EMAIL_VERIFICATION_NOT_FOUND(HttpStatus.BAD_REQUEST, "EMAIL_001", "이메일 인증 요청을 찾을 수 없습니다."),
+	EMAIL_VERIFICATION_CODE_MISMATCH(HttpStatus.BAD_REQUEST, "EMAIL_002", "인증 코드가 일치하지 않습니다."),
+	EMAIL_VERIFICATION_EXPIRED(HttpStatus.BAD_REQUEST, "EMAIL_003", "인증 코드가 만료되었습니다."),
+	EMAIL_VERIFICATION_REQUIRED(HttpStatus.BAD_REQUEST, "EMAIL_004", "이메일 인증이 필요합니다."),
+	EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "EMAIL_005", "인증 메일 발송에 실패했습니다."),
 
 	// User Grade
 	USER_GRADE_NOT_FOUND(HttpStatus.NOT_FOUND, "GRADE_001", "존재하지 않는 회원 등급입니다."),
