@@ -1,6 +1,6 @@
 package com.princesses7.findy.user.password.service;
 
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,15 +21,13 @@ public class PasswordResetService {
 
 	private final UserRepository userRepository;
 	private final EmailVerificationService emailVerificationService;
-	private final BCryptPasswordEncoder passwordEncoder;
+	private final PasswordEncoder passwordEncoder;
 
-	@Transactional(readOnly = true)
 	public SendEmailVerificationResponse sendPasswordResetCode(String email) {
 		assertExistingUser(email);
 		return emailVerificationService.sendCode(email, EmailVerificationPurpose.PASSWORD_RESET);
 	}
 
-	@Transactional(readOnly = true)
 	public VerifyEmailCodeResponse verifyPasswordResetCode(String email, String code) {
 		assertExistingUser(email);
 		return emailVerificationService.verifyCode(email, EmailVerificationPurpose.PASSWORD_RESET, code);
@@ -45,7 +43,9 @@ public class PasswordResetService {
 			.orElseThrow(() -> new BaseException(ErrorCode.USER_NOT_FOUND, "가입되지 않은 이메일입니다."));
 
 		emailVerificationService.validateVerified(email, EmailVerificationPurpose.PASSWORD_RESET);
+
 		user.changePassword(passwordEncoder.encode(newPassword));
+
 		emailVerificationService.consumeVerified(email, EmailVerificationPurpose.PASSWORD_RESET);
 	}
 
