@@ -7,6 +7,9 @@ import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.mail.MailException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import com.princesses7.findy.user.email.dto.response.SendEmailVerificationResponse;
@@ -31,9 +34,13 @@ public class EmailVerificationService {
 	private static final String VERIFIED_KEY_PREFIX = "email-verification:verified:";
 
 	private final StringRedisTemplate stringRedisTemplate;
+	private final JavaMailSender javaMailSender;
 
 	@Value("${app.email-verification.debug:true}")
 	private boolean debugEnabled;
+
+	@Value("${app.mail.from:no-reply@findy.com}")
+	private String fromEmail;
 
 	public SendEmailVerificationResponse sendCode(
 		String email,
@@ -49,12 +56,12 @@ public class EmailVerificationService {
 			stringRedisTemplate.opsForValue().set(codeKey, code, CODE_TTL);
 			stringRedisTemplate.delete(verifiedKey);
 
-			// TODO: 실제 SMTP 연동 시 여기에서 이메일 발송 처리
+			sendVerificationMail(normalizedEmail, purpose, code);
+
 			log.info(
-				"이메일 인증 코드 발송 email={}, purpose={}, code={}",
+				"이메일 인증 코드 발송 완료 email={}, purpose={}",
 				normalizedEmail,
-				purpose,
-				code
+				purpose
 			);
 
 			return new SendEmailVerificationResponse(
@@ -63,8 +70,12 @@ public class EmailVerificationService {
 				LocalDateTime.now().plus(CODE_TTL),
 				debugEnabled ? code : null
 			);
+		} catch (MailException e) {
+			deleteCodeSafely(codeKey);
+			log.error("이메일 인증 메일 발송 실패 email={}, purpose={}", normalizedEmail, purpose, e);
+			throw new BaseException(ErrorCode.EMAIL_SEND_FAILED);
 		} catch (Exception e) {
-			log.error("이메일 인증 코드 발송 실패 email={}, purpose={}", normalizedEmail, purpose, e);
+			log.error("이메일 인증 코드 처리 실패 email={}, purpose={}", normalizedEmail, purpose, e);
 			throw new BaseException(ErrorCode.EMAIL_SEND_FAILED);
 		}
 	}
@@ -122,6 +133,56 @@ public class EmailVerificationService {
 		String verifiedKey = verifiedKey(normalizedEmail, purpose);
 
 		stringRedisTemplate.delete(verifiedKey);
+	}
+
+	private void sendVerificationMail(
+		String toEmail,
+		EmailVerificationPurpose purpose,
+		String code
+	) {
+		SimpleMailMessage message = new SimpleMailMessage();
+		message.setFrom(fromEmail);
+		message.setTo(toEmail);
+		message.setSubject(createSubject(purpose));
+		message.setText(createMailText(purpose, code));
+
+		javaMailSender.send(message);
+	}
+
+	private String createSubject(EmailVerificationPurpose purpose) {
+		return switch (purpose) {
+			case SIGN_UP -> "[Findy] 회원가입 이메일 인증 코드";
+			case PASSWORD_RESET -> "[Findy] 비밀번호 재설정 인증 코드";
+		};
+	}
+
+	private String createMailText(
+		EmailVerificationPurpose purpose,
+		String code
+	) {
+		String purposeText = switch (purpose) {
+			case SIGN_UP -> "회원가입";
+			case PASSWORD_RESET -> "비밀번호 재설정";
+		};
+
+		return """
+			안녕하세요. Findy입니다.
+			
+			%s 인증을 위한 이메일 인증 코드입니다.
+			
+			인증 코드: %s
+			
+			인증 코드는 5분 동안만 유효합니다.
+			본인이 요청하지 않았다면 이 메일을 무시해주세요.
+			""".formatted(purposeText, code);
+	}
+
+	private void deleteCodeSafely(String codeKey) {
+		try {
+			stringRedisTemplate.delete(codeKey);
+		} catch (Exception e) {
+			log.warn("이메일 인증 코드 삭제 실패 codeKey={}", codeKey, e);
+		}
 	}
 
 	private String createCode() {
