@@ -29,6 +29,12 @@ public class RecommendationLog extends BaseTimeEntity {
 	@Column(name = "recommendation_log_id")
 	private Long recommendationLogId;
 
+	@Column(name = "source_recommendation_log_id")
+	private Long sourceRecommendationLogId;
+
+	@Column(name = "order_id")
+	private Long orderId;
+
 	@Column(name = "user_id", nullable = false)
 	private Long userId;
 
@@ -62,6 +68,8 @@ public class RecommendationLog extends BaseTimeEntity {
 	private String reason;
 
 	private RecommendationLog(
+		Long sourceRecommendationLogId,
+		Long orderId,
 		Long userId,
 		Long productId,
 		Long sourceProductId,
@@ -73,6 +81,8 @@ public class RecommendationLog extends BaseTimeEntity {
 		BigDecimal score,
 		String reason
 	) {
+		this.sourceRecommendationLogId = sourceRecommendationLogId;
+		this.orderId = orderId;
 		this.userId = userId;
 		this.productId = productId;
 		this.sourceProductId = sourceProductId;
@@ -97,6 +107,8 @@ public class RecommendationLog extends BaseTimeEntity {
 		String reason
 	) {
 		return new RecommendationLog(
+			null,
+			null,
 			userId,
 			productId,
 			sourceProductId,
@@ -121,6 +133,8 @@ public class RecommendationLog extends BaseTimeEntity {
 		BigDecimal score
 	) {
 		return new RecommendationLog(
+			null,
+			null,
 			userId,
 			productId,
 			sourceProductId,
@@ -131,6 +145,60 @@ public class RecommendationLog extends BaseTimeEntity {
 			recommendationRank,
 			score,
 			null
+		);
+	}
+
+	public static RecommendationLog clickFromImpression(RecommendationLog impressionLog) {
+		return new RecommendationLog(
+			impressionLog.getRecommendationLogId(),
+			null,
+			impressionLog.getUserId(),
+			impressionLog.getProductId(),
+			impressionLog.getSourceProductId(),
+			impressionLog.getStoreId(),
+			impressionLog.getRecommendationType(),
+			RecommendationLogType.CLICK,
+			impressionLog.getDisplayLocation(),
+			impressionLog.getRecommendationRank(),
+			impressionLog.getScore(),
+			impressionLog.getReason()
+		);
+	}
+
+	public static RecommendationLog selectionFromImpression(RecommendationLog impressionLog) {
+		return new RecommendationLog(
+			impressionLog.getRecommendationLogId(),
+			null,
+			impressionLog.getUserId(),
+			impressionLog.getProductId(),
+			impressionLog.getSourceProductId(),
+			impressionLog.getStoreId(),
+			impressionLog.getRecommendationType(),
+			RecommendationLogType.SELECTION,
+			impressionLog.getDisplayLocation(),
+			impressionLog.getRecommendationRank(),
+			impressionLog.getScore(),
+			impressionLog.getReason()
+		);
+	}
+
+	public static RecommendationLog purchaseFromImpression(
+		RecommendationLog impressionLog,
+		Long orderId
+	) {
+		return new RecommendationLog(
+			impressionLog.getRecommendationLogId(),
+			orderId,
+			impressionLog.getUserId(),
+			impressionLog.getProductId(),
+			impressionLog.getSourceProductId(),
+			impressionLog.getStoreId(),
+			impressionLog.getRecommendationType(),
+			RecommendationLogType.PURCHASE,
+			impressionLog.getDisplayLocation(),
+			impressionLog.getRecommendationRank(),
+			impressionLog.getScore(),
+			impressionLog.getReason()
 		);
 	}
 }
