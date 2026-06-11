@@ -134,6 +134,7 @@ public class RecommendationNotificationService {
 
 		recommendationLogService.saveClickLog(
 			new RecommendationClickLogRequest(
+				notification.getRecommendationLogId(),
 				notification.getUserId(),
 				notification.getProductId(),
 				notification.getSourceProductId(),
