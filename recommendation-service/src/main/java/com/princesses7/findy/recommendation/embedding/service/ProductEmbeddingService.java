@@ -79,7 +79,7 @@ public class ProductEmbeddingService {
 	public ProductEmbeddingBatchResponse createMissingProductEmbeddings(int limit) {
 		int normalizedLimit = normalizeLimit(limit);
 
-		List<ProductSnapshot> products = productRepository.findMissingEmbeddingProducts(
+		List<ProductSnapshot> products = productRepository.findEmbeddingAutoSyncTargets(
 			productEmbeddingClient.model(),
 			productEmbeddingClient.dimensions(),
 			PageRequest.of(0, normalizedLimit)
@@ -100,6 +100,26 @@ public class ProductEmbeddingService {
 			products.size(),
 			savedCount
 		);
+	}
+
+	@Transactional
+	public ProductEmbedding getOrCreateProductEmbedding(ProductSnapshot product) {
+		ProductEmbedding existingEmbedding = productEmbeddingRepository.findByProductId(product.getProductId())
+			.orElse(null);
+
+		if (isCurrentEmbedding(existingEmbedding)) {
+			return existingEmbedding;
+		}
+
+		return saveProductEmbedding(product);
+	}
+
+	private boolean isCurrentEmbedding(ProductEmbedding productEmbedding) {
+		return productEmbedding != null
+			&& productEmbeddingClient.model().equals(productEmbedding.getModel())
+			&& productEmbeddingClient.dimensions() == productEmbedding.getDimensions()
+			&& productEmbedding.getEmbedding() != null
+			&& !productEmbedding.getEmbedding().isBlank();
 	}
 
 	private ProductEmbedding saveProductEmbedding(ProductSnapshot product) {
