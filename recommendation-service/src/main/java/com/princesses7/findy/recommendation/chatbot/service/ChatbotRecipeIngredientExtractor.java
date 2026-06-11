@@ -18,6 +18,7 @@ public class ChatbotRecipeIngredientExtractor {
 
 	private final OpenAiChatClient openAiChatClient;
 	private final ObjectMapper objectMapper;
+	private final KnownRecipeIngredientProvider knownRecipeIngredientProvider;
 
 	public RecipeIngredientAnalysis extract(
 		String message,
@@ -25,6 +26,14 @@ public class ChatbotRecipeIngredientExtractor {
 	) {
 		String recipeName = normalizeRecipeName(keyword, message);
 
+		return knownRecipeIngredientProvider.find(message, keyword)
+			.orElseGet(() -> extractByLlm(message, recipeName));
+	}
+
+	private RecipeIngredientAnalysis extractByLlm(
+		String message,
+		String recipeName
+	) {
 		try {
 			String response = openAiChatClient.jsonChat(List.of(
 				OpenAiChatMessage.system(systemPrompt()),
