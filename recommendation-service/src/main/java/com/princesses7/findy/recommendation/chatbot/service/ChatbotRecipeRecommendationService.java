@@ -137,7 +137,7 @@ public class ChatbotRecipeRecommendationService {
 		);
 
 		if (judgedItems.isEmpty()) {
-			return List.of();
+			return fallbackProducts(candidates);
 		}
 
 		Map<Long, IngredientProductJudgeItem> suitableJudgeMap = judgedItems.stream()
@@ -151,7 +151,7 @@ public class ChatbotRecipeRecommendationService {
 			));
 
 		if (suitableJudgeMap.isEmpty()) {
-			return List.of();
+			return fallbackProducts(candidates);
 		}
 
 		Set<Long> candidateProductIds = candidates.stream()
@@ -183,6 +183,12 @@ public class ChatbotRecipeRecommendationService {
 			.filter(candidate -> productId.equals(candidate.productId()))
 			.findFirst()
 			.orElse(null);
+	}
+
+	private List<ChatbotShoppingProduct> fallbackProducts(List<ChatbotShoppingProduct> candidates) {
+		return candidates.stream()
+			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
+			.toList();
 	}
 
 	private List<ChatbotShoppingProduct> distinctRecommendableProducts(
