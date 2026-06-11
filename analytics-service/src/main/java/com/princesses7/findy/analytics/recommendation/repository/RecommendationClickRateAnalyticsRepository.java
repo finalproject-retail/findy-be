@@ -21,13 +21,13 @@ public interface RecommendationClickRateAnalyticsRepository
 			COALESCE(SUM(r.impressionCount), 0) AS impressionCount,
 			COALESCE(SUM(r.clickCount), 0) AS clickCount
 		FROM RecommendationClickRateAnalytics r
-		WHERE r.analysisDate BETWEEN :fromDate AND :toDate
+		WHERE r.analysisDate BETWEEN :startDate AND :endDate
 			AND (:recommendationType IS NULL OR r.recommendationType = :recommendationType)
 		""")
 	RecommendationClickRateSummaryProjection findSummary(
 		@Param("recommendationType") String recommendationType,
-		@Param("startDate") LocalDate fromDate,
-		@Param("endDate") LocalDate toDate
+		@Param("startDate") LocalDate startDate,
+		@Param("endDate") LocalDate endDate
 	);
 
 	@Query("""
@@ -36,15 +36,15 @@ public interface RecommendationClickRateAnalyticsRepository
 			COALESCE(SUM(r.impressionCount), 0) AS impressionCount,
 			COALESCE(SUM(r.clickCount), 0) AS clickCount
 		FROM RecommendationClickRateAnalytics r
-		WHERE r.analysisDate BETWEEN :fromDate AND :toDate
+		WHERE r.analysisDate BETWEEN :startDate AND :endDate
 			AND (:recommendationType IS NULL OR r.recommendationType = :recommendationType)
 		GROUP BY r.analysisDate
 		ORDER BY r.analysisDate ASC
 		""")
 	List<RecommendationClickRateDailyProjection> findDailyTrend(
 		@Param("recommendationType") String recommendationType,
-		@Param("startDate") LocalDate fromDate,
-		@Param("endDate") LocalDate toDate
+		@Param("startDate") LocalDate startDate,
+		@Param("endDate") LocalDate endDate
 	);
 
 	@Query("""
@@ -55,7 +55,7 @@ public interface RecommendationClickRateAnalyticsRepository
 			COALESCE(SUM(r.impressionCount), 0) AS impressionCount,
 			COALESCE(SUM(r.clickCount), 0) AS clickCount
 		FROM RecommendationClickRateAnalytics r
-		WHERE r.analysisDate BETWEEN :fromDate AND :toDate
+		WHERE r.analysisDate BETWEEN :startDate AND :endDate
 			AND (:recommendationType IS NULL OR r.recommendationType = :recommendationType)
 		GROUP BY r.recommendationType, r.productId, r.productName
 		ORDER BY
@@ -65,8 +65,8 @@ public interface RecommendationClickRateAnalyticsRepository
 		""")
 	List<RecommendationClickRateProductProjection> findTopProducts(
 		@Param("recommendationType") String recommendationType,
-		@Param("startDate") LocalDate fromDate,
-		@Param("endDate") LocalDate toDate,
+		@Param("startDate") LocalDate startDate,
+		@Param("endDate") LocalDate endDate,
 		Pageable pageable
 	);
 }
