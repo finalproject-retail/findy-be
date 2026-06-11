@@ -11,6 +11,7 @@ import com.princesses7.findy.recommendation.promotion.entity.PromotionType;
 import com.princesses7.findy.recommendation.recommendation.type.RecommendationType;
 
 public record PromotionProductRecommendationResponse(
+	Long recommendationLogId,
 	Long productId,
 	String productName,
 	String brandName,
@@ -65,6 +66,7 @@ public record PromotionProductRecommendationResponse(
 		PromotionSnapshot promotion = promotionProduct.getPromotion();
 
 		return new PromotionProductRecommendationResponse(
+			null,
 			product.getProductId(),
 			product.getProductName(),
 			product.getBrandName(),
@@ -84,6 +86,33 @@ public record PromotionProductRecommendationResponse(
 			inventory.getStockQuantity(),
 			inventory.getStockStatus(),
 			round(score),
+			recommendationType,
+			reason
+		);
+	}
+
+	public PromotionProductRecommendationResponse withRecommendationLogId(Long recommendationLogId) {
+		return new PromotionProductRecommendationResponse(
+			recommendationLogId,
+			productId,
+			productName,
+			brandName,
+			imageUrl,
+			categoryId,
+			categoryName,
+			originalPrice,
+			salePrice,
+			discountRate,
+			promotionId,
+			promotionProductId,
+			promotionName,
+			promotionType,
+			benefitText,
+			promotionPrice,
+			gridId,
+			stockQuantity,
+			stockStatus,
+			score,
 			recommendationType,
 			reason
 		);

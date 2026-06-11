@@ -13,4 +13,18 @@ public record SubstituteRecommendationResponse(
 	RecommendationType recommendationType,
 	List<ProductRecommendationResponse> recommendations
 ) {
+
+	public SubstituteRecommendationResponse withRecommendations(
+		List<ProductRecommendationResponse> recommendations
+	) {
+		return new SubstituteRecommendationResponse(
+			userId,
+			storeId,
+			sourceProductId,
+			sourceProduct,
+			sourceInventory,
+			recommendationType,
+			recommendations
+		);
+	}
 }
