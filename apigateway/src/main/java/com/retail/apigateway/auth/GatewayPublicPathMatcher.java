@@ -16,6 +16,9 @@ public class GatewayPublicPathMatcher {
 
 		return PATH_MATCHER.match("/actuator/**", requestUri)
 			|| PATH_MATCHER.match("/api/v1/auth/login", requestUri)
+			|| PATH_MATCHER.match("/api/v1/auth/social/**", requestUri)
+			|| PATH_MATCHER.match("/api/v1/auth/password-reset/**", requestUri)
+			|| PATH_MATCHER.match("/api/v1/email-verifications/**", requestUri)
 			|| PATH_MATCHER.match("/api/v1/users/signup", requestUri);
 	}
 }
