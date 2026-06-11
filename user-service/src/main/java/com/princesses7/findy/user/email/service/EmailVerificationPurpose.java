@@ -6,6 +6,7 @@ import com.princesses7.findy.user.global.exception.BaseException;
 import com.princesses7.findy.user.global.exception.ErrorCode;
 
 public enum EmailVerificationPurpose {
+	SIGN_UP,
 	PASSWORD_RESET;
 
 	public static EmailVerificationPurpose from(String value) {
