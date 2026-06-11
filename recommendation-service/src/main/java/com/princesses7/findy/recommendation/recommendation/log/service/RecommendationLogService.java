@@ -1,8 +1,11 @@
 package com.princesses7.findy.recommendation.recommendation.log.service;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -29,6 +32,8 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class RecommendationLogService {
+
+	private static final Duration DUPLICATE_SAVE_INTERVAL = Duration.ofSeconds(3);
 
 	private final RecommendationLogRepository recommendationLogRepository;
 
@@ -103,14 +108,25 @@ public class RecommendationLogService {
 
 	@Transactional
 	public RecommendationLogResponse saveClickLog(RecommendationClickLogRequest request) {
-		RecommendationLog log = findUsableImpressionLog(request.recommendationLogId(), request.userId(),
-			request.productId())
-			.filter(impressionLog -> !recommendationLogRepository.existsBySourceRecommendationLogIdAndLogType(
+		if (request.recommendationLogId() != null) {
+			RecommendationLog impressionLog = findUsableImpressionLog(
+				request.recommendationLogId(),
+				request.userId(),
+				request.productId()
+			).orElseThrow(() -> new IllegalArgumentException("클릭 처리할 추천 노출 로그를 찾을 수 없습니다."));
+
+			RecommendationLog clickLog = findRecentEventLog(
 				impressionLog.getRecommendationLogId(),
 				RecommendationLogType.CLICK
-			))
-			.map(RecommendationLog::clickFromImpression)
-			.orElseGet(() -> RecommendationLog.click(
+			).orElseGet(() -> recommendationLogRepository.save(
+				RecommendationLog.clickFromImpression(impressionLog)
+			));
+
+			return RecommendationLogResponse.from(clickLog);
+		}
+
+		RecommendationLog savedLog = recommendationLogRepository.save(
+			RecommendationLog.click(
 				request.userId(),
 				request.productId(),
 				request.sourceProductId(),
@@ -119,9 +135,8 @@ public class RecommendationLogService {
 				request.displayLocation(),
 				request.recommendationRank(),
 				request.score()
-			));
-
-		RecommendationLog savedLog = recommendationLogRepository.save(log);
+			)
+		);
 
 		return RecommendationLogResponse.from(savedLog);
 	}
@@ -134,11 +149,14 @@ public class RecommendationLogService {
 			request.selectedProductId()
 		).orElseThrow(() -> new IllegalArgumentException("선택 처리할 추천 노출 로그를 찾을 수 없습니다."));
 
-		RecommendationLog savedLog = recommendationLogRepository.save(
+		RecommendationLog selectionLog = findRecentEventLog(
+			impressionLog.getRecommendationLogId(),
+			RecommendationLogType.SELECTION
+		).orElseGet(() -> recommendationLogRepository.save(
 			RecommendationLog.selectionFromImpression(impressionLog)
-		);
+		));
 
-		return RecommendationLogResponse.from(savedLog);
+		return RecommendationLogResponse.from(selectionLog);
 	}
 
 	@Transactional
@@ -220,6 +238,19 @@ public class RecommendationLogService {
 			rank,
 			BigDecimal.valueOf(recommendation.score()),
 			recommendation.reason()
+		);
+	}
+
+	private Optional<RecommendationLog> findRecentEventLog(
+		Long sourceRecommendationLogId,
+		RecommendationLogType logType
+	) {
+		LocalDateTime createdAtAfter = LocalDateTime.now().minus(DUPLICATE_SAVE_INTERVAL);
+
+		return recommendationLogRepository.findFirstBySourceRecommendationLogIdAndLogTypeAndCreatedAtAfterOrderByCreatedAtDesc(
+			sourceRecommendationLogId,
+			logType,
+			createdAtAfter
 		);
 	}
 }
