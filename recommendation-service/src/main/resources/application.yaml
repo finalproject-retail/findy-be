@@ -93,3 +93,9 @@ recommendation:
       fallback-location-weight: 0.05
       near-grid-distance: 2
       displayable-grid-distance: 5
+
+  auto-sync:
+    enabled: ${PRODUCT_EMBEDDING_AUTO_SYNC_ENABLED:true}
+    batch-size: ${PRODUCT_EMBEDDING_AUTO_SYNC_BATCH_SIZE:50}
+    initial-delay-ms: ${PRODUCT_EMBEDDING_AUTO_SYNC_INITIAL_DELAY_MS:30000}
+    fixed-delay-ms: ${PRODUCT_EMBEDDING_AUTO_SYNC_FIXED_DELAY_MS:900000}

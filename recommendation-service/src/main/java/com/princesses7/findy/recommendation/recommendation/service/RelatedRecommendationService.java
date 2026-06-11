@@ -3,16 +3,19 @@ package com.princesses7.findy.recommendation.recommendation.service;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.embedding.entity.ProductEmbedding;
 import com.princesses7.findy.recommendation.embedding.repository.ProductEmbeddingRepository;
+import com.princesses7.findy.recommendation.embedding.service.ProductEmbeddingService;
 import com.princesses7.findy.recommendation.embedding.util.VectorSimilarityCalculator;
 import com.princesses7.findy.recommendation.external.embedding.ProductEmbeddingClient;
 import com.princesses7.findy.recommendation.external.rerank.RelatedProductRerankClient;
@@ -31,7 +34,9 @@ import com.princesses7.findy.recommendation.recommendation.type.RecommendationTy
 import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -40,17 +45,22 @@ public class RelatedRecommendationService {
 	private static final int DEFAULT_SIZE = 5;
 	private static final int MAX_SIZE = 20;
 	private static final int VECTOR_CANDIDATE_LIMIT = 30;
+	private static final int FALLBACK_SEARCH_MULTIPLIER = 3;
 
 	private static final double MIN_VECTOR_SCORE = 0.35;
 	private static final double MIN_RERANK_SCORE = 0.55;
+	private static final double CATEGORY_FALLBACK_SCORE = 0.30;
+	private static final double GENERAL_FALLBACK_SCORE = 0.20;
 
 	private final ProductSnapshotRepository productRepository;
 	private final ProductEmbeddingRepository productEmbeddingRepository;
+	private final ProductEmbeddingService productEmbeddingService;
 	private final CategorySnapshotRepository categoryRepository;
 	private final ProductEmbeddingClient productEmbeddingClient;
 	private final RelatedProductRerankClient rerankClient;
 	private final RecommendationRequestValidator requestValidator;
 
+	@Transactional
 	public ProductRecommendationListResponse getRelatedRecommendations(
 		Long userId,
 		Long productId,
@@ -67,13 +77,32 @@ public class RelatedRecommendationService {
 			.map(CategorySnapshot::getCategoryName)
 			.orElse("");
 
+		ProductEmbedding sourceEmbedding = getOrCreateSourceEmbedding(sourceProduct);
+		List<Double> relatedIntentEmbedding = createRelatedIntentEmbedding(sourceProduct, sourceCategoryName);
+
+		if (sourceEmbedding == null || relatedIntentEmbedding.isEmpty()) {
+			return fallbackResponse(
+				userId,
+				sourceProduct,
+				sourceCategoryName,
+				normalizedSize,
+				"임베딩 생성이 어려워 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+			);
+		}
+
 		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findByModelAndDimensions(
 			productEmbeddingClient.model(),
 			productEmbeddingClient.dimensions()
 		);
 
 		if (candidateEmbeddings.isEmpty()) {
-			return emptyResponse(userId, sourceProduct, sourceCategoryName);
+			return fallbackResponse(
+				userId,
+				sourceProduct,
+				sourceCategoryName,
+				normalizedSize,
+				"임베딩 후보가 부족하여 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+			);
 		}
 
 		List<Long> candidateProductIds = candidateEmbeddings.stream()
@@ -83,7 +112,13 @@ public class RelatedRecommendationService {
 		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(candidateProductIds);
 
 		if (productMap.isEmpty()) {
-			return emptyResponse(userId, sourceProduct, sourceCategoryName);
+			return fallbackResponse(
+				userId,
+				sourceProduct,
+				sourceCategoryName,
+				normalizedSize,
+				"추천 가능한 임베딩 상품이 부족하여 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+			);
 		}
 
 		Map<Long, String> categoryNameMap = findCategoryNameMap(
@@ -92,13 +127,6 @@ public class RelatedRecommendationService {
 				.map(ProductSnapshot::getCategoryId)
 				.toList()
 		);
-
-		List<Double> relatedIntentEmbedding = productEmbeddingClient.createEmbedding(
-			sourceProduct.toRelatedRecommendationText(sourceCategoryName)
-		);
-
-		ProductEmbedding sourceEmbedding = productEmbeddingRepository.findByProductId(sourceProduct.getProductId())
-			.orElse(null);
 
 		List<RelatedCandidate> vectorCandidates = candidateEmbeddings.stream()
 			.map(candidateEmbedding -> toRelatedCandidate(
@@ -119,14 +147,20 @@ public class RelatedRecommendationService {
 			.toList();
 
 		if (vectorCandidates.isEmpty()) {
-			return emptyResponse(userId, sourceProduct, sourceCategoryName);
+			return fallbackResponse(
+				userId,
+				sourceProduct,
+				sourceCategoryName,
+				normalizedSize,
+				"벡터 유사도 기준을 통과한 후보가 부족하여 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+			);
 		}
 
 		List<ProductSnapshot> rerankTargets = vectorCandidates.stream()
 			.map(RelatedCandidate::product)
 			.toList();
 
-		List<RelatedProductRerankItem> rerankItems = rerankClient.rerank(
+		List<RelatedProductRerankItem> rerankItems = rerankSafely(
 			sourceProduct,
 			sourceCategoryName,
 			rerankTargets,
@@ -140,6 +174,10 @@ public class RelatedRecommendationService {
 			normalizedSize
 		);
 
+		if (recommendations.isEmpty()) {
+			recommendations = toVectorFallbackRecommendations(vectorCandidates, normalizedSize);
+		}
+
 		recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
 			recommendations,
 			normalizedSize
@@ -152,6 +190,63 @@ public class RelatedRecommendationService {
 			RecommendationType.RELATED,
 			recommendations
 		);
+	}
+
+	private ProductEmbedding getOrCreateSourceEmbedding(ProductSnapshot sourceProduct) {
+		try {
+			return productEmbeddingService.getOrCreateProductEmbedding(sourceProduct);
+		} catch (Exception exception) {
+			log.warn(
+				"Related recommendation source embedding create failed. productId={}, message={}",
+				sourceProduct.getProductId(),
+				exception.getMessage()
+			);
+			return null;
+		}
+	}
+
+	private List<Double> createRelatedIntentEmbedding(
+		ProductSnapshot sourceProduct,
+		String sourceCategoryName
+	) {
+		try {
+			return productEmbeddingClient.createEmbedding(
+				sourceProduct.toRelatedRecommendationText(sourceCategoryName)
+			);
+		} catch (Exception exception) {
+			log.warn(
+				"Related recommendation intent embedding create failed. productId={}, message={}",
+				sourceProduct.getProductId(),
+				exception.getMessage()
+			);
+			return List.of();
+		}
+	}
+
+	private List<RelatedProductRerankItem> rerankSafely(
+		ProductSnapshot sourceProduct,
+		String sourceCategoryName,
+		List<ProductSnapshot> rerankTargets,
+		Map<Long, String> categoryNameMap,
+		int normalizedSize
+	) {
+		try {
+			return rerankClient.rerank(
+				sourceProduct,
+				sourceCategoryName,
+				rerankTargets,
+				categoryNameMap,
+				normalizedSize
+			);
+		} catch (Exception exception) {
+			log.warn(
+				"Related recommendation rerank failed. productId={}, targetCount={}, message={}",
+				sourceProduct.getProductId(),
+				rerankTargets.size(),
+				exception.getMessage()
+			);
+			return List.of();
+		}
 	}
 
 	private RelatedCandidate toRelatedCandidate(
@@ -176,14 +271,10 @@ public class RelatedRecommendationService {
 			candidateEmbedding.getEmbeddingVector()
 		);
 
-		double sourceSimilarity = 0.0;
-
-		if (sourceEmbedding != null) {
-			sourceSimilarity = VectorSimilarityCalculator.cosineSimilarity(
-				sourceEmbedding.getEmbeddingVector(),
-				candidateEmbedding.getEmbeddingVector()
-			);
-		}
+		double sourceSimilarity = VectorSimilarityCalculator.cosineSimilarity(
+			sourceEmbedding.getEmbeddingVector(),
+			candidateEmbedding.getEmbeddingVector()
+		);
 
 		double score = calculateVectorScore(
 			sourceProduct,
@@ -238,10 +329,6 @@ public class RelatedRecommendationService {
 				(left, right) -> left
 			));
 
-		if (rerankMap.isEmpty()) {
-			return List.of();
-		}
-
 		return RecommendationResultPolicy.finalizeProductRecommendations(
 			vectorCandidates.stream()
 				.filter(candidate -> rerankMap.containsKey(candidate.product().getProductId()))
@@ -261,17 +348,93 @@ public class RelatedRecommendationService {
 		);
 	}
 
-	private ProductRecommendationListResponse emptyResponse(
+	private List<ProductRecommendationResponse> toVectorFallbackRecommendations(
+		List<RelatedCandidate> vectorCandidates,
+		int size
+	) {
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+			vectorCandidates.stream()
+				.map(candidate -> ProductRecommendationResponse.from(
+					candidate.product(),
+					candidate.vectorScore(),
+					RecommendationType.RELATED,
+					"AI 재정렬 결과가 부족하여 벡터 유사도 기반으로 추천한 연관 상품입니다."
+				))
+				.toList(),
+			size
+		);
+	}
+
+	private ProductRecommendationListResponse fallbackResponse(
 		Long userId,
 		ProductSnapshot sourceProduct,
-		String sourceCategoryName
+		String sourceCategoryName,
+		int normalizedSize,
+		String reason
 	) {
+		List<ProductRecommendationResponse> recommendations = findFallbackRecommendations(
+			sourceProduct,
+			normalizedSize,
+			reason
+		);
+
 		return new ProductRecommendationListResponse(
 			userId,
 			sourceProduct.getProductId(),
 			SourceProductResponse.from(sourceProduct, sourceCategoryName),
 			RecommendationType.RELATED,
-			List.of()
+			recommendations
+		);
+	}
+
+	private List<ProductRecommendationResponse> findFallbackRecommendations(
+		ProductSnapshot sourceProduct,
+		int size,
+		String reason
+	) {
+		Map<Long, ProductRecommendationResponse> recommendationMap = new LinkedHashMap<>();
+		int searchSize = Math.max(size * FALLBACK_SEARCH_MULTIPLIER, size);
+
+		productRepository.findFallbackRelatedProductsByCategory(
+				sourceProduct.getProductId(),
+				sourceProduct.getCategoryId(),
+				PageRequest.of(0, searchSize)
+			)
+			.stream()
+			.filter(product -> RecommendationResultPolicy.isDifferentProduct(product, sourceProduct.getProductId()))
+			.filter(RecommendationResultPolicy::isDisplayableProduct)
+			.forEach(product -> recommendationMap.putIfAbsent(
+				product.getProductId(),
+				ProductRecommendationResponse.from(
+					product,
+					CATEGORY_FALLBACK_SCORE + calculateDiscountScore(product.getDiscountRate()),
+					RecommendationType.RELATED,
+					reason
+				)
+			));
+
+		if (recommendationMap.size() < size) {
+			productRepository.findFallbackRelatedProducts(
+					sourceProduct.getProductId(),
+					PageRequest.of(0, searchSize)
+				)
+				.stream()
+				.filter(product -> RecommendationResultPolicy.isDifferentProduct(product, sourceProduct.getProductId()))
+				.filter(RecommendationResultPolicy::isDisplayableProduct)
+				.forEach(product -> recommendationMap.putIfAbsent(
+					product.getProductId(),
+					ProductRecommendationResponse.from(
+						product,
+						GENERAL_FALLBACK_SCORE + calculateDiscountScore(product.getDiscountRate()),
+						RecommendationType.RELATED,
+						reason
+					)
+				));
+		}
+
+		return RecommendationResultPolicy.finalizeProductRecommendations(
+			recommendationMap.values().stream().toList(),
+			size
 		);
 	}
 
