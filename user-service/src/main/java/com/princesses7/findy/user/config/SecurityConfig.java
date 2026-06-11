@@ -31,7 +31,7 @@ public class SecurityConfig {
 					"/api/v1/auth/logout",
 					"/api/v1/auth/social/**",
 					"/api/v1/auth/password-reset/**",
-					"/api/v1/email/**",
+					"/api/v1/auth/email/**",
 					"/api/v1/users/signup",
 					"/actuator/health",
 					"/actuator/prometheus",
