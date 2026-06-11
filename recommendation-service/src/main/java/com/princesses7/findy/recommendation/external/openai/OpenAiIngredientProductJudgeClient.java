@@ -85,6 +85,9 @@ public class OpenAiIngredientProductJudgeClient implements IngredientProductJudg
 			중요 규칙:
 			- 상품명 키워드만 보고 판단하지 말고, 상품명/카테고리/브랜드/설명/판매단위/중량 정보를 종합해서 판단한다.
 			- ingredientName 재료가 일부 포함된 가공식품은 suitable=false이다.
+			- 예: ingredientName=감자일 때 감자면, 감자칩, 감자스낵은 suitable=false이다.
+			- 예: ingredientName=김치일 때 김치라면, 김치사발면, 김치볶음밥은 suitable=false이다.
+			- 예: ingredientName=카레가루일 때 카레라면, 카레볶음밥은 suitable=false이다.
 			- 특정 요리 완제품이나 밀키트는 ingredientName 재료 자체가 아니면 suitable=false이다.
 			- 후보 상품에 없는 productId를 만들지 않는다.
 			- 후보 목록에 있는 productId만 응답한다.
