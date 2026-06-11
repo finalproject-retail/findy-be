@@ -76,6 +76,22 @@ public class CartItem extends BaseTimeEntity {
 		this.checked = checked;
 	}
 
+	public void uncheck() {
+		this.checked = false;
+	}
+
+	public boolean hasQuantityGreaterThan(int stockQuantity) {
+		return this.quantity > stockQuantity;
+	}
+
+	public void clampQuantityTo(int stockQuantity) {
+		validateQuantity(stockQuantity);
+
+		if (this.quantity > stockQuantity) {
+			this.quantity = stockQuantity;
+		}
+	}
+
 	private void validateQuantity(int quantity) {
 		if (quantity < 1) {
 			throw new CartException(INVALID_CART_QUANTITY);

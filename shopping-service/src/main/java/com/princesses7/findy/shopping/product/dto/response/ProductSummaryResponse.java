@@ -30,8 +30,8 @@ public record ProductSummaryResponse(
 			product.getSaleStatus(),
 			product.getGridId(),
 			inventory == null ? null : inventory.getStockQuantity(),
-			inventory == null ? null : inventory.getStockStatus().name(),
-			createStockBadgeText(inventory)
+			createStockStatus(product, inventory),
+			createStockBadgeText(product, inventory)
 		);
 	}
 
@@ -43,7 +43,37 @@ public record ProductSummaryResponse(
 		return originalPrice * quantity;
 	}
 
-	private static String createStockBadgeText(Inventory inventory) {
+	public boolean isPurchasable() {
+		return saleStatus == SaleStatus.ON_SALE
+			&& stockQuantity != null
+			&& stockQuantity > 0;
+	}
+
+	public int purchasableQuantity() {
+		if (!isPurchasable()) {
+			return 0;
+		}
+
+		return stockQuantity;
+	}
+
+	private static String createStockStatus(Product product, Inventory inventory) {
+		if (product.getSaleStatus() != SaleStatus.ON_SALE) {
+			return StockStatus.OUT_OF_STOCK.name();
+		}
+
+		if (inventory == null) {
+			return null;
+		}
+
+		return inventory.getStockStatus().name();
+	}
+
+	private static String createStockBadgeText(Product product, Inventory inventory) {
+		if (product.getSaleStatus() != SaleStatus.ON_SALE) {
+			return "품절";
+		}
+
 		if (inventory == null) {
 			return "재고 확인 불가";
 		}

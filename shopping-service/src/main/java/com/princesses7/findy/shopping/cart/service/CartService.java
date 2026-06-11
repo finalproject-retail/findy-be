@@ -19,7 +19,6 @@ import com.princesses7.findy.shopping.cart.entity.CartItem;
 import com.princesses7.findy.shopping.cart.exception.CartException;
 import com.princesses7.findy.shopping.cart.repository.CartRepository;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
-import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
 
 import lombok.RequiredArgsConstructor;
@@ -31,6 +30,7 @@ public class CartService {
 
 	private final CartRepository cartRepository;
 	private final ProductSummaryReader productSummaryReader;
+	private final CartStockSynchronizer cartStockSynchronizer;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
 
 	@Transactional
@@ -51,12 +51,13 @@ public class CartService {
 			null
 		);
 
-		return toResponse(cart, storeId);
+		return syncAndToResponse(cart, storeId);
 	}
 
+	@Transactional
 	public CartResponse getCart(Long userId, long storeId) {
 		return cartRepository.findByUserId(userId)
-			.map(cart -> toResponse(cart, storeId))
+			.map(cart -> syncAndToResponse(cart, storeId))
 			.orElseGet(() -> CartResponse.empty(userId));
 	}
 
@@ -66,36 +67,14 @@ public class CartService {
 
 		cart.removeItem(cartItemId);
 
-		return toResponse(cart, storeId);
+		return syncAndToResponse(cart, storeId);
 	}
 
 	@Transactional
 	public CartResponse syncCartItemStocks(Long userId, long storeId) {
 		return cartRepository.findByUserId(userId)
-			.map(cart -> {
-				uncheckNotPurchasableItems(cart, storeId);
-				return toResponse(cart, storeId);
-			})
+			.map(cart -> syncAndToResponse(cart, storeId))
 			.orElseGet(() -> CartResponse.empty(userId));
-	}
-
-	private void uncheckNotPurchasableItems(Cart cart, long storeId) {
-		cart.getCartItems()
-			.stream()
-			.filter(CartItem::isChecked)
-			.forEach(cartItem -> uncheckIfNotPurchasable(cartItem, storeId));
-	}
-
-	private void uncheckIfNotPurchasable(CartItem cartItem, long storeId) {
-		try {
-			productSummaryReader.validatePurchasable(
-				cartItem.getProductId(),
-				cartItem.getQuantity(),
-				storeId
-			);
-		} catch (ProductException exception) {
-			cartItem.changeChecked(false);
-		}
 	}
 
 	@Transactional
@@ -111,7 +90,7 @@ public class CartService {
 		productSummaryReader.validatePurchasable(cartItem.getProductId(), request.quantity(), storeId);
 		cart.changeItemQuantity(cartItemId, request.quantity());
 
-		return toResponse(cart, storeId);
+		return syncAndToResponse(cart, storeId);
 	}
 
 	@Transactional
@@ -122,10 +101,19 @@ public class CartService {
 		long storeId
 	) {
 		Cart cart = getCartByUserId(userId);
+		CartItem cartItem = getCartItem(cart, cartItemId);
+
+		if (request.checked()) {
+			productSummaryReader.validatePurchasable(
+				cartItem.getProductId(),
+				cartItem.getQuantity(),
+				storeId
+			);
+		}
 
 		cart.changeItemChecked(cartItemId, request.checked());
 
-		return toResponse(cart, storeId);
+		return syncAndToResponse(cart, storeId);
 	}
 
 	private Cart getOrCreateCart(Long userId) {
@@ -153,14 +141,19 @@ public class CartService {
 			.orElse(0);
 	}
 
-	private CartResponse toResponse(Cart cart, long storeId) {
+	private CartResponse syncAndToResponse(Cart cart, long storeId) {
+		Map<Long, ProductSummaryResponse> productMap = getProductSummaryMap(cart, storeId);
+
+		cartStockSynchronizer.synchronize(cart, productMap);
+
+		return CartResponse.from(cart, productMap);
+	}
+
+	private Map<Long, ProductSummaryResponse> getProductSummaryMap(Cart cart, long storeId) {
 		List<Long> productIds = cart.getCartItems().stream()
 			.map(CartItem::getProductId)
 			.toList();
 
-		Map<Long, ProductSummaryResponse> productMap = productSummaryReader
-			.getProductSummaryMap(productIds, storeId);
-
-		return CartResponse.from(cart, productMap);
+		return productSummaryReader.getProductSummaryMap(productIds, storeId);
 	}
 }
