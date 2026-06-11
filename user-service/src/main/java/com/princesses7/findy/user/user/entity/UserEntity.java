@@ -91,4 +91,8 @@ public class UserEntity extends BaseTimeEntity {
 		}
 		this.reward -= usedAmount;
 	}
+
+	public void changePassword(String encodedPassword) {
+		this.password = encodedPassword;
+	}
 }

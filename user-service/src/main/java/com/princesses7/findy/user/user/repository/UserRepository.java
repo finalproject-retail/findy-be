@@ -11,4 +11,7 @@ import com.princesses7.findy.user.user.entity.UserEntity;
 public interface UserRepository extends JpaRepository<UserEntity, Long> {
 
 	Optional<UserEntity> findByEmail(String email);
+
+	boolean existsByEmail(String email);
 }
+
