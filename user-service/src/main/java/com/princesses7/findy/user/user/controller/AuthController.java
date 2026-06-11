@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
 public class AuthController {
+
 	private final AuthService authService;
 	private final PasswordResetService passwordResetService;
 
@@ -69,4 +70,3 @@ public class AuthController {
 		return ApiResponse.ok("비밀번호 변경에 성공했습니다.");
 	}
 }
-
