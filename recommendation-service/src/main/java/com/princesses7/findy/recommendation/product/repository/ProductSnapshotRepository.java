@@ -29,15 +29,27 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 		SELECT p
 		FROM ProductSnapshot p
 		WHERE p.deleted = FALSE
-			AND (
-				LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-			)
-		ORDER BY p.discountRate DESC, p.salePrice ASC
+			AND p.productId <> :sourceProductId
+			AND p.categoryId = :categoryId
+			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
+		ORDER BY p.discountRate DESC, p.salePrice ASC, p.productId ASC
 		""")
-	List<ProductSnapshot> searchByKeyword(
-		@Param("keyword") String keyword,
+	List<ProductSnapshot> findFallbackRelatedProductsByCategory(
+		@Param("sourceProductId") Long sourceProductId,
+		@Param("categoryId") Long categoryId,
+		Pageable pageable
+	);
+
+	@Query("""
+		SELECT p
+		FROM ProductSnapshot p
+		WHERE p.deleted = FALSE
+			AND p.productId <> :sourceProductId
+			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
+		ORDER BY p.discountRate DESC, p.salePrice ASC, p.productId ASC
+		""")
+	List<ProductSnapshot> findFallbackRelatedProducts(
+		@Param("sourceProductId") Long sourceProductId,
 		Pageable pageable
 	);
 
@@ -55,9 +67,25 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 			)
 		ORDER BY p.productId ASC
 		""")
-	List<ProductSnapshot> findMissingEmbeddingProducts(
+	List<ProductSnapshot> findEmbeddingAutoSyncTargets(
 		@Param("model") String model,
 		@Param("dimensions") int dimensions,
+		Pageable pageable
+	);
+
+	@Query("""
+		SELECT p
+		FROM ProductSnapshot p
+		WHERE p.deleted = FALSE
+			AND (
+				LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+				OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+				OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			)
+		ORDER BY p.discountRate DESC, p.salePrice ASC
+		""")
+	List<ProductSnapshot> searchByKeyword(
+		@Param("keyword") String keyword,
 		Pageable pageable
 	);
 }
