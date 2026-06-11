@@ -33,7 +33,7 @@ public class ChatbotRecipeRecommendationService {
 	private static final long DEFAULT_STORE_ID = 1L;
 	private static final int PRODUCT_LIMIT_PER_INGREDIENT = 5;
 	private static final int CANDIDATE_LIMIT_PER_INGREDIENT = 20;
-	private static final double MIN_JUDGE_CONFIDENCE = 0.65;
+	private static final double MIN_JUDGE_CONFIDENCE = 0.5;
 
 	private final ChatbotRecipeIngredientExtractor recipeIngredientExtractor;
 	private final ShoppingProductReadRepository shoppingProductReadRepository;
@@ -88,7 +88,7 @@ public class ChatbotRecipeRecommendationService {
 		List<ChatbotShoppingProduct> products = findProductsByIngredient(
 			recipeName,
 			storeId,
-			ingredient.ingredientName()
+			ingredient
 		);
 
 		List<ChatbotRecipeProductRecommendationResponse> recommendedProducts = products.stream()
@@ -110,19 +110,18 @@ public class ChatbotRecipeRecommendationService {
 	private List<ChatbotShoppingProduct> findProductsByIngredient(
 		String recipeName,
 		Long storeId,
-		String ingredientName
+		RecipeIngredientItem ingredient
 	) {
-		if (ingredientName == null || ingredientName.isBlank()) {
+		if (ingredient == null || !hasText(ingredient.ingredientName())) {
 			return List.of();
 		}
 
-		List<ChatbotShoppingProduct> candidates = distinctRecommendableProducts(
-			shoppingProductReadRepository.searchIngredientCandidates(
-				ingredientName,
-				storeId,
-				CANDIDATE_LIMIT_PER_INGREDIENT
-			),
-			CANDIDATE_LIMIT_PER_INGREDIENT
+		String ingredientName = ingredient.ingredientName();
+		List<String> searchKeywords = normalizeSearchKeywords(ingredient);
+
+		List<ChatbotShoppingProduct> candidates = searchCandidates(
+			searchKeywords,
+			storeId
 		);
 
 		if (candidates.isEmpty()) {
@@ -137,7 +136,7 @@ public class ChatbotRecipeRecommendationService {
 		);
 
 		if (judgedItems.isEmpty()) {
-			return List.of();
+			return fallbackProducts(searchKeywords, candidates);
 		}
 
 		Map<Long, IngredientProductJudgeItem> suitableJudgeMap = judgedItems.stream()
@@ -151,7 +150,7 @@ public class ChatbotRecipeRecommendationService {
 			));
 
 		if (suitableJudgeMap.isEmpty()) {
-			return List.of();
+			return fallbackProducts(searchKeywords, candidates);
 		}
 
 		Set<Long> candidateProductIds = candidates.stream()
@@ -171,6 +170,107 @@ public class ChatbotRecipeRecommendationService {
 			.toList();
 	}
 
+	private List<ChatbotShoppingProduct> searchCandidates(
+		List<String> searchKeywords,
+		Long storeId
+	) {
+		Map<Long, ChatbotShoppingProduct> productMap = new LinkedHashMap<>();
+
+		for (String searchKeyword : searchKeywords) {
+			addCandidates(
+				productMap,
+				shoppingProductReadRepository.searchIngredientCandidates(
+					searchKeyword,
+					storeId,
+					CANDIDATE_LIMIT_PER_INGREDIENT
+				)
+			);
+		}
+
+		return productMap.values()
+			.stream()
+			.limit(CANDIDATE_LIMIT_PER_INGREDIENT)
+			.toList();
+	}
+
+	private void addCandidates(
+		Map<Long, ChatbotShoppingProduct> productMap,
+		List<ChatbotShoppingProduct> products
+	) {
+		if (products == null || products.isEmpty()) {
+			return;
+		}
+
+		for (ChatbotShoppingProduct product : products) {
+			if (product != null && product.productId() != null && product.isRecommendable()) {
+				productMap.putIfAbsent(product.productId(), product);
+			}
+		}
+	}
+
+	private List<ChatbotShoppingProduct> fallbackProducts(
+		List<String> searchKeywords,
+		List<ChatbotShoppingProduct> candidates
+	) {
+		return candidates.stream()
+			.filter(product -> searchKeywords.stream()
+				.anyMatch(keyword -> isStrictSearchKeywordProduct(keyword, product)))
+			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
+			.toList();
+	}
+
+	private boolean isStrictSearchKeywordProduct(
+		String searchKeyword,
+		ChatbotShoppingProduct product
+	) {
+		if (!hasText(searchKeyword) || product == null || !hasText(product.productName())) {
+			return false;
+		}
+
+		String keyword = normalizeText(searchKeyword);
+		String productName = normalizeText(product.productName());
+
+		if (productName.equals(keyword)) {
+			return true;
+		}
+
+		if (!productName.startsWith(keyword)) {
+			return false;
+		}
+
+		if (productName.length() == keyword.length()) {
+			return true;
+		}
+
+		char next = productName.charAt(keyword.length());
+
+		return Character.isDigit(next)
+			|| Character.isWhitespace(next)
+			|| next == '-'
+			|| next == '_'
+			|| next == '/'
+			|| next == '('
+			|| next == '[';
+	}
+
+	private List<String> normalizeSearchKeywords(RecipeIngredientItem ingredient) {
+		if (ingredient.searchKeywords() != null && !ingredient.searchKeywords().isEmpty()) {
+			return ingredient.searchKeywords()
+				.stream()
+				.filter(this::hasText)
+				.map(String::trim)
+				.distinct()
+				.limit(5)
+				.toList();
+		}
+
+		if (hasText(ingredient.searchKeyword())) {
+			return List.of(ingredient.searchKeyword().trim());
+		}
+
+		return List.of(ingredient.ingredientName().trim());
+	}
+
 	private ChatbotShoppingProduct findCandidate(
 		List<ChatbotShoppingProduct> candidates,
 		Long productId
@@ -183,24 +283,6 @@ public class ChatbotRecipeRecommendationService {
 			.filter(candidate -> productId.equals(candidate.productId()))
 			.findFirst()
 			.orElse(null);
-	}
-
-	private List<ChatbotShoppingProduct> distinctRecommendableProducts(
-		List<ChatbotShoppingProduct> products,
-		int limit
-	) {
-		Map<Long, ChatbotShoppingProduct> productMap = new LinkedHashMap<>();
-
-		for (ChatbotShoppingProduct product : products) {
-			if (product != null && product.isRecommendable()) {
-				productMap.putIfAbsent(product.productId(), product);
-			}
-		}
-
-		return productMap.values()
-			.stream()
-			.limit(limit)
-			.toList();
 	}
 
 	private boolean isFirstProduct(
@@ -217,5 +299,18 @@ public class ChatbotRecipeRecommendationService {
 		}
 
 		return storeId;
+	}
+
+	private boolean hasText(String value) {
+		return value != null && !value.isBlank();
+	}
+
+	private String normalizeText(String value) {
+		if (value == null) {
+			return "";
+		}
+
+		return value.trim()
+			.replaceAll("\\s+", " ");
 	}
 }
