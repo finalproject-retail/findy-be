@@ -96,8 +96,8 @@ public class BedrockIngredientProductJudgeClient implements IngredientProductJud
 			- suitable=false: 후보 상품이 재료 자체가 아니라 완제품, 밀키트, 소스 조합, 간식, 다른 요리, 해당 재료가 일부 들어간 가공식품입니다.
 			
 			규칙:
-			- 상품명 키워드만 보고 판단하지 말고, 상품명/카테고리/브랜드/판매단위/중량 정보를 종합하세요.
-			- ingredientName 재료가 일부 포함된 가공식품은 suitable=false입니다.
+			- 상품명 키워드만 보고 판단하지 말고, 상품명, 카테고리, 브랜드, 판매단위, 중량 정보를 종합하세요.
+			- ingredientName이 일부 포함된 가공식품은 재료 자체가 아니면 suitable=false입니다.
 			- 특정 요리 완제품이나 밀키트는 ingredientName 재료 자체가 아니면 suitable=false입니다.
 			- 후보에 없는 productId를 만들지 마세요.
 			- confidence는 0.0 이상 1.0 이하로 주세요.

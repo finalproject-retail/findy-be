@@ -44,7 +44,8 @@ public class OpenAiIngredientProductJudgeClient implements IngredientProductJudg
 				List.of(
 					OpenAiChatMessage.system(systemPrompt()),
 					OpenAiChatMessage.user(userPrompt(recipeName, ingredientName, candidates, limit))
-				)
+				),
+				300
 			);
 
 			OpenAiChatResponse response = openAiRestClient.post()
@@ -82,9 +83,9 @@ public class OpenAiIngredientProductJudgeClient implements IngredientProductJudg
 			- suitable=true: 후보 상품이 ingredientName 재료 자체로 사용 가능하다.
 			- suitable=false: 후보 상품이 재료 자체가 아니라 완제품, 밀키트, 소스 조합, 간식, 다른 요리, 해당 재료가 일부 들어간 가공식품이다.
 			
-			중요 규칙:
-			- 상품명 키워드만 보고 판단하지 말고, 상품명/카테고리/브랜드/설명/판매단위/중량 정보를 종합해서 판단한다.
-			- ingredientName 재료가 일부 포함된 가공식품은 suitable=false이다.
+			규칙:
+			- 상품명 키워드만 보고 판단하지 말고, 상품명, 카테고리, 브랜드, 설명, 판매단위, 중량 정보를 종합해서 판단한다.
+			- ingredientName이 일부 포함된 가공식품은 재료 자체가 아니면 suitable=false이다.
 			- 특정 요리 완제품이나 밀키트는 ingredientName 재료 자체가 아니면 suitable=false이다.
 			- 후보 상품에 없는 productId를 만들지 않는다.
 			- 후보 목록에 있는 productId만 응답한다.
