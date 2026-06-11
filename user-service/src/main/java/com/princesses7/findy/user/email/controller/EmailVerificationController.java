@@ -16,25 +16,26 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/api/v1/email-verifications")
+@RequestMapping("/api/v1/auth/email")
 @RequiredArgsConstructor
 public class EmailVerificationController {
 
 	private final EmailVerificationService emailVerificationService;
 
-	@PostMapping
-	public ApiResponse<SendEmailVerificationResponse> sendCode(
+	@PostMapping("/verification-code")
+	public ApiResponse<SendEmailVerificationResponse> sendVerificationCode(
 		@Valid @RequestBody SendEmailVerificationRequest request
 	) {
 		SendEmailVerificationResponse response = emailVerificationService.sendCode(
 			request.email(),
 			request.purpose()
 		);
+
 		return ApiResponse.ok("이메일 인증 코드 발송에 성공했습니다.", response);
 	}
 
-	@PostMapping("/verify")
-	public ApiResponse<VerifyEmailCodeResponse> verifyCode(
+	@PostMapping("/verification-code/verify")
+	public ApiResponse<VerifyEmailCodeResponse> verifyVerificationCode(
 		@Valid @RequestBody VerifyEmailCodeRequest request
 	) {
 		VerifyEmailCodeResponse response = emailVerificationService.verifyCode(
@@ -42,6 +43,7 @@ public class EmailVerificationController {
 			request.purpose(),
 			request.code()
 		);
+
 		return ApiResponse.ok("이메일 인증에 성공했습니다.", response);
 	}
 }
