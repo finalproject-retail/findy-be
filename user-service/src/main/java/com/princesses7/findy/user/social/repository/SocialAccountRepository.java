@@ -8,6 +8,7 @@ import org.springframework.stereotype.Repository;
 
 import com.princesses7.findy.user.social.entity.SocialAccount;
 import com.princesses7.findy.user.social.entity.SocialProvider;
+import com.princesses7.findy.user.user.entity.UserEntity;
 
 @Repository
 public interface SocialAccountRepository extends JpaRepository<SocialAccount, Long> {
@@ -28,4 +29,11 @@ public interface SocialAccountRepository extends JpaRepository<SocialAccount, Lo
 		SocialProvider provider,
 		String providerUserId
 	);
+
+	Optional<SocialAccount> findByProviderAndProviderUserIdAndConnectedTrue(
+		SocialProvider provider,
+		String providerUserId
+	);
+
+	boolean existsByUserAndProviderAndConnectedTrue(UserEntity user, SocialProvider provider);
 }
