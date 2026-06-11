@@ -38,6 +38,7 @@ public class ChatbotRecipeRecommendationService {
 	private final ChatbotRecipeIngredientExtractor recipeIngredientExtractor;
 	private final ShoppingProductReadRepository shoppingProductReadRepository;
 	private final IngredientProductJudgeClient ingredientProductJudgeClient;
+	private final RecipeIngredientCandidateFilter recipeIngredientCandidateFilter;
 
 	public ChatbotRecipeRecommendationResponse recommend(
 		Long userId,
@@ -116,10 +117,14 @@ public class ChatbotRecipeRecommendationService {
 			return List.of();
 		}
 
-		List<ChatbotShoppingProduct> candidates = distinctRecommendableProducts(
-			shoppingProductReadRepository.searchIngredientCandidates(
-				ingredientName,
-				storeId,
+		List<ChatbotShoppingProduct> candidates = recipeIngredientCandidateFilter.filter(
+			ingredientName,
+			distinctRecommendableProducts(
+				shoppingProductReadRepository.searchIngredientCandidates(
+					ingredientName,
+					storeId,
+					CANDIDATE_LIMIT_PER_INGREDIENT
+				),
 				CANDIDATE_LIMIT_PER_INGREDIENT
 			),
 			CANDIDATE_LIMIT_PER_INGREDIENT
