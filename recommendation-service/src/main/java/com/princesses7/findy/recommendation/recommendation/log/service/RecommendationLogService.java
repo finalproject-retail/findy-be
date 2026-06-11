@@ -1,7 +1,9 @@
 package com.princesses7.findy.recommendation.recommendation.log.service;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import org.springframework.stereotype.Service;
@@ -11,12 +13,16 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationClickLogRequest;
+import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationPurchaseConversionRequest;
+import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationSelectionLogRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.response.RecommendationLogResponse;
+import com.princesses7.findy.recommendation.recommendation.log.dto.response.RecommendationPurchaseConversionResponse;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.PromotionRecommendationImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.RecommendationImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.RecommendationSingleImpressionLogCommand;
 import com.princesses7.findy.recommendation.recommendation.log.entity.RecommendationLog;
 import com.princesses7.findy.recommendation.recommendation.log.repository.RecommendationLogRepository;
+import com.princesses7.findy.recommendation.recommendation.log.type.RecommendationLogType;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,29 +33,53 @@ public class RecommendationLogService {
 	private final RecommendationLogRepository recommendationLogRepository;
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void saveImpressionLogs(RecommendationImpressionLogCommand command) {
+	public List<ProductRecommendationResponse> saveImpressionLogsAndAttachIds(
+		RecommendationImpressionLogCommand command
+	) {
 		if (command.recommendations() == null || command.recommendations().isEmpty()) {
-			return;
+			return List.of();
 		}
 
 		List<RecommendationLog> logs = IntStream.range(0, command.recommendations().size())
 			.mapToObj(index -> toImpressionLog(command, command.recommendations().get(index), index + 1))
 			.toList();
 
-		recommendationLogRepository.saveAll(logs);
+		List<RecommendationLog> savedLogs = recommendationLogRepository.saveAll(logs);
+
+		return IntStream.range(0, command.recommendations().size())
+			.mapToObj(index -> command.recommendations().get(index)
+				.withRecommendationLogId(savedLogs.get(index).getRecommendationLogId()))
+			.toList();
 	}
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
-	public void savePromotionImpressionLogs(PromotionRecommendationImpressionLogCommand command) {
+	public List<PromotionProductRecommendationResponse> savePromotionImpressionLogsAndAttachIds(
+		PromotionRecommendationImpressionLogCommand command
+	) {
 		if (command.recommendations() == null || command.recommendations().isEmpty()) {
-			return;
+			return List.of();
 		}
 
 		List<RecommendationLog> logs = IntStream.range(0, command.recommendations().size())
 			.mapToObj(index -> toPromotionImpressionLog(command, command.recommendations().get(index), index + 1))
 			.toList();
 
-		recommendationLogRepository.saveAll(logs);
+		List<RecommendationLog> savedLogs = recommendationLogRepository.saveAll(logs);
+
+		return IntStream.range(0, command.recommendations().size())
+			.mapToObj(index -> command.recommendations().get(index)
+				.withRecommendationLogId(savedLogs.get(index).getRecommendationLogId()))
+			.toList();
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void saveImpressionLogs(RecommendationImpressionLogCommand command) {
+		saveImpressionLogsAndAttachIds(command);
+	}
+
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public void savePromotionImpressionLogs(PromotionRecommendationImpressionLogCommand command) {
+		savePromotionImpressionLogsAndAttachIds(command);
 	}
 
 	@Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -73,20 +103,88 @@ public class RecommendationLogService {
 
 	@Transactional
 	public RecommendationLogResponse saveClickLog(RecommendationClickLogRequest request) {
-		RecommendationLog log = RecommendationLog.click(
-			request.userId(),
-			request.productId(),
-			request.sourceProductId(),
-			request.storeId(),
-			request.recommendationType(),
-			request.displayLocation(),
-			request.recommendationRank(),
-			request.score()
-		);
+		RecommendationLog log = findUsableImpressionLog(request.recommendationLogId(), request.userId(),
+			request.productId())
+			.filter(impressionLog -> !recommendationLogRepository.existsBySourceRecommendationLogIdAndLogType(
+				impressionLog.getRecommendationLogId(),
+				RecommendationLogType.CLICK
+			))
+			.map(RecommendationLog::clickFromImpression)
+			.orElseGet(() -> RecommendationLog.click(
+				request.userId(),
+				request.productId(),
+				request.sourceProductId(),
+				request.storeId(),
+				request.recommendationType(),
+				request.displayLocation(),
+				request.recommendationRank(),
+				request.score()
+			));
 
 		RecommendationLog savedLog = recommendationLogRepository.save(log);
 
 		return RecommendationLogResponse.from(savedLog);
+	}
+
+	@Transactional
+	public RecommendationLogResponse saveSelectionLog(RecommendationSelectionLogRequest request) {
+		RecommendationLog impressionLog = findUsableImpressionLog(
+			request.recommendationLogId(),
+			request.userId(),
+			request.selectedProductId()
+		).orElseThrow(() -> new IllegalArgumentException("선택 처리할 추천 노출 로그를 찾을 수 없습니다."));
+
+		RecommendationLog savedLog = recommendationLogRepository.save(
+			RecommendationLog.selectionFromImpression(impressionLog)
+		);
+
+		return RecommendationLogResponse.from(savedLog);
+	}
+
+	@Transactional
+	public RecommendationPurchaseConversionResponse savePurchaseConversionLog(
+		RecommendationPurchaseConversionRequest request
+	) {
+		Set<Long> purchasedProductIds = new HashSet<>(request.purchasedProductIds());
+
+		List<RecommendationLog> impressionLogs = recommendationLogRepository.findByRecommendationLogIdInAndLogType(
+			request.recommendationLogIds(),
+			RecommendationLogType.IMPRESSION
+		);
+
+		List<RecommendationLog> purchaseLogs = impressionLogs.stream()
+			.filter(log -> request.userId().equals(log.getUserId()))
+			.filter(log -> purchasedProductIds.contains(log.getProductId()))
+			.filter(log -> !recommendationLogRepository.existsBySourceRecommendationLogIdAndLogTypeAndOrderId(
+				log.getRecommendationLogId(),
+				RecommendationLogType.PURCHASE,
+				request.orderId()
+			))
+			.map(log -> RecommendationLog.purchaseFromImpression(log, request.orderId()))
+			.toList();
+
+		recommendationLogRepository.saveAll(purchaseLogs);
+
+		return new RecommendationPurchaseConversionResponse(
+			request.userId(),
+			request.orderId(),
+			purchaseLogs.size()
+		);
+	}
+
+	private java.util.Optional<RecommendationLog> findUsableImpressionLog(
+		Long recommendationLogId,
+		Long userId,
+		Long productId
+	) {
+		if (recommendationLogId == null) {
+			return java.util.Optional.empty();
+		}
+
+		return recommendationLogRepository.findById(recommendationLogId)
+			.filter(log -> RecommendationLogType.IMPRESSION == log.getLogType())
+			.filter(log -> userId == null || userId.equals(log.getUserId()))
+			.filter(log -> productId == null || productId.equals(log.getProductId()));
 	}
 
 	private RecommendationLog toImpressionLog(
