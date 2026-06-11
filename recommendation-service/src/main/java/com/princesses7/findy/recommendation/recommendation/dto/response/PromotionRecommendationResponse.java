@@ -12,4 +12,17 @@ public record PromotionRecommendationResponse(
 	RecommendationType recommendationType,
 	List<PromotionProductRecommendationResponse> recommendations
 ) {
+
+	public PromotionRecommendationResponse withRecommendations(
+		List<PromotionProductRecommendationResponse> recommendations
+	) {
+		return new PromotionRecommendationResponse(
+			userId,
+			storeId,
+			preferredCategories,
+			shoppingStyles,
+			recommendationType,
+			recommendations
+		);
+	}
 }

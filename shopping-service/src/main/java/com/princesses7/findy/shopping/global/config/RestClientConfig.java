@@ -34,4 +34,11 @@ public class RestClientConfig {
 			.baseUrl(properties.baseUrl())
 			.build();
 	}
+
+	@Bean
+	public RestClient recommendationServiceRestClient(RecommendationServiceProperties properties) {
+		return RestClient.builder()
+			.baseUrl(properties.resolvedBaseUrl())
+			.build();
+	}
 }

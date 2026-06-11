@@ -1,5 +1,7 @@
 package com.princesses7.findy.recommendation.recommendation.controller;
 
+import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -9,6 +11,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.princesses7.findy.recommendation.global.response.ApiResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PersonalizedRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationListResponse;
+import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
+import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.SubstituteRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.log.dto.service.PromotionRecommendationImpressionLogCommand;
@@ -49,16 +53,21 @@ public class RecommendationController {
 		PersonalizedRecommendationResponse response = personalizedRecommendationService
 			.getPersonalizedRecommendations(userId, storeId, size);
 
-		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
-			userId,
-			null,
-			storeId,
-			RecommendationType.PERSONALIZED,
-			PERSONALIZED_DISPLAY_LOCATION,
-			response.recommendations()
-		));
+		List<ProductRecommendationResponse> loggedRecommendations = saveImpressionLogsSafely(
+			new RecommendationImpressionLogCommand(
+				userId,
+				null,
+				storeId,
+				RecommendationType.PERSONALIZED,
+				PERSONALIZED_DISPLAY_LOCATION,
+				response.recommendations()
+			)
+		);
 
-		return ApiResponse.ok("개인 맞춤 추천 조회에 성공했습니다.", response);
+		return ApiResponse.ok(
+			"개인 맞춤 추천 조회에 성공했습니다.",
+			response.withRecommendations(loggedRecommendations)
+		);
 	}
 
 	@GetMapping("/products/{productId}/related")
@@ -73,16 +82,21 @@ public class RecommendationController {
 			size
 		);
 
-		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
-			userId,
-			productId,
-			null,
-			response.recommendationType(),
-			RELATED_DISPLAY_LOCATION,
-			response.recommendations()
-		));
+		List<ProductRecommendationResponse> loggedRecommendations = saveImpressionLogsSafely(
+			new RecommendationImpressionLogCommand(
+				userId,
+				productId,
+				null,
+				response.recommendationType(),
+				RELATED_DISPLAY_LOCATION,
+				response.recommendations()
+			)
+		);
 
-		return ApiResponse.ok("연관 상품 추천 조회에 성공했습니다.", response);
+		return ApiResponse.ok(
+			"연관 상품 추천 조회에 성공했습니다.",
+			response.withRecommendations(loggedRecommendations)
+		);
 	}
 
 	@GetMapping("/products/{productId}/substitutes")
@@ -101,16 +115,21 @@ public class RecommendationController {
 			force
 		);
 
-		saveImpressionLogsSafely(new RecommendationImpressionLogCommand(
-			userId,
-			productId,
-			storeId,
-			response.recommendationType(),
-			SUBSTITUTE_DISPLAY_LOCATION,
-			response.recommendations()
-		));
+		List<ProductRecommendationResponse> loggedRecommendations = saveImpressionLogsSafely(
+			new RecommendationImpressionLogCommand(
+				userId,
+				productId,
+				storeId,
+				response.recommendationType(),
+				SUBSTITUTE_DISPLAY_LOCATION,
+				response.recommendations()
+			)
+		);
 
-		return ApiResponse.ok("대체 상품 추천 조회에 성공했습니다.", response);
+		return ApiResponse.ok(
+			"대체 상품 추천 조회에 성공했습니다.",
+			response.withRecommendations(loggedRecommendations)
+		);
 	}
 
 	@GetMapping("/promotions/personalized")
@@ -127,21 +146,26 @@ public class RecommendationController {
 			currentGridId
 		);
 
-		savePromotionImpressionLogsSafely(new PromotionRecommendationImpressionLogCommand(
-			userId,
-			null,
-			storeId,
-			response.recommendationType(),
-			AI_PROMOTION_DISPLAY_LOCATION,
-			response.recommendations()
-		));
+		List<PromotionProductRecommendationResponse> loggedRecommendations = savePromotionImpressionLogsSafely(
+			new PromotionRecommendationImpressionLogCommand(
+				userId,
+				null,
+				storeId,
+				response.recommendationType(),
+				AI_PROMOTION_DISPLAY_LOCATION,
+				response.recommendations()
+			)
+		);
 
-		return ApiResponse.ok("AI 개인화 프로모션 추천 조회에 성공했습니다.", response);
+		return ApiResponse.ok(
+			"AI 개인화 프로모션 추천 조회에 성공했습니다.",
+			response.withRecommendations(loggedRecommendations)
+		);
 	}
 
-	private void saveImpressionLogsSafely(RecommendationImpressionLogCommand command) {
+	private List<ProductRecommendationResponse> saveImpressionLogsSafely(RecommendationImpressionLogCommand command) {
 		try {
-			recommendationLogService.saveImpressionLogs(command);
+			return recommendationLogService.saveImpressionLogsAndAttachIds(command);
 		} catch (Exception exception) {
 			log.warn(
 				"Recommendation impression log save failed. userId={}, recommendationType={}, displayLocation={}, message={}",
@@ -150,12 +174,15 @@ public class RecommendationController {
 				command.displayLocation(),
 				exception.getMessage()
 			);
+			return command.recommendations();
 		}
 	}
 
-	private void savePromotionImpressionLogsSafely(PromotionRecommendationImpressionLogCommand command) {
+	private List<PromotionProductRecommendationResponse> savePromotionImpressionLogsSafely(
+		PromotionRecommendationImpressionLogCommand command
+	) {
 		try {
-			recommendationLogService.savePromotionImpressionLogs(command);
+			return recommendationLogService.savePromotionImpressionLogsAndAttachIds(command);
 		} catch (Exception exception) {
 			log.warn(
 				"Promotion recommendation impression log save failed. userId={}, recommendationType={}, displayLocation={}, message={}",
@@ -164,6 +191,7 @@ public class RecommendationController {
 				command.displayLocation(),
 				exception.getMessage()
 			);
+			return command.recommendations();
 		}
 	}
 }

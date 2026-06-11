@@ -11,4 +11,16 @@ public record ProductRecommendationListResponse(
 	RecommendationType recommendationType,
 	List<ProductRecommendationResponse> recommendations
 ) {
+
+	public ProductRecommendationListResponse withRecommendations(
+		List<ProductRecommendationResponse> recommendations
+	) {
+		return new ProductRecommendationListResponse(
+			userId,
+			sourceProductId,
+			sourceProduct,
+			recommendationType,
+			recommendations
+		);
+	}
 }

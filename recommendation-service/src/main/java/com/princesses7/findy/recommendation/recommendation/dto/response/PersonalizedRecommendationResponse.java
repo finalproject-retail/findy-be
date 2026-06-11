@@ -11,4 +11,16 @@ public record PersonalizedRecommendationResponse(
 	List<String> shoppingStyles,
 	List<ProductRecommendationResponse> recommendations
 ) {
+
+	public PersonalizedRecommendationResponse withRecommendations(
+		List<ProductRecommendationResponse> recommendations
+	) {
+		return new PersonalizedRecommendationResponse(
+			userId,
+			baseType,
+			preferredCategories,
+			shoppingStyles,
+			recommendations
+		);
+	}
 }

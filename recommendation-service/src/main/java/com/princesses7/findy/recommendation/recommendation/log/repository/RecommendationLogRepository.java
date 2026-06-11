@@ -1,7 +1,9 @@
 package com.princesses7.findy.recommendation.recommendation.log.repository;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -9,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import com.princesses7.findy.recommendation.recommendation.log.entity.RecommendationLog;
 import com.princesses7.findy.recommendation.recommendation.log.repository.projection.PopularProductProjection;
+import com.princesses7.findy.recommendation.recommendation.log.type.RecommendationLogType;
 
 public interface RecommendationLogRepository extends JpaRepository<RecommendationLog, Long> {
 
@@ -29,5 +32,27 @@ public interface RecommendationLogRepository extends JpaRepository<Recommendatio
 	List<PopularProductProjection> findPopularPersonalizedProducts(
 		@Param("fromDateTime") LocalDateTime fromDateTime,
 		@Param("limit") int limit
+	);
+
+	List<RecommendationLog> findByRecommendationLogIdInAndLogType(
+		Collection<Long> recommendationLogIds,
+		RecommendationLogType logType
+	);
+
+	boolean existsBySourceRecommendationLogIdAndLogType(
+		Long sourceRecommendationLogId,
+		RecommendationLogType logType
+	);
+
+	boolean existsBySourceRecommendationLogIdAndLogTypeAndOrderId(
+		Long sourceRecommendationLogId,
+		RecommendationLogType logType,
+		Long orderId
+	);
+
+	Optional<RecommendationLog> findFirstBySourceRecommendationLogIdAndLogTypeAndCreatedAtAfterOrderByCreatedAtDesc(
+		Long sourceRecommendationLogId,
+		RecommendationLogType logType,
+		LocalDateTime createdAtAfter
 	);
 }

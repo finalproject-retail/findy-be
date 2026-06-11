@@ -40,6 +40,7 @@ public class OrderController {
 			userId,
 			userCouponId,
 			usedReward,
+			request == null ? List.of() : request.recommendationSources(),
 			storeId
 		);
 

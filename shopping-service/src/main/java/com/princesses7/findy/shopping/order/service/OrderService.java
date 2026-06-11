@@ -3,6 +3,7 @@ package com.princesses7.findy.shopping.order.service;
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -11,6 +12,7 @@ import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEvent
 import com.princesses7.findy.shopping.cart.service.CartCleanupService;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.service.CouponService;
+import com.princesses7.findy.shopping.order.dto.request.OrderRecommendationSourceRequest;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderDetailResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderItemResponse;
@@ -22,6 +24,7 @@ import com.princesses7.findy.shopping.order.repository.OrderRepository;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountItemResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
 import com.princesses7.findy.shopping.purchase.service.PurchaseAmountService;
+import com.princesses7.findy.shopping.recommendation.client.RecommendationLogClient;
 import com.princesses7.findy.shopping.shoppinglist.service.ShoppingListService;
 import com.princesses7.findy.shopping.store.StoreIdSupport;
 
@@ -37,12 +40,14 @@ public class OrderService {
 	private final CouponService couponService;
 	private final ShoppingListService shoppingListService;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
+	private final RecommendationLogClient recommendationLogClient;
 
 	@Transactional
 	public OrderCreateResponse createOrder(
 		Long userId,
 		Long userCouponId,
 		Integer usedReward,
+		List<OrderRecommendationSourceRequest> recommendationSources,
 		long storeId
 	) {
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
@@ -79,6 +84,10 @@ public class OrderService {
 		);
 
 		Order savedOrder = orderRepository.save(order);
+		List<OrderRecommendationSourceRequest> normalizedRecommendationSources = normalizeRecommendationSources(
+			recommendationSources,
+			savedOrder
+		);
 
 		cartCleanupService.cleanupPurchasedCartItems(userId, savedOrder.getOrderItems());
 		couponService.useCoupon(userId, userCouponId);
@@ -86,7 +95,18 @@ public class OrderService {
 
 		savedOrder.complete();
 
-		shoppingAnalyticsEventService.publishOrderCompleted(userId, savedOrder);
+		shoppingAnalyticsEventService.publishOrderCompleted(
+			userId,
+			savedOrder,
+			normalizedRecommendationSources
+		);
+
+		recommendationLogClient.sendPurchaseConversion(
+			userId,
+			savedOrder.getOrderId(),
+			purchasedProductIds(savedOrder),
+			normalizedRecommendationSources
+		);
 
 		return toResponse(savedOrder);
 	}
@@ -132,6 +152,31 @@ public class OrderService {
 			return 0;
 		}
 		return usedReward;
+	}
+
+	private List<OrderRecommendationSourceRequest> normalizeRecommendationSources(
+		List<OrderRecommendationSourceRequest> recommendationSources,
+		Order order
+	) {
+		if (recommendationSources == null || recommendationSources.isEmpty()) {
+			return List.of();
+		}
+
+		List<Long> orderedProductIds = purchasedProductIds(order);
+
+		return recommendationSources.stream()
+			.filter(Objects::nonNull)
+			.filter(source -> source.productId() != null)
+			.filter(source -> source.recommendationLogId() != null)
+			.filter(source -> orderedProductIds.contains(source.productId()))
+			.toList();
+	}
+
+	private List<Long> purchasedProductIds(Order order) {
+		return order.getOrderItems().stream()
+			.map(OrderItem::getProductId)
+			.distinct()
+			.toList();
 	}
 
 	@Transactional(readOnly = true)
