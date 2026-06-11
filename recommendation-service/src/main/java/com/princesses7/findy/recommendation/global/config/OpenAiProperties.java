@@ -8,7 +8,10 @@ public record OpenAiProperties(
 	String apiKey,
 	String embeddingModel,
 	Integer embeddingDimensions,
-	String chatModel
+	String chatModel,
+	Integer connectTimeoutSeconds,
+	Integer readTimeoutSeconds,
+	Integer maxTokens
 ) {
 
 	public String baseUrl() {
@@ -25,5 +28,17 @@ public record OpenAiProperties(
 
 	public String chatModel() {
 		return chatModel == null ? "gpt-4o-mini" : chatModel;
+	}
+
+	public Integer connectTimeoutSeconds() {
+		return connectTimeoutSeconds == null ? 5 : connectTimeoutSeconds;
+	}
+
+	public Integer readTimeoutSeconds() {
+		return readTimeoutSeconds == null ? 30 : readTimeoutSeconds;
+	}
+
+	public Integer maxTokens() {
+		return maxTokens == null ? 700 : maxTokens;
 	}
 }

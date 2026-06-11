@@ -18,7 +18,10 @@ public class RestClientConfig {
 	public RestClient openAiRestClient(OpenAiProperties properties) {
 		return RestClient.builder()
 			.baseUrl(properties.baseUrl())
-			.requestFactory(createRequestFactory(Duration.ofSeconds(3), Duration.ofSeconds(10)))
+			.requestFactory(createRequestFactory(
+				Duration.ofSeconds(properties.connectTimeoutSeconds()),
+				Duration.ofSeconds(properties.readTimeoutSeconds())
+			))
 			.build();
 	}
 

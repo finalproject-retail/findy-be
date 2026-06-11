@@ -31,14 +31,16 @@ public class OpenAiChatClient {
 	public String chat(List<OpenAiChatMessage> messages) {
 		return request(OpenAiChatRequest.plain(
 			properties.chatModel(),
-			messages
+			messages,
+			properties.maxTokens()
 		));
 	}
 
 	public String jsonChat(List<OpenAiChatMessage> messages) {
 		return request(OpenAiChatRequest.json(
 			properties.chatModel(),
-			messages
+			messages,
+			500
 		));
 	}
 

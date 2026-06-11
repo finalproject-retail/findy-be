@@ -13,18 +13,30 @@ public record OpenAiChatRequest(
 	@JsonProperty("response_format")
 	OpenAiResponseFormat responseFormat,
 
-	Double temperature
+	Double temperature,
+
+	@JsonProperty("max_tokens")
+	Integer maxTokens
 ) {
 
 	public static OpenAiChatRequest plain(
 		String model,
 		List<OpenAiChatMessage> messages
 	) {
+		return plain(model, messages, null);
+	}
+
+	public static OpenAiChatRequest plain(
+		String model,
+		List<OpenAiChatMessage> messages,
+		Integer maxTokens
+	) {
 		return new OpenAiChatRequest(
 			model,
 			messages,
 			null,
-			0.2
+			0.2,
+			maxTokens
 		);
 	}
 
@@ -32,11 +44,20 @@ public record OpenAiChatRequest(
 		String model,
 		List<OpenAiChatMessage> messages
 	) {
+		return json(model, messages, null);
+	}
+
+	public static OpenAiChatRequest json(
+		String model,
+		List<OpenAiChatMessage> messages,
+		Integer maxTokens
+	) {
 		return new OpenAiChatRequest(
 			model,
 			messages,
 			OpenAiResponseFormat.jsonObject(),
-			0.0
+			0.0,
+			maxTokens
 		);
 	}
 }
