@@ -76,6 +76,30 @@ public class ChatbotService {
 			);
 			RagContextResponse ragContext = getRagContext(request.message(), analysis);
 
+			if (recipeRecommendation != null) {
+				String answer = createRecipeTemplateAnswer(recipeRecommendation);
+
+				saveSuccessMessages(chatSession, request.message(), answer, intent);
+
+				chatbotLogService.saveSuccessLog(
+					userId,
+					chatSession.getChatSessionId(),
+					intent,
+					analysis.keyword(),
+					request.message(),
+					answer,
+					calculateDurationMs(startedAt)
+				);
+
+				return ChatbotMessageResponse.success(
+					chatSession.getChatSessionId(),
+					answer,
+					shoppingContext,
+					recipeRecommendation,
+					ragContext
+				);
+			}
+
 			String shoppingContextPrompt = chatbotShoppingContextPromptBuilder.build(shoppingContext);
 			String recipeRecommendationPrompt = chatbotRecipeRecommendationPromptBuilder.build(recipeRecommendation);
 			String ragContextPrompt = ragContextPromptBuilder.build(ragContext);
@@ -155,6 +179,20 @@ public class ChatbotService {
 			.toList();
 
 		return new ChatMessageHistoryResponse(chatSession.getChatSessionId(), messages);
+	}
+
+	private String createRecipeTemplateAnswer(ChatbotRecipeRecommendationResponse recipeRecommendation) {
+		if (recipeRecommendation == null || recipeRecommendation.ingredients() == null
+			|| recipeRecommendation.ingredients().isEmpty()) {
+			return "필요한 재료를 찾지 못했어요. 요리명을 조금 더 구체적으로 입력해 주세요.";
+		}
+
+		String recipeName = recipeRecommendation.recipeName() == null
+			? "요리"
+			: recipeRecommendation.recipeName();
+
+		return recipeName + "에 필요한 재료를 찾아봤어요. "
+			+ "재료별 추천 상품은 아래 카드에서 확인하고 쇼핑리스트에 담을 수 있어요.";
 	}
 
 	private ChatSession findOrCreateSession(Long userId, Long sessionId, String firstMessage) {
