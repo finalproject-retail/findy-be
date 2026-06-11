@@ -36,11 +36,11 @@ public class AdminRecommendationAnalyticsController {
 
 	@GetMapping("/recommendations/click-rate")
 	public ApiResponse<RecommendationClickRateResponse> getRecommendationClickRateAnalytics(
-		@RequestParam(required = false)
+		@RequestParam(name = "startDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 		LocalDate startDate,
 
-		@RequestParam(required = false)
+		@RequestParam(name = "endDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
 		LocalDate endDate,
 
@@ -65,13 +65,13 @@ public class AdminRecommendationAnalyticsController {
 
 	@GetMapping("/purchase-conversion")
 	public ApiResponse<RecommendationPurchaseConversionResponse> getRecommendationPurchaseConversionAnalytics(
-		@RequestParam(required = false)
+		@RequestParam(name = "startDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate fromDate,
+		LocalDate startDate,
 
-		@RequestParam(required = false)
+		@RequestParam(name = "endDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate toDate,
+		LocalDate endDate,
 
 		@RequestParam(required = false)
 		String recommendationType,
@@ -86,8 +86,8 @@ public class AdminRecommendationAnalyticsController {
 	) {
 		RecommendationPurchaseConversionResponse response =
 			recommendationPurchaseConversionAnalyticsService.getPurchaseConversionAnalytics(
-				fromDate,
-				toDate,
+				startDate,
+				endDate,
 				recommendationType,
 				productId,
 				limit
@@ -98,13 +98,13 @@ public class AdminRecommendationAnalyticsController {
 
 	@GetMapping("/alternatives/select-rate")
 	public ApiResponse<RecommendationSelectionRateResponse> getAlternativeSelectionRateAnalytics(
-		@RequestParam(required = false)
+		@RequestParam(name = "startDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate fromDate,
+		LocalDate startDate,
 
-		@RequestParam(required = false)
+		@RequestParam(name = "endDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate toDate,
+		LocalDate endDate,
 
 		@RequestParam(required = false)
 		Long productId,
@@ -119,8 +119,8 @@ public class AdminRecommendationAnalyticsController {
 	) {
 		RecommendationSelectionRateResponse response =
 			recommendationSelectionRateAnalyticsService.getSelectionRateAnalytics(
-				fromDate,
-				toDate,
+				startDate,
+				endDate,
 				SUBSTITUTE_RECOMMENDATION_TYPE,
 				productId,
 				sourceProductId,
@@ -132,13 +132,13 @@ public class AdminRecommendationAnalyticsController {
 
 	@GetMapping("/promotions/select-rate")
 	public ApiResponse<RecommendationSelectionRateResponse> getPromotionSelectionRateAnalytics(
-		@RequestParam(required = false)
+		@RequestParam(name = "startDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate fromDate,
+		LocalDate startDate,
 
-		@RequestParam(required = false)
+		@RequestParam(name = "endDate", required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
-		LocalDate toDate,
+		LocalDate endDate,
 
 		@RequestParam(required = false)
 		Long productId,
@@ -153,8 +153,8 @@ public class AdminRecommendationAnalyticsController {
 	) {
 		RecommendationSelectionRateResponse response =
 			recommendationSelectionRateAnalyticsService.getSelectionRateAnalytics(
-				fromDate,
-				toDate,
+				startDate,
+				endDate,
 				PROMOTION_RECOMMENDATION_TYPE,
 				productId,
 				sourceProductId,
