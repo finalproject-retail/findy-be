@@ -60,6 +60,11 @@ public class ChatbotRecipeIngredientExtractor {
 				normalizeSearchKeyword(
 					ingredient.searchKeyword(),
 					ingredient.ingredientName()
+				),
+				normalizeSearchKeywords(
+					ingredient.searchKeywords(),
+					ingredient.searchKeyword(),
+					ingredient.ingredientName()
 				)
 			))
 			.distinct()
@@ -105,6 +110,31 @@ public class ChatbotRecipeIngredientExtractor {
 		return "재료";
 	}
 
+	private List<String> normalizeSearchKeywords(
+		List<String> searchKeywords,
+		String searchKeyword,
+		String ingredientName
+	) {
+		if (searchKeywords != null && !searchKeywords.isEmpty()) {
+			return searchKeywords.stream()
+				.filter(this::hasText)
+				.map(String::trim)
+				.distinct()
+				.limit(5)
+				.toList();
+		}
+
+		if (hasText(searchKeyword)) {
+			return List.of(searchKeyword.trim());
+		}
+
+		if (hasText(ingredientName)) {
+			return List.of(ingredientName.trim());
+		}
+
+		return List.of("재료");
+	}
+
 	private String cleanJson(String response) {
 		if (response == null || response.isBlank()) {
 			return "{}";
@@ -133,7 +163,8 @@ public class ChatbotRecipeIngredientExtractor {
 			  "ingredients": [
 			    {
 			      "ingredientName": "화면에 보여줄 재료명",
-			      "searchKeyword": "마트 상품 DB에서 검색하기 좋은 키워드",
+			      "searchKeyword": "가장 대표적인 상품 검색 키워드",
+			      "searchKeywords": ["상품 DB에서 검색해볼 키워드1", "상품 DB에서 검색해볼 키워드2"],
 			      "quantityText": "구매 수량"
 			    }
 			  ]
@@ -141,11 +172,13 @@ public class ChatbotRecipeIngredientExtractor {
 			
 			필드 규칙:
 			- ingredientName은 사용자에게 보여줄 재료명이다.
-			- searchKeyword는 상품 DB 검색용 키워드이다.
-			- searchKeyword는 ingredientName과 같아도 되고, 실제 마트 상품명에 더 잘 맞는 표현이면 달라도 된다.
-			- 예: ingredientName이 "마늘"이면 searchKeyword는 "깐마늘"처럼 검색에 적합한 키워드로 줄 수 있다.
-			- 예: ingredientName이 "돼지고기"이면 searchKeyword는 "돼지고기"처럼 대표 재료명으로 준다.
-			- 예: ingredientName이 "국간장"이면 searchKeyword는 "국간장"으로 준다.
+			- searchKeyword는 가장 대표적인 상품 검색 키워드이다.
+			- searchKeywords는 같은 재료를 찾기 위해 마트 상품 DB에서 함께 검색해볼 수 있는 표현들이다.
+			- searchKeywords에는 ingredientName, 손질 형태, 포장 상품명에 가까운 표현을 포함할 수 있다.
+			- 예: ingredientName이 "마늘"이면 searchKeywords는 ["마늘", "깐마늘", "다진마늘"]처럼 줄 수 있다.
+			- 예: ingredientName이 "돼지등뼈"이면 searchKeywords는 ["돼지등뼈", "돼지고기"]처럼 줄 수 있다.
+			- 예: ingredientName이 "감자"이면 searchKeywords는 ["감자"]처럼 준다.
+			- 예: ingredientName이 "국간장"이면 searchKeywords는 ["국간장"]처럼 준다.
 			
 			재료 추출 규칙:
 			- ingredientName에는 마트에서 구매 가능한 실제 조리 재료명만 넣는다.
@@ -167,6 +200,7 @@ public class ChatbotRecipeIngredientExtractor {
 	private record LlmRecipeIngredientItem(
 		String ingredientName,
 		String searchKeyword,
+		List<String> searchKeywords,
 		String quantityText
 	) {
 	}
