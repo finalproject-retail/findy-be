@@ -23,7 +23,7 @@ public class AdminZoneAverageStayTimeAnalyticsController {
 
 	private final ZoneAverageStayTimeAnalyticsService zoneAverageStayTimeAnalyticsService;
 
-	@GetMapping("/api/v1/admin/analytics/zones/average-stay-times")
+	@GetMapping("/api/v1/analytics/zones/average-stay-times")
 	public ApiResponse<ZoneAverageStayTimeAnalyticsResponse> getZoneAverageStayTimes(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)

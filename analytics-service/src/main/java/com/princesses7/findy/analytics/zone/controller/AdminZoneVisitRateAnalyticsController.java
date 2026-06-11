@@ -23,7 +23,7 @@ public class AdminZoneVisitRateAnalyticsController {
 
 	private final ZoneVisitRateAnalyticsService zoneVisitRateAnalyticsService;
 
-	@GetMapping("/api/v1/admin/analytics/zones/visit-rates")
+	@GetMapping("/api/v1/analytics/zones/visit-rates")
 	public ApiResponse<ZoneVisitRateAnalyticsResponse> getZoneVisitRates(
 		@RequestParam(required = false)
 		@DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
