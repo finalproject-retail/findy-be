@@ -40,7 +40,6 @@ public class OrderController {
 			userId,
 			userCouponId,
 			usedReward,
-			request == null ? List.of() : request.recommendationSources(),
 			storeId
 		);
 
@@ -49,22 +48,24 @@ public class OrderController {
 
 	@GetMapping
 	public ApiResponse<List<OrderSummaryResponse>> getOrders(
-		@RequestHeader("X-USER-ID") Long userId
+		@RequestHeader("X-USER-ID") Long userId,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"주문 목록 조회에 성공했습니다.",
-			orderService.getOrders(userId)
+			orderService.getOrders(userId, storeId)
 		);
 	}
 
 	@GetMapping("/{orderId}")
 	public ApiResponse<OrderDetailResponse> getOrder(
 		@RequestHeader("X-USER-ID") Long userId,
-		@PathVariable Long orderId
+		@PathVariable Long orderId,
+		@ResolvedStoreId long storeId
 	) {
 		return ApiResponse.ok(
 			"주문 상세 조회에 성공했습니다.",
-			orderService.getOrder(userId, orderId)
+			orderService.getOrder(userId, orderId, storeId)
 		);
 	}
 }
