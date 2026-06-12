@@ -1,33 +1,33 @@
 -- HACCP 연동 상품 270건 시드 (category.grid_id 기준 product.grid_id)
 -- Generated from Docker shopping_service.products snapshot
 
--- 1) 기존 카탈로그(1..270) 참조 데이터 정리
-DELETE FROM promotion_products
-WHERE product_id BETWEEN 1 AND 270;
+-- 1) Prepare incoming HACCP seed rows first so production duplicates can be removed by barcode.
+CREATE TEMP TABLE tmp_v13_haccp_products (
+    product_id BIGINT,
+    category_id BIGINT,
+    brand_name VARCHAR(100),
+    product_name VARCHAR(255),
+    barcode VARCHAR(100),
+    external_source VARCHAR(50),
+    external_product_id VARCHAR(100),
+    original_price INTEGER,
+    description TEXT,
+    image_url VARCHAR(500),
+    sales_unit VARCHAR(100),
+    volume VARCHAR(100),
+    allergy_info TEXT,
+    badge_text VARCHAR(100),
+    category_confidence NUMERIC(5, 2),
+    category_classified_by VARCHAR(30),
+    category_review_required BOOLEAN,
+    sale_status VARCHAR(30),
+    grid_id BIGINT,
+    deleted_at TIMESTAMP,
+    created_at TIMESTAMP,
+    updated_at TIMESTAMP
+) ON COMMIT DROP;
 
-DELETE FROM order_items
-WHERE product_id BETWEEN 1 AND 270;
-
-DELETE FROM shopping_list_items
-WHERE product_id BETWEEN 1 AND 270;
-
-DELETE FROM cart_items
-WHERE product_id BETWEEN 1 AND 270;
-
-DELETE FROM product_external_mappings
-WHERE product_id BETWEEN 1 AND 270;
-
-DELETE FROM product_external_prices
-WHERE product_id BETWEEN 1 AND 270;
-
-DELETE FROM inventories
-WHERE product_id BETWEEN 1 AND 270;
-
-DELETE FROM products
-WHERE product_id BETWEEN 1 AND 270;
-
--- 2) products
-INSERT INTO products (
+INSERT INTO tmp_v13_haccp_products (
     product_id,
     category_id,
     brand_name,
@@ -8233,14 +8233,78 @@ VALUES
         now()
     );
 
+-- 2) Remove old rows that would conflict with the incoming HACCP barcode set.
+CREATE TEMP TABLE tmp_v13_haccp_target_product_ids ON COMMIT DROP AS
+SELECT DISTINCT p.product_id
+FROM products p
+LEFT JOIN tmp_v13_haccp_products seed
+    ON seed.barcode IS NOT NULL
+   AND p.barcode = seed.barcode
+WHERE p.product_id BETWEEN 1 AND 270
+   OR (seed.product_id IS NOT NULL AND p.product_id <> seed.product_id);
+
+DELETE FROM promotion_products
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM order_items
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM shopping_list_items
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM cart_items
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM product_external_mappings
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM product_external_prices
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM inventories
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+DELETE FROM products
+WHERE product_id IN (SELECT product_id FROM tmp_v13_haccp_target_product_ids);
+
+-- 3) products
+INSERT INTO products (
+    product_id,
+    category_id,
+    brand_name,
+    product_name,
+    barcode,
+    external_source,
+    external_product_id,
+    original_price,
+    description,
+    image_url,
+    sales_unit,
+    volume,
+    allergy_info,
+    badge_text,
+    category_confidence,
+    category_classified_by,
+    category_review_required,
+    sale_status,
+    grid_id,
+    deleted_at,
+    created_at,
+    updated_at
+)
+SELECT product_id, category_id, brand_name, product_name, barcode, external_source, external_product_id, original_price, description, image_url, sales_unit, volume, allergy_info, badge_text, category_confidence, category_classified_by, category_review_required, sale_status, grid_id, deleted_at, created_at, updated_at
+FROM tmp_v13_haccp_products
+ORDER BY product_id;
+
 SELECT setval(
     'shopping_service.products_product_id_seq',
     (SELECT COALESCE(MAX(product_id), 1) FROM products)
 );
 
--- 3) inventories (store_id=1)
+-- 4) inventories (store_id=1)
 INSERT INTO inventories (product_id, store_id, stock_quantity, unit, created_at, updated_at)
-VALUES
+SELECT v.product_id, v.store_id, v.stock_quantity, v.unit, v.created_at, v.updated_at
+FROM (VALUES
     (1, 1, 13, '개', now(), now()),
     (2, 1, 27, '개', now(), now()),
     (3, 1, 20, '개', now(), now()),
@@ -8510,4 +8574,10 @@ VALUES
     (267, 1, 21, '개', now(), now()),
     (268, 1, 29, '개', now(), now()),
     (269, 1, 28, '개', now(), now()),
-    (270, 1, 14, '개', now(), now());
+    (270, 1, 14, '개', now(), now())
+) AS v(product_id, store_id, stock_quantity, unit, created_at, updated_at)
+WHERE EXISTS (
+    SELECT 1
+    FROM products p
+    WHERE p.product_id = v.product_id
+);
