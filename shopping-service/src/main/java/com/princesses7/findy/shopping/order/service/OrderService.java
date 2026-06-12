@@ -2,8 +2,12 @@ package com.princesses7.findy.shopping.order.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,7 +16,6 @@ import com.princesses7.findy.shopping.analytics.publisher.ShoppingAnalyticsEvent
 import com.princesses7.findy.shopping.cart.service.CartCleanupService;
 import com.princesses7.findy.shopping.coupon.dto.response.CouponDiscountResult;
 import com.princesses7.findy.shopping.coupon.service.CouponService;
-import com.princesses7.findy.shopping.order.dto.request.OrderRecommendationSourceRequest;
 import com.princesses7.findy.shopping.order.dto.response.OrderCreateResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderDetailResponse;
 import com.princesses7.findy.shopping.order.dto.response.OrderItemResponse;
@@ -21,10 +24,11 @@ import com.princesses7.findy.shopping.order.entity.Order;
 import com.princesses7.findy.shopping.order.entity.OrderItem;
 import com.princesses7.findy.shopping.order.exception.OrderException;
 import com.princesses7.findy.shopping.order.repository.OrderRepository;
+import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
+import com.princesses7.findy.shopping.product.service.ProductSummaryReader;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountItemResponse;
 import com.princesses7.findy.shopping.purchase.dto.response.PurchaseAmountResponse;
 import com.princesses7.findy.shopping.purchase.service.PurchaseAmountService;
-import com.princesses7.findy.shopping.recommendation.client.RecommendationLogClient;
 import com.princesses7.findy.shopping.shoppinglist.service.ShoppingListService;
 import com.princesses7.findy.shopping.store.StoreIdSupport;
 
@@ -40,14 +44,13 @@ public class OrderService {
 	private final CouponService couponService;
 	private final ShoppingListService shoppingListService;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
-	private final RecommendationLogClient recommendationLogClient;
+	private final ProductSummaryReader productSummaryReader;
 
 	@Transactional
 	public OrderCreateResponse createOrder(
 		Long userId,
 		Long userCouponId,
 		Integer usedReward,
-		List<OrderRecommendationSourceRequest> recommendationSources,
 		long storeId
 	) {
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
@@ -84,10 +87,6 @@ public class OrderService {
 		);
 
 		Order savedOrder = orderRepository.save(order);
-		List<OrderRecommendationSourceRequest> normalizedRecommendationSources = normalizeRecommendationSources(
-			recommendationSources,
-			savedOrder
-		);
 
 		cartCleanupService.cleanupPurchasedCartItems(userId, savedOrder.getOrderItems());
 		couponService.useCoupon(userId, userCouponId);
@@ -95,20 +94,55 @@ public class OrderService {
 
 		savedOrder.complete();
 
-		shoppingAnalyticsEventService.publishOrderCompleted(
-			userId,
-			savedOrder,
-			normalizedRecommendationSources
+		shoppingAnalyticsEventService.publishOrderCompleted(userId, savedOrder);
+
+		return toResponse(savedOrder, resolvedStoreId);
+	}
+
+	@Transactional(readOnly = true)
+	public List<OrderSummaryResponse> getOrders(
+		Long userId,
+		long storeId
+	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		List<Order> orders = orderRepository.findAllWithItemsByUserIdOrderByCreatedAtDesc(userId);
+
+		Map<Long, ProductSummaryResponse> productSummaryMap = getProductSummaryMapByOrders(
+			orders,
+			resolvedStoreId
 		);
 
-		recommendationLogClient.sendPurchaseConversion(
-			userId,
-			savedOrder.getOrderId(),
-			purchasedProductIds(savedOrder),
-			normalizedRecommendationSources
+		return orders.stream()
+			.map(order -> OrderSummaryResponse.from(
+				order,
+				toItemResponses(order, productSummaryMap)
+			))
+			.toList();
+	}
+
+	@Transactional(readOnly = true)
+	public OrderDetailResponse getOrder(
+		Long userId,
+		Long orderId,
+		long storeId
+	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		Order order = orderRepository.findByIdWithItems(orderId)
+			.orElseThrow(() -> new OrderException(ORDER_NOT_FOUND));
+
+		order.validateOwner(userId);
+
+		Map<Long, ProductSummaryResponse> productSummaryMap = getProductSummaryMap(
+			order.getOrderItems(),
+			resolvedStoreId
 		);
 
-		return toResponse(savedOrder);
+		return OrderDetailResponse.from(
+			order,
+			toItemResponses(order, productSummaryMap)
+		);
 	}
 
 	private OrderItem createOrderItem(PurchaseAmountItemResponse item) {
@@ -121,17 +155,16 @@ public class OrderService {
 		);
 	}
 
-	private OrderCreateResponse toResponse(Order order) {
-		List<OrderItemResponse> items = order.getOrderItems().stream()
-			.map(item -> new OrderItemResponse(
-				item.getOrderItemId(),
-				item.getProductId(),
-				item.getQuantity(),
-				item.getProductPrice(),
-				item.getDiscountAmount(),
-				item.getFinalAmount()
-			))
-			.toList();
+	private OrderCreateResponse toResponse(
+		Order order,
+		long storeId
+	) {
+		Map<Long, ProductSummaryResponse> productSummaryMap = getProductSummaryMap(
+			order.getOrderItems(),
+			storeId
+		);
+
+		List<OrderItemResponse> items = toItemResponses(order, productSummaryMap);
 
 		return new OrderCreateResponse(
 			order.getOrderId(),
@@ -147,52 +180,58 @@ public class OrderService {
 		);
 	}
 
+	private List<OrderItemResponse> toItemResponses(
+		Order order,
+		Map<Long, ProductSummaryResponse> productSummaryMap
+	) {
+		return order.getOrderItems().stream()
+			.sorted(Comparator.comparing(OrderItem::getOrderItemId))
+			.map(item -> OrderItemResponse.from(
+				item,
+				productSummaryMap.get(item.getProductId())
+			))
+			.toList();
+	}
+
+	private Map<Long, ProductSummaryResponse> getProductSummaryMapByOrders(
+		List<Order> orders,
+		long storeId
+	) {
+		List<OrderItem> orderItems = orders.stream()
+			.flatMap(order -> order.getOrderItems().stream())
+			.toList();
+
+		return getProductSummaryMap(orderItems, storeId);
+	}
+
+	private Map<Long, ProductSummaryResponse> getProductSummaryMap(
+		List<OrderItem> orderItems,
+		long storeId
+	) {
+		List<Long> productIds = orderItems.stream()
+			.map(OrderItem::getProductId)
+			.filter(Objects::nonNull)
+			.distinct()
+			.toList();
+
+		if (productIds.isEmpty()) {
+			return Map.of();
+		}
+
+		return productSummaryReader.getExistingProductSummaries(productIds, storeId)
+			.stream()
+			.collect(Collectors.toMap(
+				ProductSummaryResponse::productId,
+				Function.identity(),
+				(existingProduct, replacementProduct) -> existingProduct
+			));
+	}
+
 	private int normalizeUsedReward(Integer usedReward) {
 		if (usedReward == null || usedReward <= 0) {
 			return 0;
 		}
+
 		return usedReward;
-	}
-
-	private List<OrderRecommendationSourceRequest> normalizeRecommendationSources(
-		List<OrderRecommendationSourceRequest> recommendationSources,
-		Order order
-	) {
-		if (recommendationSources == null || recommendationSources.isEmpty()) {
-			return List.of();
-		}
-
-		List<Long> orderedProductIds = purchasedProductIds(order);
-
-		return recommendationSources.stream()
-			.filter(Objects::nonNull)
-			.filter(source -> source.productId() != null)
-			.filter(source -> source.recommendationLogId() != null)
-			.filter(source -> orderedProductIds.contains(source.productId()))
-			.toList();
-	}
-
-	private List<Long> purchasedProductIds(Order order) {
-		return order.getOrderItems().stream()
-			.map(OrderItem::getProductId)
-			.distinct()
-			.toList();
-	}
-
-	@Transactional(readOnly = true)
-	public List<OrderSummaryResponse> getOrders(Long userId) {
-		return orderRepository.findAllByUserIdOrderByCreatedAtDesc(userId).stream()
-			.map(OrderSummaryResponse::from)
-			.toList();
-	}
-
-	@Transactional(readOnly = true)
-	public OrderDetailResponse getOrder(Long userId, Long orderId) {
-		Order order = orderRepository.findById(orderId)
-			.orElseThrow(() -> new OrderException(ORDER_NOT_FOUND));
-
-		order.validateOwner(userId);
-
-		return OrderDetailResponse.from(order);
 	}
 }
