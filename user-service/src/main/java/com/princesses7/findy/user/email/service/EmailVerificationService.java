@@ -151,17 +151,16 @@ public class EmailVerificationService {
 	) {
 		if (!mailEnabled) {
 			log.info(
-				"메일 발송 비활성화 상태입니다. 실제 메일은 발송하지 않습니다. email={}, purpose={}",
+				"메일 발송 비활성화 상태입니다. 실제 메일은 발송하지 않습니다. email={}, purpose={}, code={}",
 				toEmail,
-				purpose
+				purpose,
+				code
 			);
 			return;
 		}
 
-		String resolvedFromEmail = resolveFromEmail();
-
 		SimpleMailMessage message = new SimpleMailMessage();
-		message.setFrom(resolvedFromEmail);
+		message.setFrom(resolveFromEmail());
 		message.setTo(toEmail);
 		message.setSubject(createSubject(purpose));
 		message.setText(createMailText(purpose, code));
