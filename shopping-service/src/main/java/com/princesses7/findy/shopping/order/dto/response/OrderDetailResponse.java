@@ -19,18 +19,10 @@ public record OrderDetailResponse(
 	List<OrderItemResponse> items
 ) {
 
-	public static OrderDetailResponse from(Order order) {
-		List<OrderItemResponse> items = order.getOrderItems().stream()
-			.map(item -> new OrderItemResponse(
-				item.getOrderItemId(),
-				item.getProductId(),
-				item.getQuantity(),
-				item.getProductPrice(),
-				item.getDiscountAmount(),
-				item.getFinalAmount()
-			))
-			.toList();
-
+	public static OrderDetailResponse from(
+		Order order,
+		List<OrderItemResponse> items
+	) {
 		return new OrderDetailResponse(
 			order.getOrderId(),
 			order.getUserId(),
