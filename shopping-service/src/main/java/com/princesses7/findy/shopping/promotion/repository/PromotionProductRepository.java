@@ -4,8 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,28 +22,18 @@ public interface PromotionProductRepository extends JpaRepository<PromotionProdu
 
 	List<PromotionProduct> findAllByPromotion_PromotionId(Long promotionId);
 
-	@Query(
-		value = """
-			select pp
-			from PromotionProduct pp
-			join fetch pp.promotion p
-			where p.status <> :endedStatus
-				and p.startAt <= :now
-				and p.endAt >= :now
-			""",
-		countQuery = """
-			select count(pp)
-			from PromotionProduct pp
-			join pp.promotion p
-			where p.status <> :endedStatus
-				and p.startAt <= :now
-				and p.endAt >= :now
-			"""
-	)
-	Page<PromotionProduct> findActivePromotionProducts(
+	@Query("""
+		select pp
+		from PromotionProduct pp
+		join fetch pp.promotion p
+		where p.status <> :endedStatus
+			and p.startAt <= :now
+			and p.endAt >= :now
+		order by pp.gridId asc, pp.promotionProductId asc
+		""")
+	List<PromotionProduct> findActivePromotionMapMarkers(
 		@Param("endedStatus") PromotionStatus endedStatus,
-		@Param("now") LocalDateTime now,
-		Pageable pageable
+		@Param("now") LocalDateTime now
 	);
 
 	@Query("""
