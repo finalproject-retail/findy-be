@@ -1,10 +1,10 @@
 package com.princesses7.findy.recommendation.chatbot.service;
 
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -31,9 +31,10 @@ import lombok.RequiredArgsConstructor;
 public class ChatbotRecipeRecommendationService {
 
 	private static final long DEFAULT_STORE_ID = 1L;
-	private static final int PRODUCT_LIMIT_PER_INGREDIENT = 5;
-	private static final int CANDIDATE_LIMIT_PER_INGREDIENT = 20;
-	private static final double MIN_JUDGE_CONFIDENCE = 0.5;
+	private static final int PRODUCT_LIMIT_PER_INGREDIENT = 3;
+	private static final int AI_CANDIDATE_POOL_LIMIT = 30;
+	private static final int MAX_MATCHING_INGREDIENT_COUNT = 6;
+	private static final double MIN_JUDGE_CONFIDENCE = 0.60;
 
 	private final ChatbotRecipeIngredientExtractor recipeIngredientExtractor;
 	private final ShoppingProductReadRepository shoppingProductReadRepository;
@@ -62,13 +63,20 @@ public class ChatbotRecipeRecommendationService {
 			);
 		}
 
+		List<ChatbotShoppingProduct> aiJudgeCandidates = shoppingProductReadRepository.findIngredientJudgeCandidates(
+			storeId,
+			AI_CANDIDATE_POOL_LIMIT
+		);
+
 		List<ChatbotRecipeIngredientRecommendationResponse> ingredients = recipeIngredientAnalysis.ingredients()
 			.stream()
+			.limit(MAX_MATCHING_INGREDIENT_COUNT)
 			.map(ingredient -> recommendIngredient(
 				userId,
 				storeId,
 				recipeIngredientAnalysis.recipeName(),
-				ingredient
+				ingredient,
+				aiJudgeCandidates
 			))
 			.toList();
 
@@ -83,12 +91,13 @@ public class ChatbotRecipeRecommendationService {
 		Long userId,
 		Long storeId,
 		String recipeName,
-		RecipeIngredientItem ingredient
+		RecipeIngredientItem ingredient,
+		List<ChatbotShoppingProduct> aiJudgeCandidates
 	) {
 		List<ChatbotShoppingProduct> products = findProductsByIngredient(
 			recipeName,
-			storeId,
-			ingredient
+			ingredient,
+			aiJudgeCandidates
 		);
 
 		List<ChatbotRecipeProductRecommendationResponse> recommendedProducts = products.stream()
@@ -109,180 +118,58 @@ public class ChatbotRecipeRecommendationService {
 
 	private List<ChatbotShoppingProduct> findProductsByIngredient(
 		String recipeName,
-		Long storeId,
-		RecipeIngredientItem ingredient
+		RecipeIngredientItem ingredient,
+		List<ChatbotShoppingProduct> aiJudgeCandidates
 	) {
 		if (ingredient == null || !hasText(ingredient.ingredientName())) {
 			return List.of();
 		}
 
-		String ingredientName = ingredient.ingredientName();
-		List<String> searchKeywords = normalizeSearchKeywords(ingredient);
-
-		List<ChatbotShoppingProduct> candidates = searchCandidates(
-			searchKeywords,
-			storeId
-		);
-
-		if (candidates.isEmpty()) {
+		if (aiJudgeCandidates == null || aiJudgeCandidates.isEmpty()) {
 			return List.of();
 		}
 
-		List<IngredientProductJudgeItem> judgedItems = ingredientProductJudgeClient.judge(
-			recipeName,
-			ingredientName,
-			candidates,
-			PRODUCT_LIMIT_PER_INGREDIENT
-		);
+		String ingredientName = ingredient.ingredientName().trim();
 
-		if (judgedItems.isEmpty()) {
-			return fallbackProducts(searchKeywords, candidates);
-		}
-
-		Map<Long, IngredientProductJudgeItem> suitableJudgeMap = judgedItems.stream()
-			.filter(IngredientProductJudgeItem::isSuitable)
-			.filter(item -> item.safeConfidence() >= MIN_JUDGE_CONFIDENCE)
+		Map<Long, ChatbotShoppingProduct> candidateMap = aiJudgeCandidates.stream()
+			.filter(product -> product != null && product.productId() != null && product.isRecommendable())
 			.collect(Collectors.toMap(
-				IngredientProductJudgeItem::productId,
-				item -> item,
+				ChatbotShoppingProduct::productId,
+				product -> product,
 				(left, right) -> left,
 				LinkedHashMap::new
 			));
 
-		if (suitableJudgeMap.isEmpty()) {
-			return fallbackProducts(searchKeywords, candidates);
+		if (candidateMap.isEmpty()) {
+			return List.of();
 		}
 
-		Set<Long> candidateProductIds = candidates.stream()
-			.map(ChatbotShoppingProduct::productId)
-			.collect(Collectors.toSet());
+		// 중요:
+		// 여기서 batch loop 돌리면 서버 죽음.
+		// 한 재료당 AI 호출 1번만 한다.
+		List<IngredientProductJudgeItem> judgedItems = ingredientProductJudgeClient.judge(
+			recipeName,
+			ingredientName,
+			new ArrayList<>(candidateMap.values()),
+			PRODUCT_LIMIT_PER_INGREDIENT
+		);
 
-		return suitableJudgeMap.values()
-			.stream()
-			.filter(item -> candidateProductIds.contains(item.productId()))
+		if (judgedItems == null || judgedItems.isEmpty()) {
+			return List.of();
+		}
+
+		return judgedItems.stream()
+			.filter(item -> item != null && item.productId() != null)
+			.filter(IngredientProductJudgeItem::isSuitable)
+			.filter(item -> item.safeConfidence() >= MIN_JUDGE_CONFIDENCE)
+			.filter(item -> candidateMap.containsKey(item.productId()))
 			.sorted(
 				Comparator.comparing(IngredientProductJudgeItem::safeConfidence)
 					.reversed()
 			)
-			.map(item -> findCandidate(candidates, item.productId()))
-			.filter(product -> product != null)
+			.map(item -> candidateMap.get(item.productId()))
 			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
 			.toList();
-	}
-
-	private List<ChatbotShoppingProduct> searchCandidates(
-		List<String> searchKeywords,
-		Long storeId
-	) {
-		Map<Long, ChatbotShoppingProduct> productMap = new LinkedHashMap<>();
-
-		for (String searchKeyword : searchKeywords) {
-			addCandidates(
-				productMap,
-				shoppingProductReadRepository.searchIngredientCandidates(
-					searchKeyword,
-					storeId,
-					CANDIDATE_LIMIT_PER_INGREDIENT
-				)
-			);
-		}
-
-		return productMap.values()
-			.stream()
-			.limit(CANDIDATE_LIMIT_PER_INGREDIENT)
-			.toList();
-	}
-
-	private void addCandidates(
-		Map<Long, ChatbotShoppingProduct> productMap,
-		List<ChatbotShoppingProduct> products
-	) {
-		if (products == null || products.isEmpty()) {
-			return;
-		}
-
-		for (ChatbotShoppingProduct product : products) {
-			if (product != null && product.productId() != null && product.isRecommendable()) {
-				productMap.putIfAbsent(product.productId(), product);
-			}
-		}
-	}
-
-	private List<ChatbotShoppingProduct> fallbackProducts(
-		List<String> searchKeywords,
-		List<ChatbotShoppingProduct> candidates
-	) {
-		return candidates.stream()
-			.filter(product -> searchKeywords.stream()
-				.anyMatch(keyword -> isStrictSearchKeywordProduct(keyword, product)))
-			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
-			.toList();
-	}
-
-	private boolean isStrictSearchKeywordProduct(
-		String searchKeyword,
-		ChatbotShoppingProduct product
-	) {
-		if (!hasText(searchKeyword) || product == null || !hasText(product.productName())) {
-			return false;
-		}
-
-		String keyword = normalizeText(searchKeyword);
-		String productName = normalizeText(product.productName());
-
-		if (productName.equals(keyword)) {
-			return true;
-		}
-
-		if (!productName.startsWith(keyword)) {
-			return false;
-		}
-
-		if (productName.length() == keyword.length()) {
-			return true;
-		}
-
-		char next = productName.charAt(keyword.length());
-
-		return Character.isDigit(next)
-			|| Character.isWhitespace(next)
-			|| next == '-'
-			|| next == '_'
-			|| next == '/'
-			|| next == '('
-			|| next == '[';
-	}
-
-	private List<String> normalizeSearchKeywords(RecipeIngredientItem ingredient) {
-		if (ingredient.searchKeywords() != null && !ingredient.searchKeywords().isEmpty()) {
-			return ingredient.searchKeywords()
-				.stream()
-				.filter(this::hasText)
-				.map(String::trim)
-				.distinct()
-				.limit(5)
-				.toList();
-		}
-
-		if (hasText(ingredient.searchKeyword())) {
-			return List.of(ingredient.searchKeyword().trim());
-		}
-
-		return List.of(ingredient.ingredientName().trim());
-	}
-
-	private ChatbotShoppingProduct findCandidate(
-		List<ChatbotShoppingProduct> candidates,
-		Long productId
-	) {
-		if (productId == null) {
-			return null;
-		}
-
-		return candidates.stream()
-			.filter(candidate -> productId.equals(candidate.productId()))
-			.findFirst()
-			.orElse(null);
 	}
 
 	private boolean isFirstProduct(
@@ -303,14 +190,5 @@ public class ChatbotRecipeRecommendationService {
 
 	private boolean hasText(String value) {
 		return value != null && !value.isBlank();
-	}
-
-	private String normalizeText(String value) {
-		if (value == null) {
-			return "";
-		}
-
-		return value.trim()
-			.replaceAll("\\s+", " ");
 	}
 }
