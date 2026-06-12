@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.recommendation.global.response.ApiResponse;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationClickLogRequest;
+import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationImpressionLogRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationPurchaseConversionRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationSelectionLogRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.response.RecommendationLogResponse;
@@ -23,6 +24,15 @@ import lombok.RequiredArgsConstructor;
 public class RecommendationLogController {
 
 	private final RecommendationLogService recommendationLogService;
+
+	@PostMapping
+	public ApiResponse<RecommendationLogResponse> saveImpressionLog(
+		@Valid @RequestBody RecommendationImpressionLogRequest request
+	) {
+		RecommendationLogResponse response = recommendationLogService.saveImpressionLog(request);
+
+		return ApiResponse.ok("추천 노출 로그 저장에 성공했습니다.", response);
+	}
 
 	@PostMapping("/clicks")
 	public ApiResponse<RecommendationLogResponse> saveClickLog(
