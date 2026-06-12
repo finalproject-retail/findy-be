@@ -43,7 +43,7 @@ public class ProductSummaryReader {
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
 		Map<Long, Product> productById = productRepository
-			.findAllByProductIdInAndDeletedAtIsNull(productIds)
+			.findAllVisibleByProductIdIn(productIds)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,
@@ -60,19 +60,23 @@ public class ProductSummaryReader {
 
 		return productIds.stream()
 			.distinct()
+			.map(productById::get)
+			.filter(Objects::nonNull)
 			.collect(Collectors.toMap(
-				Function.identity(),
-				productId -> ProductSummaryResponse.from(
-					getProduct(productById, productId),
-					inventoryByProductId.get(productId)
-				)
+				Product::getProductId,
+				product -> ProductSummaryResponse.from(
+					product,
+					inventoryByProductId.get(product.getProductId())
+				),
+				(existingProduct, replacementProduct) -> existingProduct
 			));
 	}
 
 	public void validatePurchasable(Long productId, int quantity, long storeId) {
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
-		Product product = productRepository.findByProductIdAndDeletedAtIsNull(productId)
+		Product product = productRepository
+			.findByProductIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(productId, 0)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 
 		if (product.getSaleStatus() != SaleStatus.ON_SALE) {
@@ -87,16 +91,6 @@ public class ProductSummaryReader {
 			|| inventory.getStockQuantity() < quantity) {
 			throw new ProductException(INVENTORY_INSUFFICIENT_STOCK);
 		}
-	}
-
-	private Product getProduct(Map<Long, Product> productById, Long productId) {
-		Product product = productById.get(productId);
-
-		if (product == null) {
-			throw new ProductException(PRODUCT_NOT_FOUND);
-		}
-
-		return product;
 	}
 
 	public List<ProductSummaryResponse> getExistingProductSummaries(
@@ -119,7 +113,7 @@ public class ProductSummaryReader {
 		}
 
 		Map<Long, Product> productById = productRepository
-			.findAllByProductIdInAndDeletedAtIsNull(distinctProductIds)
+			.findAllVisibleByProductIdIn(distinctProductIds)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,
