@@ -4,7 +4,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.princesses7.findy.shopping.cart.entity.Cart;
-import com.princesses7.findy.shopping.cart.entity.CartItem;
 import com.princesses7.findy.shopping.product.dto.response.ProductSummaryResponse;
 
 public record CartResponse(
@@ -24,20 +23,21 @@ public record CartResponse(
 	) {
 		List<CartItemResponse> items = cart.getCartItems()
 			.stream()
+			.filter(cartItem -> productMap.containsKey(cartItem.getProductId()))
 			.map(cartItem -> CartItemResponse.from(
 				cartItem,
 				productMap.get(cartItem.getProductId())
 			))
 			.toList();
 
-		int checkedItemCount = (int)cart.getCartItems()
+		int checkedItemCount = (int)items
 			.stream()
-			.filter(CartItem::isChecked)
+			.filter(CartItemResponse::checked)
 			.count();
 
-		int totalQuantity = cart.getCartItems()
+		int totalQuantity = items
 			.stream()
-			.mapToInt(CartItem::getQuantity)
+			.mapToInt(CartItemResponse::quantity)
 			.sum();
 
 		int totalAmount = items.stream()
