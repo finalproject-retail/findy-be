@@ -11,6 +11,7 @@ import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import com.princesses7.findy.user.email.dto.response.SendEmailVerificationResponse;
 import com.princesses7.findy.user.email.dto.response.VerifyEmailCodeResponse;
@@ -39,8 +40,14 @@ public class EmailVerificationService {
 	@Value("${app.email-verification.debug:true}")
 	private boolean debugEnabled;
 
-	@Value("${app.mail.from:no-reply@findy.com}")
+	@Value("${findy.mail.enabled:false}")
+	private boolean mailEnabled;
+
+	@Value("${findy.mail.from:}")
 	private String fromEmail;
+
+	@Value("${spring.mail.username:}")
+	private String mailUsername;
 
 	public SendEmailVerificationResponse sendCode(
 		String email,
@@ -59,9 +66,10 @@ public class EmailVerificationService {
 			sendVerificationMail(normalizedEmail, purpose, code);
 
 			log.info(
-				"이메일 인증 코드 발송 완료 email={}, purpose={}",
+				"이메일 인증 코드 발송 처리 완료 email={}, purpose={}, mailEnabled={}",
 				normalizedEmail,
-				purpose
+				purpose,
+				mailEnabled
 			);
 
 			return new SendEmailVerificationResponse(
@@ -75,6 +83,7 @@ public class EmailVerificationService {
 			log.error("이메일 인증 메일 발송 실패 email={}, purpose={}", normalizedEmail, purpose, e);
 			throw new BaseException(ErrorCode.EMAIL_SEND_FAILED);
 		} catch (Exception e) {
+			deleteCodeSafely(codeKey);
 			log.error("이메일 인증 코드 처리 실패 email={}, purpose={}", normalizedEmail, purpose, e);
 			throw new BaseException(ErrorCode.EMAIL_SEND_FAILED);
 		}
@@ -140,13 +149,36 @@ public class EmailVerificationService {
 		EmailVerificationPurpose purpose,
 		String code
 	) {
+		if (!mailEnabled) {
+			log.info(
+				"메일 발송 비활성화 상태입니다. 실제 메일은 발송하지 않습니다. email={}, purpose={}",
+				toEmail,
+				purpose
+			);
+			return;
+		}
+
+		String resolvedFromEmail = resolveFromEmail();
+
 		SimpleMailMessage message = new SimpleMailMessage();
-		message.setFrom(fromEmail);
+		message.setFrom(resolvedFromEmail);
 		message.setTo(toEmail);
 		message.setSubject(createSubject(purpose));
 		message.setText(createMailText(purpose, code));
 
 		javaMailSender.send(message);
+	}
+
+	private String resolveFromEmail() {
+		if (StringUtils.hasText(fromEmail)) {
+			return fromEmail.trim();
+		}
+
+		if (StringUtils.hasText(mailUsername)) {
+			return mailUsername.trim();
+		}
+
+		return "no-reply@findy.local";
 	}
 
 	private String createSubject(EmailVerificationPurpose purpose) {
