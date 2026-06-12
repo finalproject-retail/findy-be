@@ -35,7 +35,8 @@ class RagContextPromptBuilderTest {
 
 		String prompt = ragContextPromptBuilder.build(ragContext);
 
-		assertThat(prompt).contains("Findy RAG 문서 검색 결과");
+		assertThat(prompt).contains(RagContextPromptBuilder.RAG_CONTEXT_TITLE);
+		assertThat(prompt).contains("검색어: 쿠폰 사용 방법");
 		assertThat(prompt).contains("쿠폰 이용 안내");
 		assertThat(prompt).contains("쿠폰은 주문 화면에서 적용할 수 있습니다.");
 	}
@@ -46,6 +47,14 @@ class RagContextPromptBuilderTest {
 		RagContextResponse ragContext = RagContextResponse.empty("없는 질문");
 
 		String prompt = ragContextPromptBuilder.build(ragContext);
+
+		assertThat(prompt).isBlank();
+	}
+
+	@Test
+	@DisplayName("RAG 컨텍스트가 null이면 빈 프롬프트를 반환한다")
+	void buildNullRagContextPrompt() {
+		String prompt = ragContextPromptBuilder.build(null);
 
 		assertThat(prompt).isBlank();
 	}
