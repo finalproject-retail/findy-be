@@ -40,7 +40,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ChatbotService {
 
-	private static final int RECENT_MESSAGE_LIMIT = 8;
+	private static final int RECENT_MESSAGE_LIMIT = 4;
 
 	private final OpenAiChatClient openAiChatClient;
 	private final ChatbotPromptProvider chatbotPromptProvider;

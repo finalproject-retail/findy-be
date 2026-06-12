@@ -8,6 +8,7 @@ public record ChatbotShoppingProduct(
 	String categoryName,
 	String brandName,
 	String productName,
+	String description,
 	String imageUrl,
 	Integer originalPrice,
 	String salesUnit,
