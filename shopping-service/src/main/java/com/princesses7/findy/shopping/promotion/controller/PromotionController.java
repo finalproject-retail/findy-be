@@ -5,12 +5,11 @@ import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.princesses7.findy.shopping.global.response.ApiResponse;
 import com.princesses7.findy.shopping.promotion.dto.response.ApplicablePromotionResponse;
-import com.princesses7.findy.shopping.promotion.dto.response.PromotionProductPageResponse;
+import com.princesses7.findy.shopping.promotion.dto.response.PromotionMapMarkerListResponse;
 import com.princesses7.findy.shopping.promotion.service.PromotionQueryService;
 
 import lombok.RequiredArgsConstructor;
@@ -23,16 +22,10 @@ public class PromotionController {
 	private final PromotionQueryService promotionQueryService;
 
 	@GetMapping("/products/active")
-	public ApiResponse<PromotionProductPageResponse> getActivePromotionProducts(
-		@RequestParam(defaultValue = "0") int page,
-		@RequestParam(defaultValue = "20") int size
-	) {
-		PromotionProductPageResponse response = promotionQueryService.getActivePromotionProducts(
-			page,
-			size
-		);
+	public ApiResponse<PromotionMapMarkerListResponse> getActivePromotionProducts() {
+		PromotionMapMarkerListResponse response = promotionQueryService.getActivePromotionMapMarkers();
 
-		return ApiResponse.ok(response);
+		return ApiResponse.ok("진행 중인 행사 상품 지도 마커 조회에 성공했습니다.", response);
 	}
 
 	@GetMapping("/products/{productId}/applicable")

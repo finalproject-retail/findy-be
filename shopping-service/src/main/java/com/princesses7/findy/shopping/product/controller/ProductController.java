@@ -4,6 +4,7 @@ import java.util.List;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -86,9 +87,20 @@ public class ProductController {
 	@GetMapping("/{productId}")
 	public ApiResponse<ProductDetailResponse> getProductDetail(
 		@PathVariable Long productId,
+		@RequestHeader(value = "X-User-Id", required = false) Long userId,
+		@RequestParam(required = false) String viewSource,
+		@RequestParam(required = false) Long promotionId,
+		@RequestParam(required = false) Long pinGridId,
 		@ResolvedStoreId long storeId
 	) {
-		ProductDetailResponse response = productService.getProductDetail(productId, storeId);
+		ProductDetailResponse response = productService.getProductDetail(
+			productId,
+			storeId,
+			userId,
+			viewSource,
+			promotionId,
+			pinGridId
+		);
 
 		return ApiResponse.ok("상품 상세 조회에 성공했습니다.", response);
 	}
