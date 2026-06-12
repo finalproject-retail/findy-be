@@ -12,8 +12,11 @@ public record OrderSummaryResponse(
 	int totalAmount,
 	int discountAmount,
 	int finalAmount,
+	int earnedReward,
 	String orderStatus,
 	LocalDateTime orderedAt,
+	int itemCount,
+	String firstProductName,
 	List<OrderItemResponse> items
 ) {
 
@@ -28,9 +31,29 @@ public record OrderSummaryResponse(
 			order.getTotalAmount(),
 			order.getDiscountAmount(),
 			order.getFinalAmount(),
+			order.getEarnedReward(),
 			order.getOrderStatus().name(),
 			order.getCreatedAt(),
+			calculateItemCount(items),
+			resolveFirstProductName(items),
 			items
 		);
+	}
+
+	private static int calculateItemCount(List<OrderItemResponse> items) {
+		if (items == null) {
+			return 0;
+		}
+
+		return items.size();
+	}
+
+	private static String resolveFirstProductName(List<OrderItemResponse> items) {
+		if (items == null || items.isEmpty()) {
+			return "";
+		}
+
+		OrderItemResponse firstItem = items.get(0);
+		return firstItem.productName() == null ? "" : firstItem.productName();
 	}
 }
