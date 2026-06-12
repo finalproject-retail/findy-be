@@ -61,14 +61,7 @@ public class SecurityConfig {
 			"OPTIONS"
 		));
 
-		configuration.setAllowedHeaders(List.of(
-			"Authorization",
-			"Content-Type",
-			"X-USER-ID",
-			"X-User-Id",
-			"Accept",
-			"Origin"
-		));
+		configuration.setAllowedHeaders(List.of("*"));
 
 		configuration.setExposedHeaders(List.of(
 			"Authorization",
