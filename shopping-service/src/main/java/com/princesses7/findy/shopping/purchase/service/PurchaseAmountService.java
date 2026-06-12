@@ -58,7 +58,8 @@ public class PurchaseAmountService {
 	}
 
 	private PurchaseAmountItemResponse calculateItem(PurchaseTargetItemResponse item) {
-		Product product = productRepository.findByProductIdAndDeletedAtIsNull(item.productId())
+		Product product = productRepository
+			.findByProductIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(item.productId(), 0)
 			.orElseThrow(() -> new PurchaseException(PRODUCT_NOT_FOUND));
 
 		int productPrice = product.getOriginalPrice();

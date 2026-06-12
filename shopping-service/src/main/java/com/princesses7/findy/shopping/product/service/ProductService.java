@@ -41,6 +41,7 @@ public class ProductService {
 	private static final int MAX_PAGE_SIZE = 100;
 	private static final int MAX_SECTION_SIZE = 30;
 	private static final int SECTION_CANDIDATE_MULTIPLIER = 3;
+	private static final int MIN_VISIBLE_PRICE = 0;
 	private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
 		"productId",
 		"productName",
@@ -90,7 +91,10 @@ public class ProductService {
 		);
 
 		return toProductResponses(
-			productRepository.findByDeletedAtIsNull(pageable).getContent(),
+			productRepository.findByDeletedAtIsNullAndOriginalPriceGreaterThan(
+				MIN_VISIBLE_PRICE,
+				pageable
+			).getContent(),
 			storeId
 		);
 	}
@@ -202,7 +206,10 @@ public class ProductService {
 	}
 
 	private Product findActiveProduct(Long productId) {
-		return productRepository.findByProductIdAndDeletedAtIsNull(productId)
+		return productRepository.findByProductIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+				productId,
+				MIN_VISIBLE_PRICE
+			)
 			.orElseThrow(() -> new ProductException(PRODUCT_NOT_FOUND));
 	}
 
@@ -212,32 +219,41 @@ public class ProductService {
 		Pageable pageable
 	) {
 		if (categoryId != null && keyword != null) {
-			return productRepository.findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNull(
+			return productRepository.findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
 				categoryId,
 				keyword,
+				MIN_VISIBLE_PRICE,
 				pageable
 			);
 		}
 
 		if (categoryId != null) {
-			return productRepository.findByCategoryIdAndDeletedAtIsNull(categoryId, pageable);
-		}
-
-		if (keyword != null) {
-			return productRepository.findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
-				keyword,
+			return productRepository.findByCategoryIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+				categoryId,
+				MIN_VISIBLE_PRICE,
 				pageable
 			);
 		}
 
-		return productRepository.findByDeletedAtIsNull(pageable);
+		if (keyword != null) {
+			return productRepository.findByProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+				keyword,
+				MIN_VISIBLE_PRICE,
+				pageable
+			);
+		}
+
+		return productRepository.findByDeletedAtIsNullAndOriginalPriceGreaterThan(
+			MIN_VISIBLE_PRICE,
+			pageable
+		);
 	}
 
 	private List<Product> findProductsByRanking(
 		List<Long> productIds,
 		int size
 	) {
-		Map<Long, Product> productMap = productRepository.findAllByProductIdInAndDeletedAtIsNull(productIds)
+		Map<Long, Product> productMap = productRepository.findAllVisibleByProductIdIn(productIds)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,

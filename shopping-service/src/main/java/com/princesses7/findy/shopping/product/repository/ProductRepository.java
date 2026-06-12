@@ -19,10 +19,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
 	Page<Product> findByDeletedAtIsNull(Pageable pageable);
 
+	Page<Product> findByDeletedAtIsNullAndOriginalPriceGreaterThan(Integer originalPrice, Pageable pageable);
+
 	Page<Product> findByCategoryIdAndDeletedAtIsNull(Long categoryId, Pageable pageable);
+
+	Page<Product> findByCategoryIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+		Long categoryId,
+		Integer originalPrice,
+		Pageable pageable
+	);
 
 	Page<Product> findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
 		String keyword,
+		Pageable pageable
+	);
+
+	Page<Product> findByProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+		String keyword,
+		Integer originalPrice,
 		Pageable pageable
 	);
 
@@ -32,7 +46,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		Pageable pageable
 	);
 
+	Page<Product> findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+		Long categoryId,
+		String keyword,
+		Integer originalPrice,
+		Pageable pageable
+	);
+
 	Optional<Product> findByProductIdAndDeletedAtIsNull(Long productId);
+
+	Optional<Product> findByProductIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(
+		Long productId,
+		Integer originalPrice
+	);
 
 	boolean existsByBarcodeAndDeletedAtIsNull(String barcode);
 
@@ -94,6 +120,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
+		  AND p.originalPrice > 0
 		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
 		  AND EXISTS (
 		  	SELECT 1
@@ -107,6 +134,17 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	List<Product> findMartRecommendedProducts(
 		@Param("storeId") Long storeId,
 		Pageable pageable
+	);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.productId IN :productIds
+		  AND p.deletedAt IS NULL
+		  AND p.originalPrice > 0
+		""")
+	List<Product> findAllVisibleByProductIdIn(
+		@Param("productIds") Collection<Long> productIds
 	);
 
 	@Query("""
