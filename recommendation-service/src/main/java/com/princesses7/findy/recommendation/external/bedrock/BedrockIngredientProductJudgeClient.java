@@ -89,17 +89,30 @@ public class BedrockIngredientProductJudgeClient implements IngredientProductJud
 			
 			목표:
 			- 사용자가 특정 요리를 만들기 위해 ingredientName 재료를 찾고 있습니다.
-			- candidateProduct가 해당 ingredientName 재료 자체로 사용할 수 있는 상품인지 판단하세요.
+			- 후보 상품 목록 전체를 보고, 해당 ingredientName 재료 자체로 사용할 수 있는 상품만 고르세요.
 			
-			판단 기준:
-			- suitable=true: 후보 상품이 ingredientName 재료 자체로 사용 가능합니다.
-			- suitable=false: 후보 상품이 재료 자체가 아니라 완제품, 밀키트, 소스 조합, 간식, 다른 요리, 해당 재료가 일부 들어간 가공식품입니다.
+			가장 중요한 판단 기준:
+			- suitable=true: 후보 상품이 ingredientName 재료 자체로 바로 조리에 사용할 수 있는 상품입니다.
+			- suitable=false: 후보 상품이 완제품, 즉석식품, 레토르트, 밀키트, 소스 조합, 간식, 다른 요리, 해당 재료가 일부 들어간 가공식품입니다.
 			
-			규칙:
-			- 상품명 키워드만 보고 판단하지 말고, 상품명, 카테고리, 브랜드, 판매단위, 중량 정보를 종합하세요.
-			- ingredientName이 일부 포함된 가공식품은 재료 자체가 아니면 suitable=false입니다.
-			- 특정 요리 완제품이나 밀키트는 ingredientName 재료 자체가 아니면 suitable=false입니다.
-			- 후보에 없는 productId를 만들지 마세요.
+			엄격 제외 규칙:
+			- 요리명과 같은 완제품은 반드시 제외하세요.
+			- 예: recipeName=김치찌개, ingredientName=김치일 때 레토르트 김치찌개, 즉석 김치찌개, 김치찌개 밀키트는 suitable=false입니다.
+			- 예: ingredientName=김치일 때 김치라면, 김치사발면, 김치볶음밥, 김치만두는 suitable=false입니다.
+			- 예: ingredientName=감자일 때 감자면, 감자칩, 감자스낵은 suitable=false입니다.
+			- 예: ingredientName=카레가루일 때 카레라면, 카레볶음밥, 카레 완제품은 suitable=false입니다.
+			- 상품명에 재료명이 들어 있어도 재료 자체가 아니면 반드시 suitable=false입니다.
+			
+			허용 예시:
+			- ingredientName=김치: 포기김치, 배추김치, 맛김치처럼 김치 자체 상품은 suitable=true입니다.
+			- ingredientName=두부: 찌개용 두부, 부침두부, 순두부처럼 두부 자체 상품은 suitable=true입니다.
+			- ingredientName=돼지고기: 삼겹살, 앞다리살, 목살처럼 돼지고기 원재료 상품은 suitable=true입니다.
+			- ingredientName=대파: 대파, 손질대파처럼 대파 자체 상품은 suitable=true입니다.
+			
+			응답 규칙:
+			- 후보 목록에 있는 productId만 응답하세요.
+			- 적합한 상품이 없으면 {"items": []}로 응답하세요.
+			- items에는 suitable=true라고 판단한 상품만 넣으세요.
 			- confidence는 0.0 이상 1.0 이하로 주세요.
 			- suitable=true 상품을 우선순위 높은 순서로 앞에 두세요.
 			- 반드시 JSON 객체 하나만 반환하세요.

@@ -74,6 +74,7 @@ public class ProductSnapshot {
 	public String toEmbeddingText(String categoryName) {
 		return """
 			마트 상품 정보입니다.
+			
 			상품명: %s
 			브랜드: %s
 			카테고리: %s
@@ -83,6 +84,9 @@ public class ProductSnapshot {
 			중량/용량: %s
 			알레르기 정보: %s
 			상품 배지: %s
+			
+			이 텍스트는 상품의 의미 기반 추천과 검색을 위한 임베딩 생성에 사용됩니다.
+			상품명, 카테고리, 설명, 판매 단위, 용량 정보를 종합해 상품의 용도와 성격을 표현합니다.
 			""".formatted(
 			nullToEmpty(productName),
 			nullToEmpty(brandName),

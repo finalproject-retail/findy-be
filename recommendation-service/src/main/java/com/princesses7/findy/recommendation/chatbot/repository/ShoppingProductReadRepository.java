@@ -128,36 +128,16 @@ public class ShoppingProductReadRepository {
 		);
 	}
 
-	public List<ChatbotShoppingProduct> searchIngredientCandidates(
-		String ingredientName,
+	public List<ChatbotShoppingProduct> findIngredientJudgeCandidates(
 		Long storeId,
 		int limit
 	) {
-		String normalizedKeyword = normalizeKeyword(ingredientName);
-
-		if (normalizedKeyword.isBlank()) {
-			return List.of();
-		}
-
 		String sql = baseSelectSql() + """
 			WHERE p.deleted_at IS NULL
 				AND p.sale_status = 'ON_SALE'
-				AND i.stock_quantity > 0
-				AND (
-					LOWER(p.product_name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-					OR LOWER(COALESCE(p.brand_name, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-					OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-					OR LOWER(COALESCE(c.category_name, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-				)
+				AND COALESCE(i.stock_quantity, 0) > 0
 			ORDER BY
-				CASE
-					WHEN LOWER(p.product_name) = LOWER(:keyword) THEN 0
-					WHEN LOWER(p.product_name) LIKE LOWER(CONCAT(:keyword, '%')) THEN 1
-					WHEN LOWER(p.product_name) LIKE LOWER(CONCAT('%', :keyword, '%')) THEN 2
-					WHEN LOWER(COALESCE(c.category_name, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) THEN 3
-					WHEN LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) THEN 4
-					ELSE 5
-				END,
+				COALESCE(c.category_name, '') ASC,
 				p.product_id ASC
 			LIMIT :limit
 			""";
@@ -165,7 +145,6 @@ public class ShoppingProductReadRepository {
 		return jdbcTemplate.query(
 			sql,
 			Map.of(
-				"keyword", normalizedKeyword,
 				"storeId", storeId,
 				"limit", limit
 			),
