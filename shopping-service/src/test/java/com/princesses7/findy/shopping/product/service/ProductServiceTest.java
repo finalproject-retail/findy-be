@@ -61,7 +61,7 @@ class ProductServiceTest {
 
 		assertThat(response).isNotNull();
 
-		verify(searchKeywordRankingService).record("milk");
+		verify(searchKeywordRankingService).record("우유");
 		verify(productRepository).findByProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
 			eq("우유"),
 			eq(0),
@@ -91,7 +91,7 @@ class ProductServiceTest {
 
 		assertThat(response).isNotNull();
 
-		verify(searchKeywordRankingService).record("milk");
+		verify(searchKeywordRankingService).record("우유");
 		verify(productRepository).findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
 			eq(10L),
 			eq("우유"),
