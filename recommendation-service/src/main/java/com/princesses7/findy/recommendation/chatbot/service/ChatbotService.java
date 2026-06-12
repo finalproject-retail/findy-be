@@ -68,12 +68,18 @@ public class ChatbotService {
 			analysis = chatbotIntentAnalyzer.analyze(request.message());
 			ChatIntent intent = analysis.intent();
 
-			ChatbotShoppingContextResponse shoppingContext = getShoppingContext(request, analysis);
 			ChatbotRecipeRecommendationResponse recipeRecommendation = getRecipeRecommendation(
 				userId,
 				request,
 				analysis
 			);
+
+			ChatbotShoppingContextResponse shoppingContext = getShoppingContext(
+				request,
+				analysis,
+				recipeRecommendation
+			);
+
 			RagContextResponse ragContext = getRagContext(request.message(), analysis);
 
 			if (recipeRecommendation != null) {
@@ -224,8 +230,17 @@ public class ChatbotService {
 
 	private ChatbotShoppingContextResponse getShoppingContext(
 		ChatbotMessageRequest request,
-		ChatbotIntentAnalysis analysis
+		ChatbotIntentAnalysis analysis,
+		ChatbotRecipeRecommendationResponse recipeRecommendation
 	) {
+		if (analysis != null && analysis.intent() == ChatIntent.RECIPE_INGREDIENT_RECOMMENDATION) {
+			return null;
+		}
+
+		if (recipeRecommendation != null) {
+			return null;
+		}
+
 		try {
 			return chatbotShoppingContextService.getContext(request, analysis);
 		} catch (ChatbotException exception) {

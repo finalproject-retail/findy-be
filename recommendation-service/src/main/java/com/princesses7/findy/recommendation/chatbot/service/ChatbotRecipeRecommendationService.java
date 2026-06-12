@@ -1,10 +1,10 @@
 package com.princesses7.findy.recommendation.chatbot.service;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -21,7 +21,6 @@ import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotRecipePr
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotRecipeRecommendationResponse;
 import com.princesses7.findy.recommendation.chatbot.entity.ChatIntent;
 import com.princesses7.findy.recommendation.chatbot.external.IngredientProductJudgeClient;
-import com.princesses7.findy.recommendation.chatbot.repository.ShoppingProductReadRepository;
 
 import lombok.RequiredArgsConstructor;
 
@@ -31,13 +30,14 @@ import lombok.RequiredArgsConstructor;
 public class ChatbotRecipeRecommendationService {
 
 	private static final long DEFAULT_STORE_ID = 1L;
+
 	private static final int PRODUCT_LIMIT_PER_INGREDIENT = 3;
-	private static final int AI_CANDIDATE_POOL_LIMIT = 30;
+	private static final int AI_CANDIDATE_LIMIT_PER_INGREDIENT = 30;
 	private static final int MAX_MATCHING_INGREDIENT_COUNT = 6;
-	private static final double MIN_JUDGE_CONFIDENCE = 0.60;
+	private static final double MIN_JUDGE_CONFIDENCE = 0.55;
 
 	private final ChatbotRecipeIngredientExtractor recipeIngredientExtractor;
-	private final ShoppingProductReadRepository shoppingProductReadRepository;
+	private final RecipeIngredientEmbeddingCandidateService recipeIngredientEmbeddingCandidateService;
 	private final IngredientProductJudgeClient ingredientProductJudgeClient;
 
 	public ChatbotRecipeRecommendationResponse recommend(
@@ -63,11 +63,6 @@ public class ChatbotRecipeRecommendationService {
 			);
 		}
 
-		List<ChatbotShoppingProduct> aiJudgeCandidates = shoppingProductReadRepository.findIngredientJudgeCandidates(
-			storeId,
-			AI_CANDIDATE_POOL_LIMIT
-		);
-
 		List<ChatbotRecipeIngredientRecommendationResponse> ingredients = recipeIngredientAnalysis.ingredients()
 			.stream()
 			.limit(MAX_MATCHING_INGREDIENT_COUNT)
@@ -75,8 +70,7 @@ public class ChatbotRecipeRecommendationService {
 				userId,
 				storeId,
 				recipeIngredientAnalysis.recipeName(),
-				ingredient,
-				aiJudgeCandidates
+				ingredient
 			))
 			.toList();
 
@@ -91,13 +85,12 @@ public class ChatbotRecipeRecommendationService {
 		Long userId,
 		Long storeId,
 		String recipeName,
-		RecipeIngredientItem ingredient,
-		List<ChatbotShoppingProduct> aiJudgeCandidates
+		RecipeIngredientItem ingredient
 	) {
 		List<ChatbotShoppingProduct> products = findProductsByIngredient(
 			recipeName,
-			ingredient,
-			aiJudgeCandidates
+			storeId,
+			ingredient
 		);
 
 		List<ChatbotRecipeProductRecommendationResponse> recommendedProducts = products.stream()
@@ -118,39 +111,28 @@ public class ChatbotRecipeRecommendationService {
 
 	private List<ChatbotShoppingProduct> findProductsByIngredient(
 		String recipeName,
-		RecipeIngredientItem ingredient,
-		List<ChatbotShoppingProduct> aiJudgeCandidates
+		Long storeId,
+		RecipeIngredientItem ingredient
 	) {
 		if (ingredient == null || !hasText(ingredient.ingredientName())) {
 			return List.of();
 		}
 
-		if (aiJudgeCandidates == null || aiJudgeCandidates.isEmpty()) {
+		List<ChatbotShoppingProduct> candidates = recipeIngredientEmbeddingCandidateService.findCandidates(
+			recipeName,
+			ingredient,
+			storeId,
+			AI_CANDIDATE_LIMIT_PER_INGREDIENT
+		);
+
+		if (candidates.isEmpty()) {
 			return List.of();
 		}
 
-		String ingredientName = ingredient.ingredientName().trim();
-
-		Map<Long, ChatbotShoppingProduct> candidateMap = aiJudgeCandidates.stream()
-			.filter(product -> product != null && product.productId() != null && product.isRecommendable())
-			.collect(Collectors.toMap(
-				ChatbotShoppingProduct::productId,
-				product -> product,
-				(left, right) -> left,
-				LinkedHashMap::new
-			));
-
-		if (candidateMap.isEmpty()) {
-			return List.of();
-		}
-
-		// 중요:
-		// 여기서 batch loop 돌리면 서버 죽음.
-		// 한 재료당 AI 호출 1번만 한다.
 		List<IngredientProductJudgeItem> judgedItems = ingredientProductJudgeClient.judge(
 			recipeName,
-			ingredientName,
-			new ArrayList<>(candidateMap.values()),
+			ingredient.ingredientName(),
+			candidates,
 			PRODUCT_LIMIT_PER_INGREDIENT
 		);
 
@@ -158,18 +140,47 @@ public class ChatbotRecipeRecommendationService {
 			return List.of();
 		}
 
-		return judgedItems.stream()
+		Map<Long, IngredientProductJudgeItem> suitableJudgeMap = judgedItems.stream()
 			.filter(item -> item != null && item.productId() != null)
 			.filter(IngredientProductJudgeItem::isSuitable)
 			.filter(item -> item.safeConfidence() >= MIN_JUDGE_CONFIDENCE)
-			.filter(item -> candidateMap.containsKey(item.productId()))
-			.sorted(
-				Comparator.comparing(IngredientProductJudgeItem::safeConfidence)
-					.reversed()
-			)
-			.map(item -> candidateMap.get(item.productId()))
+			.collect(Collectors.toMap(
+				IngredientProductJudgeItem::productId,
+				item -> item,
+				(left, right) -> left,
+				LinkedHashMap::new
+			));
+
+		if (suitableJudgeMap.isEmpty()) {
+			return List.of();
+		}
+
+		Set<Long> candidateProductIds = candidates.stream()
+			.map(ChatbotShoppingProduct::productId)
+			.collect(Collectors.toSet());
+
+		return suitableJudgeMap.values()
+			.stream()
+			.filter(item -> candidateProductIds.contains(item.productId()))
+			.sorted(Comparator.comparing(IngredientProductJudgeItem::safeConfidence).reversed())
+			.map(item -> findCandidate(candidates, item.productId()))
+			.filter(product -> product != null)
 			.limit(PRODUCT_LIMIT_PER_INGREDIENT)
 			.toList();
+	}
+
+	private ChatbotShoppingProduct findCandidate(
+		List<ChatbotShoppingProduct> candidates,
+		Long productId
+	) {
+		if (productId == null) {
+			return null;
+		}
+
+		return candidates.stream()
+			.filter(candidate -> productId.equals(candidate.productId()))
+			.findFirst()
+			.orElse(null);
 	}
 
 	private boolean isFirstProduct(
