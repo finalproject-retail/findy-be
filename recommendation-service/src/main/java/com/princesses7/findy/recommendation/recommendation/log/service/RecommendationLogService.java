@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.princesses7.findy.recommendation.recommendation.dto.response.ProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.dto.response.PromotionProductRecommendationResponse;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationClickLogRequest;
+import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationImpressionLogRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationPurchaseConversionRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.request.RecommendationSelectionLogRequest;
 import com.princesses7.findy.recommendation.recommendation.log.dto.response.RecommendationLogResponse;
@@ -125,6 +126,8 @@ public class RecommendationLogService {
 			return RecommendationLogResponse.from(clickLog);
 		}
 
+		validateRawClickRequest(request);
+
 		RecommendationLog savedLog = recommendationLogRepository.save(
 			RecommendationLog.click(
 				request.userId(),
@@ -190,6 +193,25 @@ public class RecommendationLogService {
 		);
 	}
 
+	@Transactional(propagation = Propagation.REQUIRES_NEW)
+	public RecommendationLogResponse saveImpressionLog(RecommendationImpressionLogRequest request) {
+		RecommendationLog log = RecommendationLog.impression(
+			request.userId(),
+			request.productId(),
+			request.sourceProductId(),
+			request.storeId(),
+			request.recommendationType(),
+			request.displayLocation(),
+			request.recommendationRank(),
+			request.score(),
+			request.reason()
+		);
+
+		RecommendationLog savedLog = recommendationLogRepository.save(log);
+
+		return RecommendationLogResponse.from(savedLog);
+	}
+
 	private java.util.Optional<RecommendationLog> findUsableImpressionLog(
 		Long recommendationLogId,
 		Long userId,
@@ -252,5 +274,17 @@ public class RecommendationLogService {
 			logType,
 			createdAtAfter
 		);
+	}
+
+	private void validateRawClickRequest(RecommendationClickLogRequest request) {
+		if (request.userId() == null
+			|| request.productId() == null
+			|| request.recommendationType() == null
+			|| request.displayLocation() == null
+			|| request.displayLocation().isBlank()) {
+			throw new IllegalArgumentException(
+				"recommendationLogId가 없으면 userId, productId, recommendationType, displayLocation은 필수입니다."
+			);
+		}
 	}
 }
