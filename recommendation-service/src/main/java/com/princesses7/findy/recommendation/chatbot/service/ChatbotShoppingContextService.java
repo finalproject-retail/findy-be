@@ -3,6 +3,7 @@ package com.princesses7.findy.recommendation.chatbot.service;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.princesses7.findy.recommendation.chatbot.dto.ChatbotIntentAnalysis;
+import com.princesses7.findy.recommendation.chatbot.dto.ChatbotNaturalProductQuery;
 import com.princesses7.findy.recommendation.chatbot.dto.ChatbotShoppingProduct;
 import com.princesses7.findy.recommendation.chatbot.dto.request.ChatbotMessageRequest;
 import com.princesses7.findy.recommendation.chatbot.dto.response.ChatbotCouponContextResponse;
@@ -35,11 +37,14 @@ public class ChatbotShoppingContextService {
 	private static final long DEFAULT_STORE_ID = 1L;
 	private static final int DEFAULT_LIMIT = 5;
 	private static final int MAX_LIMIT = 10;
+	private static final int AI_CANDIDATE_LIMIT = 50;
 	private static final int LOW_STOCK_THRESHOLD = 5;
 
 	private final ShoppingProductReadRepository shoppingProductReadRepository;
 	private final PromotionProductSnapshotRepository promotionProductRepository;
 	private final CouponProductSnapshotRepository couponProductRepository;
+	private final ChatbotNaturalProductQueryExtractor naturalProductQueryExtractor;
+	private final ChatbotProductSuitabilityJudgeService productSuitabilityJudgeService;
 
 	public ChatbotShoppingContextResponse getContext(
 		ChatbotMessageRequest request,
@@ -54,7 +59,13 @@ public class ChatbotShoppingContextService {
 		String keyword = analysis.keyword();
 		ChatIntent intent = analysis.intent();
 
-		List<ChatbotShoppingProduct> products = findProducts(storeId, keyword, intent, limit);
+		List<ChatbotShoppingProduct> products = findProducts(
+			storeId,
+			keyword,
+			request.message(),
+			intent,
+			limit
+		);
 
 		if (products.isEmpty()) {
 			return ChatbotShoppingContextResponse.empty(storeId, keyword, intent);
@@ -94,6 +105,7 @@ public class ChatbotShoppingContextService {
 		List<ChatbotShoppingProduct> products = findProducts(
 			resolvedStoreId,
 			keyword,
+			keyword,
 			ChatIntent.PRODUCT_SEARCH,
 			resolvedLimit
 		);
@@ -121,9 +133,19 @@ public class ChatbotShoppingContextService {
 	private List<ChatbotShoppingProduct> findProducts(
 		Long storeId,
 		String keyword,
+		String userMessage,
 		ChatIntent intent,
 		int limit
 	) {
+		if (intent == ChatIntent.GENERAL_PRODUCT_RECOMMENDATION) {
+			return findAiRecommendedProducts(
+				storeId,
+				keyword,
+				userMessage,
+				limit
+			);
+		}
+
 		if (!hasText(keyword) && intent == ChatIntent.PROMOTION_INQUIRY) {
 			return findPromotionProducts(storeId, limit);
 		}
@@ -144,6 +166,71 @@ public class ChatbotShoppingContextService {
 			),
 			limit
 		);
+	}
+
+	private List<ChatbotShoppingProduct> findAiRecommendedProducts(
+		Long storeId,
+		String keyword,
+		String userMessage,
+		int limit
+	) {
+		String queryText = firstText(userMessage, keyword);
+
+		if (!hasText(queryText)) {
+			return List.of();
+		}
+
+		ChatbotNaturalProductQuery naturalQuery = naturalProductQueryExtractor.extract(queryText);
+
+		List<String> candidateKeywords = resolveCandidateKeywords(
+			naturalQuery,
+			keyword,
+			queryText
+		);
+
+		List<ChatbotShoppingProduct> candidates = distinctRecommendableProducts(
+			shoppingProductReadRepository.findAiRecommendationCandidates(
+				storeId,
+				candidateKeywords,
+				AI_CANDIDATE_LIMIT
+			),
+			AI_CANDIDATE_LIMIT
+		);
+
+		if (candidates.isEmpty()) {
+			return List.of();
+		}
+
+		return productSuitabilityJudgeService.judge(
+			queryText,
+			naturalQuery,
+			candidates,
+			limit
+		);
+	}
+
+	private List<String> resolveCandidateKeywords(
+		ChatbotNaturalProductQuery naturalQuery,
+		String keyword,
+		String userMessage
+	) {
+		LinkedHashSet<String> keywords = new LinkedHashSet<>();
+
+		if (naturalQuery != null) {
+			keywords.addAll(naturalQuery.searchKeywords());
+		}
+
+		if (hasText(keyword)) {
+			keywords.add(keyword);
+		}
+
+		if (hasText(userMessage)) {
+			keywords.add(userMessage);
+		}
+
+		return keywords.stream()
+			.filter(this::hasText)
+			.toList();
 	}
 
 	private List<ChatbotShoppingProduct> findPromotionProducts(
@@ -319,6 +406,14 @@ public class ChatbotShoppingContextService {
 		}
 
 		return Math.min(limit, MAX_LIMIT);
+	}
+
+	private String firstText(String firstValue, String secondValue) {
+		if (hasText(firstValue)) {
+			return firstValue;
+		}
+
+		return secondValue;
 	}
 
 	private boolean hasText(String value) {
