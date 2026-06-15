@@ -37,7 +37,7 @@ public class SecurityConfig {
 				.requestMatchers("/api/v1/auth/login").permitAll()
 				.requestMatchers("/api/v1/auth/social/**").permitAll()
 				.requestMatchers("/api/v1/auth/password-reset/**").permitAll()
-				.requestMatchers("/api/v1/email-verifications/**").permitAll()
+				.requestMatchers("/api/v1/auth/email/**").permitAll()
 				.requestMatchers("/api/v1/users/signup").permitAll()
 				.requestMatchers("/actuator/health").permitAll()
 				.anyRequest().permitAll()
