@@ -105,15 +105,15 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		WHERE p.deletedAt IS NULL
 		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
 		  AND EXISTS (
-		    SELECT 1
-		    FROM Inventory i
-		    WHERE i.product = p
-		      AND i.storeId = :storeId
-		      AND i.stockQuantity > 0
+			SELECT 1
+			FROM Inventory i
+			WHERE i.product = p
+			  AND i.storeId = :storeId
+			  AND i.stockQuantity > 0
 		  )
-		ORDER BY p.createdAt DESC, p.productId DESC
+		ORDER BY p.createdAt DESC, p.productId ASC
 		""")
-	List<Product> findNewProducts(
+	List<Product> findMartRecommendedProducts(
 		@Param("storeId") Long storeId,
 		Pageable pageable
 	);

@@ -38,7 +38,9 @@ import com.princesses7.findy.recommendation.recommendation.type.RecommendationTy
 import com.princesses7.findy.recommendation.recommendation.validator.RecommendationRequestValidator;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -150,6 +152,47 @@ public class PersonalizedRecommendationService {
 				RecommendationBaseType.POPULAR_FALLBACK
 			);
 		}
+
+		log.info(
+			"Personalized recommendation request. userId={}, storeId={}, requestedSize={}, normalizedSize={}",
+			userId, storeId, size, normalizedSize
+		);
+
+		log.info(
+			"User preference loaded. userId={}, preferredCategoryIds={}, preferredCategories={}, shoppingStyleIds={}, shoppingStyles={}",
+			userId,
+			userPreference.preferredCategoryIds(),
+			userPreference.preferredCategories(),
+			userPreference.shoppingStyleIds(),
+			userPreference.shoppingStyles()
+		);
+
+		log.info(
+			"Purchase history loaded. userId={}, hasHistory={}, baseType={}",
+			userId,
+			purchaseHistory.hasHistory(),
+			baseType
+		);
+
+		log.info(
+			"Product embeddings loaded. model={}, dimensions={}, count={}",
+			productEmbeddingClient.model(),
+			productEmbeddingClient.dimensions(),
+			candidateEmbeddings.size()
+		);
+
+		log.info(
+			"Recommendable product map loaded. storeId={}, productIdCount={}, recommendableCount={}",
+			storeId,
+			productIds.size(),
+			productMap.size()
+		);
+
+		log.info(
+			"Personalized recommendations created. userId={}, resultCount={}",
+			userId,
+			recommendations.size()
+		);
 
 		return new PersonalizedRecommendationResponse(
 			userId,
