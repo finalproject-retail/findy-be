@@ -14,6 +14,9 @@ import com.princesses7.findy.analytics.zone.dto.query.ZoneVisitRateQueryResult;
 @Repository
 public class ZoneVisitRateAnalyticsRepository {
 
+	private static final int MAX_STAY_SECONDS = 30 * 60;
+	private static final int MAX_TRAVEL_SECONDS = 30 * 60;
+
 	private final NamedParameterJdbcTemplate jdbcTemplate;
 
 	public ZoneVisitRateAnalyticsRepository(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -27,44 +30,31 @@ public class ZoneVisitRateAnalyticsRepository {
 		int minStaySeconds
 	) {
 		String sql = """
-			WITH ordered_logs AS (
+			WITH inferred_logs AS (
 				SELECT
-					location_log_id,
 					user_id,
-					store_id,
 					zone_id,
 					zone_name,
-					entered_at,
-					exited_at,
-					stay_duration_seconds,
-					LEAD(entered_at) OVER (
-						PARTITION BY user_id, store_id
-						ORDER BY entered_at, location_log_id
-					) AS next_entered_at
+					CASE
+						WHEN stay_duration_seconds BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN stay_duration_seconds
+
+						WHEN exited_at IS NOT NULL
+							AND exited_at >= entered_at
+							AND EXTRACT(EPOCH FROM (exited_at - entered_at)) BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT
+
+						ELSE NULL
+					END AS stay_seconds
 				FROM analytics_service.user_location_logs
 				WHERE entered_at >= :fromAt
 					AND entered_at < :toAt
 					AND store_id = :storeId
 					AND zone_id IS NOT NULL
-			), inferred_logs AS (
-				SELECT
-					user_id,
-					zone_id,
-					zone_name,
-					GREATEST(
-						0,
-						COALESCE(
-							stay_duration_seconds,
-							EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT,
-							EXTRACT(EPOCH FROM (next_entered_at - entered_at))::BIGINT,
-							0
-						)
-					) AS stay_seconds
-				FROM ordered_logs
 			), valid_visits AS (
 				SELECT *
 				FROM inferred_logs
-				WHERE stay_seconds >= :minStaySeconds
+				WHERE stay_seconds IS NOT NULL
 			), total_visits AS (
 				SELECT COUNT(*) AS total_visit_count
 				FROM valid_visits
@@ -169,36 +159,45 @@ public class ZoneVisitRateAnalyticsRepository {
 					zone_name AS from_zone_name,
 					next_zone_id AS to_zone_id,
 					next_zone_name AS to_zone_name,
-					GREATEST(
-						0,
-						COALESCE(
-							stay_duration_seconds,
-							EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT,
-							EXTRACT(EPOCH FROM (next_entered_at - entered_at))::BIGINT,
-							0
-						)
-					) AS stay_seconds,
-					GREATEST(
-						0,
-						EXTRACT(EPOCH FROM (
-							next_entered_at - COALESCE(
-								exited_at,
-								CASE
-									WHEN stay_duration_seconds IS NOT NULL
-									THEN entered_at + (stay_duration_seconds * INTERVAL '1 second')
-									ELSE entered_at
-								END
-							)
-						))::BIGINT
-					) AS travel_seconds
+					next_entered_at,
+					CASE
+						WHEN stay_duration_seconds BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN stay_duration_seconds
+
+						WHEN exited_at IS NOT NULL
+							AND exited_at >= entered_at
+							AND EXTRACT(EPOCH FROM (exited_at - entered_at)) BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT
+
+						ELSE NULL
+					END AS stay_seconds,
+					CASE
+						WHEN stay_duration_seconds BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN entered_at + (stay_duration_seconds * INTERVAL '1 second')
+
+						WHEN exited_at IS NOT NULL
+							AND exited_at >= entered_at
+							AND EXTRACT(EPOCH FROM (exited_at - entered_at)) BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN exited_at
+
+						ELSE NULL
+					END AS inferred_exited_at
 				FROM ordered_logs
 				WHERE next_zone_id IS NOT NULL
 					AND next_entered_at IS NOT NULL
 					AND zone_id <> next_zone_id
 			), valid_movements AS (
-				SELECT *
+				SELECT
+					from_zone_id,
+					from_zone_name,
+					to_zone_id,
+					to_zone_name,
+					EXTRACT(EPOCH FROM (next_entered_at - inferred_exited_at))::BIGINT AS travel_seconds
 				FROM inferred_logs
-				WHERE stay_seconds >= :minStaySeconds
+				WHERE stay_seconds IS NOT NULL
+					AND inferred_exited_at IS NOT NULL
+					AND next_entered_at >= inferred_exited_at
+					AND EXTRACT(EPOCH FROM (next_entered_at - inferred_exited_at)) BETWEEN 0 AND :maxTravelSeconds
 			), total_movements AS (
 				SELECT COUNT(*) AS total_movement_count
 				FROM valid_movements
@@ -259,6 +258,8 @@ public class ZoneVisitRateAnalyticsRepository {
 			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP)
 			.addValue("storeId", storeId, Types.BIGINT)
 			.addValue("zoneId", zoneId, Types.BIGINT)
-			.addValue("minStaySeconds", minStaySeconds, Types.INTEGER);
+			.addValue("minStaySeconds", minStaySeconds, Types.INTEGER)
+			.addValue("maxStaySeconds", MAX_STAY_SECONDS, Types.INTEGER)
+			.addValue("maxTravelSeconds", MAX_TRAVEL_SECONDS, Types.INTEGER);
 	}
 }

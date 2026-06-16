@@ -15,6 +15,8 @@ import com.princesses7.findy.analytics.stay.dto.query.ZoneAverageStayTimeSummary
 @Repository
 public class ZoneAverageStayTimeAnalyticsRepository {
 
+	private static final int MAX_STAY_SECONDS = 30 * 60;
+
 	private final NamedParameterJdbcTemplate jdbcTemplate;
 
 	public ZoneAverageStayTimeAnalyticsRepository(NamedParameterJdbcTemplate jdbcTemplate) {
@@ -28,42 +30,30 @@ public class ZoneAverageStayTimeAnalyticsRepository {
 		int minStaySeconds
 	) {
 		String sql = """
-			WITH ordered_logs AS (
+			WITH inferred_logs AS (
 				SELECT
-					location_log_id,
 					user_id,
-					store_id,
 					zone_id,
-					entered_at,
-					exited_at,
-					stay_duration_seconds,
-					LEAD(entered_at) OVER (
-						PARTITION BY user_id, store_id
-						ORDER BY entered_at, location_log_id
-					) AS next_entered_at
+					CASE
+						WHEN stay_duration_seconds BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN stay_duration_seconds
+
+						WHEN exited_at IS NOT NULL
+							AND exited_at >= entered_at
+							AND EXTRACT(EPOCH FROM (exited_at - entered_at)) BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT
+
+						ELSE NULL
+					END AS stay_seconds
 				FROM user_location_logs
 				WHERE entered_at >= :fromAt
 					AND entered_at < :toAt
 					AND store_id = :storeId
 					AND zone_id IS NOT NULL
-			), inferred_logs AS (
-				SELECT
-					user_id,
-					zone_id,
-					GREATEST(
-						0,
-						COALESCE(
-							stay_duration_seconds,
-							EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT,
-							EXTRACT(EPOCH FROM (next_entered_at - entered_at))::BIGINT,
-							0
-						)
-					) AS stay_seconds
-				FROM ordered_logs
 			), valid_logs AS (
 				SELECT *
 				FROM inferred_logs
-				WHERE stay_seconds >= :minStaySeconds
+				WHERE stay_seconds IS NOT NULL
 					AND (:zoneId IS NULL OR zone_id = :zoneId)
 			)
 			SELECT
@@ -93,43 +83,31 @@ public class ZoneAverageStayTimeAnalyticsRepository {
 		int minStaySeconds
 	) {
 		String sql = """
-			WITH ordered_logs AS (
+			WITH inferred_logs AS (
 				SELECT
-					location_log_id,
 					user_id,
-					store_id,
 					zone_id,
-					entered_at,
-					exited_at,
-					stay_duration_seconds,
-					LEAD(entered_at) OVER (
-						PARTITION BY user_id, store_id
-						ORDER BY entered_at, location_log_id
-					) AS next_entered_at
+					entered_at::DATE AS analysis_date,
+					CASE
+						WHEN stay_duration_seconds BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN stay_duration_seconds
+
+						WHEN exited_at IS NOT NULL
+							AND exited_at >= entered_at
+							AND EXTRACT(EPOCH FROM (exited_at - entered_at)) BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT
+
+						ELSE NULL
+					END AS stay_seconds
 				FROM user_location_logs
 				WHERE entered_at >= :fromAt
 					AND entered_at < :toAt
 					AND store_id = :storeId
 					AND zone_id IS NOT NULL
-			), inferred_logs AS (
-				SELECT
-					user_id,
-					zone_id,
-					entered_at::DATE AS analysis_date,
-					GREATEST(
-						0,
-						COALESCE(
-							stay_duration_seconds,
-							EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT,
-							EXTRACT(EPOCH FROM (next_entered_at - entered_at))::BIGINT,
-							0
-						)
-					) AS stay_seconds
-				FROM ordered_logs
 			), valid_logs AS (
 				SELECT *
 				FROM inferred_logs
-				WHERE stay_seconds >= :minStaySeconds
+				WHERE stay_seconds IS NOT NULL
 					AND (:zoneId IS NULL OR zone_id = :zoneId)
 			)
 			SELECT
@@ -164,44 +142,31 @@ public class ZoneAverageStayTimeAnalyticsRepository {
 		int limit
 	) {
 		String sql = """
-			WITH ordered_logs AS (
+			WITH inferred_logs AS (
 				SELECT
-					location_log_id,
 					user_id,
-					store_id,
 					zone_id,
 					zone_name,
-					entered_at,
-					exited_at,
-					stay_duration_seconds,
-					LEAD(entered_at) OVER (
-						PARTITION BY user_id, store_id
-						ORDER BY entered_at, location_log_id
-					) AS next_entered_at
+					CASE
+						WHEN stay_duration_seconds BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN stay_duration_seconds
+
+						WHEN exited_at IS NOT NULL
+							AND exited_at >= entered_at
+							AND EXTRACT(EPOCH FROM (exited_at - entered_at)) BETWEEN :minStaySeconds AND :maxStaySeconds
+						THEN EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT
+
+						ELSE NULL
+					END AS stay_seconds
 				FROM user_location_logs
 				WHERE entered_at >= :fromAt
 					AND entered_at < :toAt
 					AND store_id = :storeId
 					AND zone_id IS NOT NULL
-			), inferred_logs AS (
-				SELECT
-					user_id,
-					zone_id,
-					zone_name,
-					GREATEST(
-						0,
-						COALESCE(
-							stay_duration_seconds,
-							EXTRACT(EPOCH FROM (exited_at - entered_at))::BIGINT,
-							EXTRACT(EPOCH FROM (next_entered_at - entered_at))::BIGINT,
-							0
-						)
-					) AS stay_seconds
-				FROM ordered_logs
 			), valid_logs AS (
 				SELECT *
 				FROM inferred_logs
-				WHERE stay_seconds >= :minStaySeconds
+				WHERE stay_seconds IS NOT NULL
 					AND (:zoneId IS NULL OR zone_id = :zoneId)
 			), zone_stats AS (
 				SELECT
@@ -268,6 +233,7 @@ public class ZoneAverageStayTimeAnalyticsRepository {
 			.addValue("storeId", storeId, Types.BIGINT)
 			.addValue("zoneId", zoneId, Types.BIGINT)
 			.addValue("minStaySeconds", minStaySeconds, Types.INTEGER)
+			.addValue("maxStaySeconds", MAX_STAY_SECONDS, Types.INTEGER)
 			.addValue("limit", limit, Types.INTEGER);
 	}
 }
