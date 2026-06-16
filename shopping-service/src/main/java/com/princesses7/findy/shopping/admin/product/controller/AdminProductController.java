@@ -1,4 +1,4 @@
-﻿package com.princesses7.findy.shopping.admin.product.controller;
+package com.princesses7.findy.shopping.admin.product.controller;
 
 import java.util.List;
 
