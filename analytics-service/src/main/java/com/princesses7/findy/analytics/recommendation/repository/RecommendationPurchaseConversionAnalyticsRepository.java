@@ -69,11 +69,32 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 		SELECT
 			rl.recommendation_type AS "recommendationType",
 			rl.product_id AS "productId",
-			MAX(
-				COALESCE(
-					NULLIF(TRIM(CONCAT(COALESCE(sp.brand_name, rp.brand_name, ''), ' ', COALESCE(sp.product_name, rp.product_name, ''))), ''),
-					'상품명 미상'
-				)
+			COALESCE(
+				NULLIF(
+					TRIM(
+						MAX(
+							CONCAT_WS(
+								' ',
+								NULLIF(TRIM(sp.brand_name), ''),
+								NULLIF(TRIM(sp.product_name), '')
+							)
+						)
+					),
+					''
+				),
+				NULLIF(
+					TRIM(
+						MAX(
+							CONCAT_WS(
+								' ',
+								NULLIF(TRIM(rp.brand_name), ''),
+								NULLIF(TRIM(rp.product_name), '')
+							)
+						)
+					),
+					''
+				),
+				'상품명 미등록'
 			) AS "productName",
 			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "clickCount",
