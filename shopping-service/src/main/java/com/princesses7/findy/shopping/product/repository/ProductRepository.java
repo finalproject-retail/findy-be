@@ -65,13 +65,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	);
 
 	@Query("""
-    SELECT p
-    FROM Product p
-    WHERE p.deletedAt IS NULL
-      AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
-      AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
-      AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
-    """)
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+		  AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
+		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+		  AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
+		""")
 	Page<Product> findAdminProductsWithoutKeyword(
 		@Param("categoryIds") Collection<Long> categoryIds,
 		@Param("filterByCategoryIds") boolean filterByCategoryIds,
@@ -81,18 +81,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	);
 
 	@Query("""
-    SELECT p
-    FROM Product p
-    WHERE p.deletedAt IS NULL
-      AND (
-           LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-           OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-           OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-      )
-      AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
-      AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
-      AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
-    """)
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+		  AND (
+			   LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			   OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			   OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+		  )
+		  AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
+		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+		  AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
+		""")
 	Page<Product> findAdminProductsWithKeyword(
 		@Param("keyword") String keyword,
 		@Param("categoryIds") Collection<Long> categoryIds,
@@ -184,11 +184,12 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
-			AND p.originalPrice > :minPrice
-			AND p.imageUrl IS NOT NULL
-			AND TRIM(p.imageUrl) <> ''
-			AND LOWER(p.imageUrl) NOT LIKE '%findy%'
-			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
+		  AND p.originalPrice > :minPrice
+		  AND p.imageUrl IS NOT NULL
+		  AND TRIM(p.imageUrl) <> ''
+		  AND LOWER(p.imageUrl) NOT LIKE '%findy%'
+		  AND p.saleStatus <> com.princesses7.findy.shopping.product.entity.SaleStatus.SOLD_OUT
+		  AND p.saleStatus <> com.princesses7.findy.shopping.product.entity.SaleStatus.DISCONTINUED
 		ORDER BY p.createdAt DESC, p.productId DESC
 		""")
 	Page<Product> findNewDisplayableProducts(

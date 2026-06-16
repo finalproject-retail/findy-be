@@ -36,7 +36,7 @@ public class AdminProductController {
 		@RequestParam(defaultValue = "desc") String direction
 	) {
 		return ApiResponse.ok(
-			"愿由ъ옄 ?곹뭹 紐⑸줉 議고쉶???깃났?덉뒿?덈떎.",
+			"관리자 상품 목록 조회에 성공했습니다.",
 			adminProductService.getProducts(
 				keyword,
 				categoryId,
@@ -56,7 +56,7 @@ public class AdminProductController {
 		@PathVariable Long productId
 	) {
 		return ApiResponse.ok(
-			"愿由ъ옄 ?곹뭹 ?곸꽭 議고쉶???깃났?덉뒿?덈떎.",
+			"관리자 상품 상세 조회에 성공했습니다.",
 			adminProductService.getProductDetail(productId)
 		);
 	}
