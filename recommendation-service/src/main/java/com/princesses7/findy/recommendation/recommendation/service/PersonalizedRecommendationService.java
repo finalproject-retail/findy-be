@@ -48,6 +48,9 @@ public class PersonalizedRecommendationService {
 	private static final int MAX_SIZE = 30;
 	private static final int FALLBACK_MULTIPLIER = 3;
 	private static final int POPULAR_LOOKBACK_DAYS = 14;
+	private static final int MIN_CANDIDATE_SIZE = 500;
+	private static final int CANDIDATE_MULTIPLIER = 100;
+	private static final int MAX_CANDIDATE_SIZE = 2_000;
 
 	private final UserPreferenceQueryService userPreferenceQueryService;
 	private final ProductEmbeddingClient productEmbeddingClient;
@@ -87,10 +90,11 @@ public class PersonalizedRecommendationService {
 			);
 		}
 
-		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findByModelAndDimensions(
+		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findRecommendableCandidates(
 			productEmbeddingClient.model(),
-			productEmbeddingClient.dimensions()
-		);
+			productEmbeddingClient.dimensions(),
+			storeId,
+			PageRequest.of(0, calculateCandidateSize(normalizedSize)));
 
 		if (candidateEmbeddings.isEmpty()) {
 			return fallback(
@@ -510,6 +514,12 @@ public class PersonalizedRecommendationService {
 				CategorySnapshot::getCategoryName,
 				(left, right) -> left
 			));
+	}
+
+	private int calculateCandidateSize(int size) {
+		return Math.min(
+			MAX_CANDIDATE_SIZE,
+			Math.max(MIN_CANDIDATE_SIZE, size * CANDIDATE_MULTIPLIER));
 	}
 
 	private int normalizeSize(int size) {
