@@ -1,4 +1,4 @@
-﻿package com.princesses7.findy.analytics.zone.service;
+package com.princesses7.findy.analytics.zone.service;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
