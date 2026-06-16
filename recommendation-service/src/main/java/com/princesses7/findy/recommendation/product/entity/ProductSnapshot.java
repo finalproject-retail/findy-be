@@ -1,5 +1,6 @@
 package com.princesses7.findy.recommendation.product.entity;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import jakarta.persistence.Column;
@@ -123,6 +124,14 @@ public class ProductSnapshot {
 			nullToEmpty(allergyInfo),
 			nullToEmpty(badgeText)
 		);
+	}
+
+	public Integer getSalePrice() {
+		return originalPrice;
+	}
+
+	public BigDecimal getDiscountRate() {
+		return BigDecimal.ZERO;
 	}
 
 	private String nullToEmpty(String value) {

@@ -21,8 +21,6 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 			p.brand_name,
 			p.product_name,
 			p.original_price,
-			COALESCE(p.sale_price, p.original_price) AS sale_price,
-			COALESCE(p.discount_rate, 0) AS discount_rate,
 			p.description,
 			p.image_url,
 			NULL AS packaging_type,
@@ -31,7 +29,7 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 			p.allergy_info,
 			p.badge_text,
 			p.sale_status,
-			(p.deleted_at IS NOT NULL) AS is_deleted
+			p.deleted_at
 		FROM shopping_service.products p
 		WHERE p.product_id IN (:productIds)
 		""", nativeQuery = true)
