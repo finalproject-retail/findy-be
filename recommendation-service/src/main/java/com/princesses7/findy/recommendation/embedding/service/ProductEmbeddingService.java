@@ -54,7 +54,7 @@ public class ProductEmbeddingService {
 	public ProductEmbeddingBatchResponse createOrUpdateProductEmbeddings(int limit) {
 		int normalizedLimit = normalizeLimit(limit);
 
-		List<ProductSnapshot> products = productRepository.findByDeletedFalse(
+		List<ProductSnapshot> products = productRepository.findByDeletedAtIsNull(
 			PageRequest.of(0, normalizedLimit)
 		);
 

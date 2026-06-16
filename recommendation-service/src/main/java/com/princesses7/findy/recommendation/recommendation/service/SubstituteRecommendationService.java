@@ -94,7 +94,7 @@ public class SubstituteRecommendationService {
 			);
 		}
 
-		List<ProductSnapshot> candidateProducts = productRepository.findByCategoryIdAndDeletedFalse(
+		List<ProductSnapshot> candidateProducts = productRepository.findByCategoryIdAndDeletedAtIsNull(
 				sourceProduct.getCategoryId()
 			)
 			.stream()
@@ -306,10 +306,6 @@ public class SubstituteRecommendationService {
 			score += 0.03;
 		}
 
-		if (isSamePackagingType(sourceProduct, candidate)) {
-			score += 0.02;
-		}
-
 		return clamp(score);
 	}
 
@@ -432,20 +428,6 @@ public class SubstituteRecommendationService {
 		}
 
 		return sourceBrand.equals(candidateBrand);
-	}
-
-	private boolean isSamePackagingType(
-		ProductSnapshot sourceProduct,
-		ProductSnapshot candidate
-	) {
-		String sourcePackagingType = sourceProduct.getPackagingType();
-		String candidatePackagingType = candidate.getPackagingType();
-
-		if (sourcePackagingType == null || sourcePackagingType.isBlank()) {
-			return false;
-		}
-
-		return sourcePackagingType.equals(candidatePackagingType);
 	}
 
 	private double normalizeSimilarity(double similarity) {

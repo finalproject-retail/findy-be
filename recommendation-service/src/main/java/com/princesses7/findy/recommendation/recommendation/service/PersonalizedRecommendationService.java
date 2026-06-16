@@ -366,7 +366,7 @@ public class PersonalizedRecommendationService {
 		RecommendationBaseType baseType
 	) {
 		List<ProductSnapshot> products = productRepository
-			.findByDeletedFalse(PageRequest.of(0, size * FALLBACK_MULTIPLIER * FALLBACK_MULTIPLIER))
+			.findByDeletedAtIsNull(PageRequest.of(0, size * FALLBACK_MULTIPLIER * FALLBACK_MULTIPLIER))
 			.stream()
 			.filter(RecommendationResultPolicy::isDisplayableProduct)
 			.filter(product -> hasAvailableStock(product, storeId))

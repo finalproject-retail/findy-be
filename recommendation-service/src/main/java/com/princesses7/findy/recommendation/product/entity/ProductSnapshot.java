@@ -1,16 +1,19 @@
 package com.princesses7.findy.recommendation.product.entity;
 
+import java.time.LocalDateTime;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "products")
+@Table(schema = "shopping_service", name = "products")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class ProductSnapshot {
 
@@ -36,9 +39,6 @@ public class ProductSnapshot {
 	@Column(name = "image_url")
 	private String imageUrl;
 
-	@Column(name = "packaging_type")
-	private String packagingType;
-
 	@Column(name = "sales_unit")
 	private String salesUnit;
 
@@ -54,13 +54,18 @@ public class ProductSnapshot {
 	@Column(name = "sale_status", nullable = false)
 	private String saleStatus;
 
-	@Column(name = "is_deleted", nullable = false)
-	private boolean deleted;
+	@Column(name = "deleted_at")
+	private LocalDateTime deletedAt;
 
 	public boolean isRecommendable() {
-		return !deleted
+		return deletedAt == null
 			&& !"SOLD_OUT".equals(saleStatus)
 			&& !"DISCONTINUED".equals(saleStatus);
+	}
+
+	@Transient
+	public boolean isDeleted() {
+		return deletedAt != null;
 	}
 
 	public String toEmbeddingText(String categoryName) {
@@ -71,7 +76,6 @@ public class ProductSnapshot {
 			브랜드: %s
 			카테고리: %s
 			상품 설명: %s
-			포장 타입: %s
 			판매 단위: %s
 			중량/용량: %s
 			알레르기 정보: %s
@@ -84,7 +88,6 @@ public class ProductSnapshot {
 			nullToEmpty(brandName),
 			nullToEmpty(categoryName),
 			nullToEmpty(description),
-			nullToEmpty(packagingType),
 			nullToEmpty(salesUnit),
 			nullToEmpty(volume),
 			nullToEmpty(allergyInfo),
@@ -101,7 +104,6 @@ public class ProductSnapshot {
 			브랜드: %s
 			카테고리: %s
 			상품 설명: %s
-			포장 타입: %s
 			판매 단위: %s
 			중량/용량: %s
 			알레르기 정보: %s
@@ -116,7 +118,6 @@ public class ProductSnapshot {
 			nullToEmpty(brandName),
 			nullToEmpty(categoryName),
 			nullToEmpty(description),
-			nullToEmpty(packagingType),
 			nullToEmpty(salesUnit),
 			nullToEmpty(volume),
 			nullToEmpty(allergyInfo),
