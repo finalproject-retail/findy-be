@@ -6,9 +6,9 @@ spring:
     name: recommendation-service
 
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:findy}?currentSchema=${DB_SCHEMA:recommendation_service}
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:1234}
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:findydb}?currentSchema=${DB_SCHEMA:recommendation_service}}
+    username: ${DB_USERNAME:findy_admin}
+    password: ${DB_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
   flyway:
