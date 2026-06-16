@@ -84,6 +84,7 @@ public class RecommendationSelectionRateAnalyticsService {
 			sourceProductId,
 			getImpressionCount(summary),
 			getSelectionCount(summary),
+			getPurchaseCount(summary),
 			dailyTrends,
 			products
 		);
@@ -111,5 +112,13 @@ public class RecommendationSelectionRateAnalyticsService {
 		}
 
 		return summary.getSelectionCount();
+	}
+
+	private long getPurchaseCount(RecommendationSelectionRateSummaryProjection summary) {
+		if (summary == null || summary.getPurchaseCount() == null) {
+			return 0L;
+		}
+
+		return summary.getPurchaseCount();
 	}
 }
