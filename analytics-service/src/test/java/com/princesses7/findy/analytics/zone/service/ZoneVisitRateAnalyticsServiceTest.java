@@ -1,4 +1,4 @@
-package com.princesses7.findy.analytics.zone.service;
+﻿package com.princesses7.findy.analytics.zone.service;
 
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
@@ -85,11 +85,11 @@ class ZoneVisitRateAnalyticsServiceTest {
 		assertThat(response.minStaySeconds()).isEqualTo(minStaySeconds);
 		assertThat(response.includeMovement()).isTrue();
 		assertThat(response.zoneVisitRates()).hasSize(1);
-		assertThat(response.zoneVisitRates().get(0).zoneName()).isEqualTo("과일");
-		assertThat(response.zoneVisitRates().get(0).visitRate()).isEqualByComparingTo("62.50");
+		assertThat(response.zoneVisitRates().get(0).zoneName()).isEqualTo("신선 식품");
+		assertThat(response.zoneVisitRates().get(0).visitRate()).isEqualByComparingTo("100.00");
 		assertThat(response.zoneMovements()).hasSize(1);
-		assertThat(response.zoneMovements().get(0).fromZoneName()).isEqualTo("과일");
-		assertThat(response.zoneMovements().get(0).toZoneName()).isEqualTo("채소/샐러드");
+		assertThat(response.zoneMovements().get(0).fromZoneName()).isEqualTo("신선 식품");
+		assertThat(response.zoneMovements().get(0).toZoneName()).isEqualTo("신선 식품");
 	}
 
 	@Test
