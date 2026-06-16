@@ -41,6 +41,7 @@ public class ProductService {
 	private static final int MAX_PAGE_SIZE = 100;
 	private static final int MAX_SECTION_SIZE = 30;
 	private static final int SECTION_CANDIDATE_MULTIPLIER = 3;
+	private static final String POPULAR_SORT = "popular";
 	private static final int MIN_VISIBLE_PRICE = 0;
 	private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
 		"productId",
@@ -66,14 +67,24 @@ public class ProductService {
 	) {
 		validatePageRequest(page, size);
 
-		Sort sort = createSort(sortBy, direction);
-		Pageable pageable = PageRequest.of(page, size, sort);
-
 		String normalizedKeyword = normalizeKeyword(keyword);
 
 		if (normalizedKeyword != null) {
 			searchKeywordRankingService.record(normalizedKeyword);
 		}
+
+		if (isPopularSort(sortBy)) {
+			return getProductsByPopularRanking(
+				categoryId,
+				normalizedKeyword,
+				page,
+				size,
+				storeId
+			);
+		}
+
+		Sort sort = createSort(sortBy, direction);
+		Pageable pageable = PageRequest.of(page, size, sort);
 
 		Page<Product> products = findProducts(categoryId, normalizedKeyword, pageable);
 		Page<ProductResponse> responsePage = toProductResponsePage(products, pageable, storeId);
@@ -98,21 +109,29 @@ public class ProductService {
 	public List<ProductResponse> getPopularProducts(int size, long storeId) {
 		validateSectionSize(size);
 
-		List<Long> productIds = productRankingService.getPopularProductIds(
-			size * SECTION_CANDIDATE_MULTIPLIER
-		);
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		List<Long> productIds = productRankingService.getAllPopularProductIds();
 
 		if (productIds.isEmpty()) {
-			return getMartRecommendedProducts(size, storeId);
+			return getMartRecommendedProducts(size, resolvedStoreId);
 		}
 
-		List<Product> popularProducts = findProductsByRanking(productIds, size);
+		List<Product> popularProducts = findProductsByRanking(
+			productIds,
+			null,
+			null,
+			resolvedStoreId
+		)
+			.stream()
+			.limit(size)
+			.toList();
 
 		if (popularProducts.isEmpty()) {
-			return getMartRecommendedProducts(size, storeId);
+			return getMartRecommendedProducts(size, resolvedStoreId);
 		}
 
-		return toProductResponses(popularProducts, storeId);
+		return toProductResponses(popularProducts, resolvedStoreId);
 	}
 
 	public List<ProductResponse> getMartRecommendedProducts(int size, long storeId) {
@@ -247,9 +266,20 @@ public class ProductService {
 
 	private List<Product> findProductsByRanking(
 		List<Long> productIds,
-		int size
+		Long categoryId,
+		String keyword,
+		long storeId
 	) {
-		Map<Long, Product> productMap = productRepository.findAllVisibleByProductIdIn(productIds)
+		if (productIds.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, Product> productMap = productRepository.findPopularProductsByRedisIds(
+				productIds,
+				categoryId,
+				keyword,
+				storeId
+			)
 			.stream()
 			.collect(Collectors.toMap(
 				Product::getProductId,
@@ -260,7 +290,6 @@ public class ProductService {
 		return productIds.stream()
 			.map(productMap::get)
 			.filter(product -> product != null)
-			.limit(size)
 			.toList();
 	}
 
@@ -357,5 +386,74 @@ public class ProductService {
 		}
 
 		return keyword.trim();
+	}
+
+	private ProductPageResponse getProductsByPopularRanking(
+		Long categoryId,
+		String keyword,
+		int page,
+		int size,
+		long storeId
+	) {
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		List<Long> rankedProductIds = productRankingService.getAllPopularProductIds();
+
+		if (rankedProductIds.isEmpty()) {
+			Pageable fallbackPageable = PageRequest.of(
+				page,
+				size,
+				Sort.by(Sort.Direction.DESC, "createdAt")
+			);
+
+			Page<Product> fallbackProducts = findProducts(categoryId, keyword, fallbackPageable);
+			Page<ProductResponse> fallbackResponsePage = toProductResponsePage(
+				fallbackProducts,
+				fallbackPageable,
+				resolvedStoreId
+			);
+
+			return ProductPageResponse.from(fallbackResponsePage);
+		}
+
+		List<Product> filteredProducts = productRepository.findPopularProductsByRedisIds(
+			rankedProductIds,
+			categoryId,
+			keyword,
+			resolvedStoreId
+		);
+
+		Map<Long, Product> productMap = filteredProducts.stream()
+			.collect(Collectors.toMap(
+				Product::getProductId,
+				Function.identity(),
+				(existingProduct, replacementProduct) -> existingProduct
+			));
+
+		List<Product> rankedProducts = rankedProductIds.stream()
+			.map(productMap::get)
+			.filter(product -> product != null)
+			.toList();
+
+		int fromIndex = page * size;
+		int toIndex = Math.min(fromIndex + size, rankedProducts.size());
+
+		List<Product> pageProducts = fromIndex >= rankedProducts.size()
+			? List.of()
+			: rankedProducts.subList(fromIndex, toIndex);
+
+		Pageable pageable = PageRequest.of(page, size);
+
+		Page<ProductResponse> responsePage = new PageImpl<>(
+			toProductResponses(pageProducts, resolvedStoreId),
+			pageable,
+			rankedProducts.size()
+		);
+
+		return ProductPageResponse.from(responsePage);
+	}
+
+	private boolean isPopularSort(String sortBy) {
+		return POPULAR_SORT.equalsIgnoreCase(sortBy);
 	}
 }

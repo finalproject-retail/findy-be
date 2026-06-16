@@ -1,5 +1,6 @@
 package com.princesses7.findy.shopping.product.repository;
 
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -104,6 +105,29 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		FROM Product p
 		WHERE p.deletedAt IS NULL
 		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
+		  AND p.productId IN :productIds
+		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
+		  AND (:keyword IS NULL OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%')))
+		  AND EXISTS (
+		  	SELECT 1
+		  	FROM Inventory i
+		  	WHERE i.product = p
+		  	  AND i.storeId = :storeId
+		  	  AND i.stockQuantity > 0
+		  )
+		""")
+	List<Product> findPopularProductsByRedisIds(
+		@Param("productIds") Collection<Long> productIds,
+		@Param("categoryId") Long categoryId,
+		@Param("keyword") String keyword,
+		@Param("storeId") Long storeId
+	);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
 		  AND EXISTS (
 			SELECT 1
 			FROM Inventory i
@@ -167,6 +191,39 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		""")
 	Page<Product> findNewDisplayableProducts(
 		@Param("minPrice") Integer minPrice,
+		Pageable pageable
+	);
+
+	@Query(value = """
+		SELECT p.*
+		FROM products p
+		JOIN (
+		    SELECT
+		        oi.product_id,
+		        SUM(oi.quantity) AS purchase_quantity,
+		        COUNT(DISTINCT oi.order_id) AS order_count,
+		        MAX(o.created_at) AS last_ordered_at
+		    FROM order_items oi
+		    JOIN orders o ON o.order_id = oi.order_id
+		    WHERE o.order_status = 'COMPLETED'
+		      AND o.created_at >= :fromAt
+		    GROUP BY oi.product_id
+		) pop ON pop.product_id = p.product_id
+		JOIN inventories i
+		  ON i.product_id = p.product_id
+		 AND i.store_id = :storeId
+		 AND i.stock_quantity > 0
+		WHERE p.deleted_at IS NULL
+		  AND p.sale_status = 'ON_SALE'
+		ORDER BY
+		  pop.purchase_quantity DESC,
+		  pop.order_count DESC,
+		  pop.last_ordered_at DESC,
+		  p.product_id ASC
+		""", nativeQuery = true)
+	List<Product> findPopularProductsByPurchaseLogs(
+		@Param("storeId") Long storeId,
+		@Param("fromAt") LocalDateTime fromAt,
 		Pageable pageable
 	);
 }

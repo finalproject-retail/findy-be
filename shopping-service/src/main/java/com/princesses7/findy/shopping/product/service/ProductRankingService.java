@@ -39,6 +39,25 @@ public class ProductRankingService {
 		}
 	}
 
+	public List<Long> getAllPopularProductIds() {
+		try {
+			Set<String> values = redisTemplate.opsForZSet()
+				.reverseRange(createTodayKey(), 0, -1);
+
+			if (values == null || values.isEmpty()) {
+				return List.of();
+			}
+
+			return values.stream()
+				.map(this::parseProductId)
+				.flatMap(Optional::stream)
+				.toList();
+		} catch (RuntimeException exception) {
+			log.warn("전체 인기 상품 랭킹 조회에 실패했습니다.", exception);
+			return List.of();
+		}
+	}
+
 	public List<Long> getPopularProductIds(int limit) {
 		if (limit < 1) {
 			return List.of();
