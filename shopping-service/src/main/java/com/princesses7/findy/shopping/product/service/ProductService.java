@@ -274,10 +274,12 @@ public class ProductService {
 			return List.of();
 		}
 
+		String keywordForQuery = normalizeKeywordForQuery(keyword);
+
 		Map<Long, Product> productMap = productRepository.findPopularProductsByRedisIds(
 				productIds,
 				categoryId,
-				keyword,
+				keywordForQuery,
 				storeId
 			)
 			.stream()
@@ -388,6 +390,14 @@ public class ProductService {
 		return keyword.trim();
 	}
 
+	private String normalizeKeywordForQuery(String keyword) {
+		if (keyword == null || keyword.isBlank()) {
+			return "";
+		}
+
+		return keyword.trim();
+	}
+
 	private ProductPageResponse getProductsByPopularRanking(
 		Long categoryId,
 		String keyword,
@@ -416,10 +426,12 @@ public class ProductService {
 			return ProductPageResponse.from(fallbackResponsePage);
 		}
 
+		String keywordForQuery = normalizeKeywordForQuery(keyword);
+
 		List<Product> filteredProducts = productRepository.findPopularProductsByRedisIds(
 			rankedProductIds,
 			categoryId,
-			keyword,
+			keywordForQuery,
 			resolvedStoreId
 		);
 
