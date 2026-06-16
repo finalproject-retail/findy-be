@@ -4,13 +4,16 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.princesses7.findy.analytics.recommendation.repository.projection.RecommendationSelectionRateDailyProjection;
 
 public record RecommendationSelectionRateDailyResponse(
 	LocalDate analysisDate,
 	long impressionCount,
 	long selectionCount,
-	BigDecimal selectionRate
+	BigDecimal selectionRate,
+	long purchaseCount,
+	BigDecimal conversionRate
 ) {
 
 	public static RecommendationSelectionRateDailyResponse from(
@@ -18,13 +21,26 @@ public record RecommendationSelectionRateDailyResponse(
 	) {
 		long impressionCount = toLong(projection.getImpressionCount());
 		long selectionCount = toLong(projection.getSelectionCount());
+		long purchaseCount = toLong(projection.getPurchaseCount());
 
 		return new RecommendationSelectionRateDailyResponse(
 			projection.getAnalysisDate(),
 			impressionCount,
 			selectionCount,
-			calculateRate(selectionCount, impressionCount)
+			calculateRate(selectionCount, impressionCount),
+			purchaseCount,
+			calculateRate(purchaseCount, impressionCount)
 		);
+	}
+
+	@JsonProperty("selectedCount")
+	public long selectedCount() {
+		return selectionCount;
+	}
+
+	@JsonProperty("selectRate")
+	public BigDecimal selectRate() {
+		return selectionRate;
 	}
 
 	private static long toLong(Long value) {
