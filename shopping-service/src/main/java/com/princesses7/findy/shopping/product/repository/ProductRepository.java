@@ -15,13 +15,7 @@ import com.princesses7.findy.shopping.product.entity.SaleStatus;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
-	List<Product> findAllByProductIdInAndDeletedAtIsNull(Collection<Long> productIds);
-
-	Page<Product> findByDeletedAtIsNull(Pageable pageable);
-
 	Page<Product> findByDeletedAtIsNullAndOriginalPriceGreaterThan(Integer originalPrice, Pageable pageable);
-
-	Page<Product> findByCategoryIdAndDeletedAtIsNull(Long categoryId, Pageable pageable);
 
 	Page<Product> findByCategoryIdAndDeletedAtIsNullAndOriginalPriceGreaterThan(
 		Long categoryId,
@@ -29,20 +23,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		Pageable pageable
 	);
 
-	Page<Product> findByProductNameContainingIgnoreCaseAndDeletedAtIsNull(
-		String keyword,
-		Pageable pageable
-	);
-
 	Page<Product> findByProductNameContainingIgnoreCaseAndDeletedAtIsNullAndOriginalPriceGreaterThan(
 		String keyword,
 		Integer originalPrice,
-		Pageable pageable
-	);
-
-	Page<Product> findByCategoryIdAndProductNameContainingIgnoreCaseAndDeletedAtIsNull(
-		Long categoryId,
-		String keyword,
 		Pageable pageable
 	);
 
