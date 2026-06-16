@@ -1,12 +1,12 @@
 package com.princesses7.findy.recommendation.recommendation.service;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.stereotype.Component;
 
 import com.princesses7.findy.recommendation.preference.dto.response.UserPreferenceResponse;
 import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
+import com.princesses7.findy.recommendation.promotion.entity.PromotionProductSnapshot;
 
 @Component
 public class PersonalizedRecommendationScorer {
@@ -51,10 +51,6 @@ public class PersonalizedRecommendationScorer {
 			score += purchaseHistory.categoryAffinity(product) * 0.10;
 		}
 
-		if (userPreference.hasShoppingStyle("가성비")) {
-			score += calculateDiscountScore(product.getDiscountRate());
-		}
-
 		if (userPreference.hasShoppingStyle("신선도 중시") && containsAny(categoryName, FRESH_CATEGORY_KEYWORDS)) {
 			score += 0.05;
 		}
@@ -71,19 +67,32 @@ public class PersonalizedRecommendationScorer {
 	}
 
 	public double fallbackScore(ProductSnapshot product) {
+		return fallbackScore(product, null);
+	}
+
+	public double fallbackScore(
+		ProductSnapshot product,
+		PromotionProductSnapshot promotionProduct
+	) {
 		double score = 0.05;
 
-		score += calculateDiscountScore(product.getDiscountRate());
-
-		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
-			score += 0.05;
-		}
+		// promotion_price 기준 할인 혜택 반영
+		score += calculatePromotionBenefitScore(product, promotionProduct) * 0.10;
 
 		return Math.min(score, 1.0);
 	}
 
 	public double popularFallbackScore(
 		ProductSnapshot product,
+		long popularityScore,
+		double maxPopularityScore
+	) {
+		return popularFallbackScore(product, null, popularityScore, maxPopularityScore);
+	}
+
+	public double popularFallbackScore(
+		ProductSnapshot product,
+		PromotionProductSnapshot promotionProduct,
 		long popularityScore,
 		double maxPopularityScore
 	) {
@@ -94,11 +103,9 @@ public class PersonalizedRecommendationScorer {
 		}
 
 		double score = normalizedPopularityScore * 0.85;
-		score += calculateDiscountScore(product.getDiscountRate());
 
-		if (product.getSalePrice() != null && product.getSalePrice() > 0) {
-			score += 0.05;
-		}
+		// 인기 fallback에서도 행사 혜택 약간 반영
+		score += calculatePromotionBenefitScore(product, promotionProduct) * 0.10;
 
 		return Math.min(score, 1.0);
 	}
@@ -121,10 +128,6 @@ public class PersonalizedRecommendationScorer {
 			return "첫 로그인 설문에서 선택한 선호 카테고리를 기반으로 추천한 상품입니다.";
 		}
 
-		if (userPreference.hasShoppingStyle("가성비") && hasDiscount(product)) {
-			return "가성비를 중시하는 쇼핑 스타일과 할인 정보를 반영해 추천한 상품입니다.";
-		}
-
 		if (userPreference.hasShoppingStyle("신선도 중시") && containsAny(categoryName, FRESH_CATEGORY_KEYWORDS)) {
 			return "신선도를 중시하는 쇼핑 스타일과 상품 카테고리를 반영해 추천한 상품입니다.";
 		}
@@ -133,7 +136,39 @@ public class PersonalizedRecommendationScorer {
 			return "건강/유기농을 선호하는 쇼핑 스타일과 상품 정보를 반영해 추천한 상품입니다.";
 		}
 
+		if (userPreference.hasShoppingStyle("비건") && productContains(product, "비건")) {
+			return "비건 쇼핑 스타일과 상품 정보를 반영해 추천한 상품입니다.";
+		}
+
+		if (userPreference.hasShoppingStyle("가성비")) {
+			return "가성비를 중시하는 쇼핑 스타일과 상품 선호 정보를 기반으로 추천한 상품입니다.";
+		}
+
 		return "첫 로그인 설문에서 선택한 선호 카테고리와 쇼핑 스타일을 기반으로 추천한 상품입니다.";
+	}
+
+	private double calculatePromotionBenefitScore(
+		ProductSnapshot product,
+		PromotionProductSnapshot promotionProduct
+	) {
+		if (product == null || promotionProduct == null) {
+			return 0.0;
+		}
+
+		Integer originalPrice = product.getOriginalPrice();
+		Integer promotionPrice = promotionProduct.getPromotionPrice();
+
+		if (originalPrice == null || promotionPrice == null || originalPrice <= 0) {
+			return 0.0;
+		}
+
+		if (promotionPrice <= 0 || promotionPrice >= originalPrice) {
+			return 0.0;
+		}
+
+		double discountRate = (originalPrice - promotionPrice) / (double)originalPrice;
+
+		return Math.min(discountRate, 1.0);
 	}
 
 	private double normalizeSimilarity(double similarityScore) {
@@ -142,37 +177,6 @@ public class PersonalizedRecommendationScorer {
 		}
 
 		return Math.min(similarityScore, 1.0);
-	}
-
-	private double calculateDiscountScore(BigDecimal discountRate) {
-		if (discountRate == null) {
-			return 0.0;
-		}
-
-		double rate = discountRate.doubleValue();
-
-		if (rate >= 30) {
-			return 0.10;
-		}
-
-		if (rate >= 20) {
-			return 0.08;
-		}
-
-		if (rate >= 10) {
-			return 0.05;
-		}
-
-		if (rate > 0) {
-			return 0.03;
-		}
-
-		return 0.0;
-	}
-
-	private boolean hasDiscount(ProductSnapshot product) {
-		return product.getDiscountRate() != null
-			&& product.getDiscountRate().compareTo(BigDecimal.ZERO) > 0;
 	}
 
 	private boolean containsAny(

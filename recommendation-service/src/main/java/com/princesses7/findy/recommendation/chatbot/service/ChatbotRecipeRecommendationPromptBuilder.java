@@ -56,8 +56,8 @@ public class ChatbotRecipeRecommendationPromptBuilder {
 			for (ChatbotRecipeProductRecommendationResponse product : ingredient.recommendedProducts()) {
 				builder.append("- ")
 					.append(product.productName())
-					.append(" / 판매가 ")
-					.append(product.salePrice())
+					.append(" / 가격 ")
+					.append(product.originalPrice())
 					.append("원");
 
 				if (product.stockText() != null && !product.stockText().isBlank()) {

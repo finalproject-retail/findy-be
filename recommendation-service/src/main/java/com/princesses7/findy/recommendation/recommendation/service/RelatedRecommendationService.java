@@ -1,6 +1,5 @@
 package com.princesses7.findy.recommendation.recommendation.service;
 
-import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -86,7 +85,7 @@ public class RelatedRecommendationService {
 				sourceProduct,
 				sourceCategoryName,
 				normalizedSize,
-				"임베딩 생성이 어려워 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+				"임베딩 생성이 어려워 카테고리 정보를 기준으로 추천한 상품입니다."
 			);
 		}
 
@@ -101,7 +100,7 @@ public class RelatedRecommendationService {
 				sourceProduct,
 				sourceCategoryName,
 				normalizedSize,
-				"임베딩 후보가 부족하여 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+				"임베딩 후보가 부족하여 카테고리 정보를 기준으로 추천한 상품입니다."
 			);
 		}
 
@@ -117,7 +116,7 @@ public class RelatedRecommendationService {
 				sourceProduct,
 				sourceCategoryName,
 				normalizedSize,
-				"추천 가능한 임베딩 상품이 부족하여 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+				"추천 가능한 임베딩 상품이 부족하여 카테고리 정보를 기준으로 추천한 상품입니다."
 			);
 		}
 
@@ -152,7 +151,7 @@ public class RelatedRecommendationService {
 				sourceProduct,
 				sourceCategoryName,
 				normalizedSize,
-				"벡터 유사도 기준을 통과한 후보가 부족하여 카테고리와 할인 정보를 기준으로 추천한 상품입니다."
+				"벡터 유사도 기준을 통과한 후보가 부족하여 카테고리 정보를 기준으로 추천한 상품입니다."
 			);
 		}
 
@@ -306,8 +305,6 @@ public class RelatedRecommendationService {
 			score -= 0.10;
 		}
 
-		score += calculateDiscountScore(candidate.getDiscountRate());
-
 		return clamp(score);
 	}
 
@@ -407,7 +404,7 @@ public class RelatedRecommendationService {
 				product.getProductId(),
 				ProductRecommendationResponse.from(
 					product,
-					CATEGORY_FALLBACK_SCORE + calculateDiscountScore(product.getDiscountRate()),
+					CATEGORY_FALLBACK_SCORE,
 					RecommendationType.RELATED,
 					reason
 				)
@@ -425,7 +422,7 @@ public class RelatedRecommendationService {
 					product.getProductId(),
 					ProductRecommendationResponse.from(
 						product,
-						GENERAL_FALLBACK_SCORE + calculateDiscountScore(product.getDiscountRate()),
+						GENERAL_FALLBACK_SCORE,
 						RecommendationType.RELATED,
 						reason
 					)
@@ -480,32 +477,6 @@ public class RelatedRecommendationService {
 		}
 
 		return Math.min(similarityScore, 1.0);
-	}
-
-	private double calculateDiscountScore(BigDecimal discountRate) {
-		if (discountRate == null) {
-			return 0.0;
-		}
-
-		double rate = discountRate.doubleValue();
-
-		if (rate >= 30) {
-			return 0.05;
-		}
-
-		if (rate >= 20) {
-			return 0.03;
-		}
-
-		if (rate >= 10) {
-			return 0.02;
-		}
-
-		if (rate > 0) {
-			return 0.01;
-		}
-
-		return 0.0;
 	}
 
 	private double clamp(double score) {

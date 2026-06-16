@@ -1,7 +1,5 @@
 package com.princesses7.findy.recommendation.recommendation.dto.response;
 
-import java.math.BigDecimal;
-
 import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 
 public record SourceProductResponse(
@@ -12,8 +10,6 @@ public record SourceProductResponse(
 	Long categoryId,
 	String categoryName,
 	Integer originalPrice,
-	Integer salePrice,
-	BigDecimal discountRate,
 	String saleStatus
 ) {
 
@@ -29,8 +25,6 @@ public record SourceProductResponse(
 			product.getCategoryId(),
 			categoryName,
 			product.getOriginalPrice(),
-			product.getSalePrice(),
-			product.getDiscountRate(),
 			product.getSaleStatus()
 		);
 	}

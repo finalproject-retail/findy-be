@@ -1,7 +1,5 @@
 package com.princesses7.findy.recommendation.recommendation.service;
 
-import java.math.BigDecimal;
-
 import org.springframework.stereotype.Component;
 
 import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
@@ -102,20 +100,30 @@ public class PromotionRecommendationScoreCalculator {
 		ProductSnapshot product,
 		PromotionProductSnapshot promotionProduct
 	) {
-		if (promotionProduct.getPromotionPrice() != null
-			&& product.getSalePrice() != null
-			&& product.getSalePrice() > 0
-			&& promotionProduct.getPromotionPrice() < product.getSalePrice()) {
-			double discountRatio = 1 - promotionProduct.getPromotionPrice() / (double)product.getSalePrice();
+		if (product == null || promotionProduct == null) {
+			return 0.0;
+		}
+
+		Integer originalPrice = product.getOriginalPrice();
+		Integer promotionPrice = promotionProduct.getPromotionPrice();
+
+		if (originalPrice != null
+			&& originalPrice > 0
+			&& promotionPrice != null
+			&& promotionPrice > 0
+			&& promotionPrice < originalPrice) {
+			double discountRatio = 1 - promotionPrice / (double)originalPrice;
 
 			return clamp(discountRatio);
 		}
 
-		if (product.getDiscountRate() == null) {
+		PromotionSnapshot promotion = promotionProduct.getPromotion();
+
+		if (promotion == null || promotion.getDiscountRate() == null) {
 			return 0.0;
 		}
 
-		return clamp(product.getDiscountRate().doubleValue() / 100.0);
+		return clamp(promotion.getDiscountRate().doubleValue() / 100.0);
 	}
 
 	private double calculateStockScore(InventorySnapshot inventory) {
@@ -131,6 +139,10 @@ public class PromotionRecommendationScoreCalculator {
 	}
 
 	private double calculatePromotionTypeScore(PromotionSnapshot promotion) {
+		if (promotion == null || promotion.getPromotionType() == null) {
+			return 0.0;
+		}
+
 		if (promotion.getPromotionType() == PromotionType.BOGO) {
 			return 1.0;
 		}
@@ -169,11 +181,6 @@ public class PromotionRecommendationScoreCalculator {
 		}
 
 		return 0.0;
-	}
-
-	private boolean hasDiscount(ProductSnapshot product) {
-		return product.getDiscountRate() != null
-			&& product.getDiscountRate().compareTo(BigDecimal.ZERO) > 0;
 	}
 
 	private double clamp(double score) {

@@ -1,7 +1,5 @@
 package com.princesses7.findy.recommendation.product.entity;
 
-import java.math.BigDecimal;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -31,12 +29,6 @@ public class ProductSnapshot {
 
 	@Column(name = "original_price", nullable = false)
 	private Integer originalPrice;
-
-	@Column(name = "sale_price", nullable = false)
-	private Integer salePrice;
-
-	@Column(name = "discount_rate", nullable = false)
-	private BigDecimal discountRate;
 
 	@Column(name = "description")
 	private String description;
