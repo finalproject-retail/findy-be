@@ -15,6 +15,7 @@ import com.princesses7.findy.analytics.zone.dto.query.ZoneVisitRateQueryResult;
 public class ZoneVisitRateAnalyticsRepository {
 
 	private static final int MAX_STAY_SECONDS = 30 * 60;
+	private static final int MAX_MOVEMENT_SECONDS = 30 * 60;
 	private static final int MAX_TRAVEL_SECONDS = 5 * 60;
 
 	private final NamedParameterJdbcTemplate jdbcTemplate;
@@ -186,7 +187,7 @@ public class ZoneVisitRateAnalyticsRepository {
 				WHERE next_zone_id IS NOT NULL
 					AND next_entered_at IS NOT NULL
 					AND zone_id <> next_zone_id
-			), valid_movements AS (
+			), movement_candidates AS (
 				SELECT
 					from_zone_id,
 					from_zone_name,
@@ -197,10 +198,10 @@ public class ZoneVisitRateAnalyticsRepository {
 				WHERE stay_seconds IS NOT NULL
 					AND inferred_exited_at IS NOT NULL
 					AND next_entered_at >= inferred_exited_at
-					AND EXTRACT(EPOCH FROM (next_entered_at - inferred_exited_at)) BETWEEN 0 AND :maxTravelSeconds
+					AND EXTRACT(EPOCH FROM (next_entered_at - inferred_exited_at)) BETWEEN 0 AND :maxMovementSeconds
 			), total_movements AS (
 				SELECT COUNT(*) AS total_movement_count
-				FROM valid_movements
+				FROM movement_candidates
 			), movement_stats AS (
 				SELECT
 					from_zone_id,
@@ -208,8 +209,19 @@ public class ZoneVisitRateAnalyticsRepository {
 					to_zone_id,
 					MAX(to_zone_name) AS to_zone_name,
 					COUNT(*) AS movement_count,
-					COALESCE(ROUND(AVG(travel_seconds))::BIGINT, 0) AS average_travel_time_seconds
-				FROM valid_movements
+					COALESCE(
+						ROUND(
+							AVG(
+								CASE
+									WHEN travel_seconds BETWEEN 0 AND :maxTravelSeconds
+									THEN travel_seconds
+									ELSE NULL
+								END
+							)
+						)::BIGINT,
+						0
+					) AS average_travel_time_seconds
+				FROM movement_candidates
 				GROUP BY from_zone_id, to_zone_id
 			)
 			SELECT
@@ -260,6 +272,7 @@ public class ZoneVisitRateAnalyticsRepository {
 			.addValue("zoneId", zoneId, Types.BIGINT)
 			.addValue("minStaySeconds", minStaySeconds, Types.INTEGER)
 			.addValue("maxStaySeconds", MAX_STAY_SECONDS, Types.INTEGER)
+			.addValue("maxMovementSeconds", MAX_MOVEMENT_SECONDS, Types.INTEGER)
 			.addValue("maxTravelSeconds", MAX_TRAVEL_SECONDS, Types.INTEGER);
 	}
 }
