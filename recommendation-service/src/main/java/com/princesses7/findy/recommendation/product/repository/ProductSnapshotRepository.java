@@ -12,15 +12,34 @@ import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
 
 public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot, Long> {
 
-	List<ProductSnapshot> findByDeletedFalse(Pageable pageable);
+	List<ProductSnapshot> findByDeletedAtIsNull(Pageable pageable);
 
-	List<ProductSnapshot> findByProductIdIn(Collection<Long> productIds);
+	@Query(value = """
+		SELECT
+			p.product_id,
+			p.category_id,
+			p.brand_name,
+			p.product_name,
+			p.original_price,
+			p.description,
+			p.image_url,
+			NULL AS packaging_type,
+			p.sales_unit,
+			p.volume,
+			p.allergy_info,
+			p.badge_text,
+			p.sale_status,
+			p.deleted_at
+		FROM shopping_service.products p
+		WHERE p.product_id IN (:productIds)
+		""", nativeQuery = true)
+	List<ProductSnapshot> findByProductIdIn(@Param("productIds") Collection<Long> productIds);
 
-	List<ProductSnapshot> findByProductIdInAndDeletedFalse(Collection<Long> productIds);
+	List<ProductSnapshot> findByProductIdInAndDeletedAtIsNull(Collection<Long> productIds);
 
-	List<ProductSnapshot> findByCategoryIdAndDeletedFalse(Long categoryId);
+	List<ProductSnapshot> findByCategoryIdAndDeletedAtIsNull(Long categoryId);
 
-	List<ProductSnapshot> findByCategoryIdInAndDeletedFalse(
+	List<ProductSnapshot> findByCategoryIdInAndDeletedAtIsNull(
 		Collection<Long> categoryIds,
 		Pageable pageable
 	);
@@ -28,11 +47,11 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 	@Query("""
 		SELECT p
 		FROM ProductSnapshot p
-		WHERE p.deleted = FALSE
+		WHERE p.deletedAt IS NULL
 			AND p.productId <> :sourceProductId
 			AND p.categoryId = :categoryId
 			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
-		ORDER BY p.discountRate DESC, p.salePrice ASC, p.productId ASC
+		ORDER BY p.originalPrice ASC, p.productId ASC
 		""")
 	List<ProductSnapshot> findFallbackRelatedProductsByCategory(
 		@Param("sourceProductId") Long sourceProductId,
@@ -43,10 +62,10 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 	@Query("""
 		SELECT p
 		FROM ProductSnapshot p
-		WHERE p.deleted = FALSE
+		WHERE p.deletedAt IS NULL
 			AND p.productId <> :sourceProductId
 			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
-		ORDER BY p.discountRate DESC, p.salePrice ASC, p.productId ASC
+		ORDER BY p.originalPrice ASC, p.productId ASC
 		""")
 	List<ProductSnapshot> findFallbackRelatedProducts(
 		@Param("sourceProductId") Long sourceProductId,
@@ -56,7 +75,7 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 	@Query("""
 		SELECT p
 		FROM ProductSnapshot p
-		WHERE p.deleted = FALSE
+		WHERE p.deletedAt IS NULL
 			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
 			AND NOT EXISTS (
 				SELECT e
@@ -76,13 +95,13 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 	@Query("""
 		SELECT p
 		FROM ProductSnapshot p
-		WHERE p.deleted = FALSE
+		WHERE p.deletedAt IS NULL
 			AND (
 				LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
 				OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
 				OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
 			)
-		ORDER BY p.discountRate DESC, p.salePrice ASC
+		ORDER BY p.originalPrice ASC, p.productId ASC
 		""")
 	List<ProductSnapshot> searchByKeyword(
 		@Param("keyword") String keyword,

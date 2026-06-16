@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "categories")
+@Table(schema = "shopping_service", name = "categories")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CategorySnapshot {
 

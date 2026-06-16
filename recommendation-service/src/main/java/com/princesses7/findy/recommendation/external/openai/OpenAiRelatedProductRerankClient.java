@@ -156,7 +156,6 @@ public class OpenAiRelatedProductRerankClient implements RelatedProductRerankCli
 			nullToEmpty(sourceProduct.getBrandName()),
 			nullToEmpty(sourceCategoryName),
 			nullToEmpty(sourceProduct.getDescription()),
-			nullToEmpty(sourceProduct.getPackagingType()),
 			nullToEmpty(sourceProduct.getSalesUnit()),
 			nullToEmpty(sourceProduct.getVolume()),
 			nullToEmpty(sourceProduct.getBadgeText()),
@@ -182,8 +181,6 @@ public class OpenAiRelatedProductRerankClient implements RelatedProductRerankCli
 				.append(nullToEmpty(categoryNameMap.get(candidate.getCategoryId())))
 				.append(", description: ")
 				.append(nullToEmpty(candidate.getDescription()))
-				.append(", packagingType: ")
-				.append(nullToEmpty(candidate.getPackagingType()))
 				.append(", salesUnit: ")
 				.append(nullToEmpty(candidate.getSalesUnit()))
 				.append(", volume: ")

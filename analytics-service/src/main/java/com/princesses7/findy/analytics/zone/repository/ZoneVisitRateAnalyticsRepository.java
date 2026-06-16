@@ -41,7 +41,7 @@ public class ZoneVisitRateAnalyticsRepository {
 						PARTITION BY user_id, store_id
 						ORDER BY entered_at, location_log_id
 					) AS next_entered_at
-				FROM user_location_logs
+				FROM analytics_service.user_location_logs
 				WHERE entered_at >= :fromAt
 					AND entered_at < :toAt
 					AND store_id = :storeId
@@ -158,7 +158,7 @@ public class ZoneVisitRateAnalyticsRepository {
 						PARTITION BY user_id, store_id
 						ORDER BY entered_at, location_log_id
 					) AS next_entered_at
-				FROM user_location_logs
+				FROM analytics_service.user_location_logs
 				WHERE entered_at >= :fromAt
 					AND entered_at < :toAt
 					AND store_id = :storeId

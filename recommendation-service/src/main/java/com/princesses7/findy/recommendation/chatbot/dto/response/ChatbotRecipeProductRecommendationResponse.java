@@ -1,7 +1,5 @@
 package com.princesses7.findy.recommendation.chatbot.dto.response;
 
-import java.math.BigDecimal;
-
 import com.princesses7.findy.recommendation.chatbot.dto.ChatbotShoppingProduct;
 import com.princesses7.findy.recommendation.inventory.entity.InventorySnapshot;
 import com.princesses7.findy.recommendation.product.entity.ProductSnapshot;
@@ -14,8 +12,6 @@ public record ChatbotRecipeProductRecommendationResponse(
 	Long categoryId,
 	String categoryName,
 	Integer originalPrice,
-	Integer salePrice,
-	BigDecimal discountRate,
 	Integer stockQuantity,
 	String stockStatus,
 	String stockText,
@@ -39,8 +35,6 @@ public record ChatbotRecipeProductRecommendationResponse(
 			product.getCategoryId(),
 			categoryName,
 			product.getOriginalPrice(),
-			product.getSalePrice(),
-			product.getDiscountRate(),
 			inventory == null ? null : inventory.getStockQuantity(),
 			inventory == null ? null : inventory.getStockStatus(),
 			createStockText(inventory),
@@ -64,8 +58,6 @@ public record ChatbotRecipeProductRecommendationResponse(
 			product.categoryName(),
 			product.originalPrice(),
 			product.salePrice(),
-			product.discountRate(),
-			product.stockQuantity(),
 			product.stockStatus(),
 			createStockText(product),
 			selected,

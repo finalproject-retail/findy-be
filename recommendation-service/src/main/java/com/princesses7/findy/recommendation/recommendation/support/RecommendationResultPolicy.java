@@ -90,10 +90,6 @@ public final class RecommendationResultPolicy {
 			.comparingDouble(PromotionProductRecommendationResponse::score)
 			.reversed()
 			.thenComparing(
-				recommendation -> defaultDiscountRate(recommendation.discountRate()),
-				Comparator.reverseOrder()
-			)
-			.thenComparing(
 				recommendation -> defaultStockQuantity(recommendation.stockQuantity()),
 				Comparator.reverseOrder()
 			)

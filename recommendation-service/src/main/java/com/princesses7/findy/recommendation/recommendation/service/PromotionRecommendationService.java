@@ -191,7 +191,7 @@ public class PromotionRecommendationService {
 		);
 
 		String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
-		String reason = reasonBuilder.createAiReason(product, promotionProduct, scoreResult);
+		String reason = reasonBuilder.createAiReason(promotionProduct, scoreResult);
 
 		return PromotionProductRecommendationResponse.of(
 			product,
