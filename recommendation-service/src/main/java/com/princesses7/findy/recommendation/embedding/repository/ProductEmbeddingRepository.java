@@ -26,7 +26,7 @@ public interface ProductEmbeddingRepository extends JpaRepository<ProductEmbeddi
 				SELECT p.productId
 				FROM ProductSnapshot p
 				WHERE p.productId = e.productId
-					AND p.deleted = FALSE
+					AND p.deletedAt IS NULL
 					AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
 			)
 			AND EXISTS (
