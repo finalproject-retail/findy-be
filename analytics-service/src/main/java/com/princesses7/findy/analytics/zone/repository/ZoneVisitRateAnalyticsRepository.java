@@ -15,7 +15,7 @@ import com.princesses7.findy.analytics.zone.dto.query.ZoneVisitRateQueryResult;
 public class ZoneVisitRateAnalyticsRepository {
 
 	private static final int MAX_STAY_SECONDS = 30 * 60;
-	private static final int MAX_TRAVEL_SECONDS = 30 * 60;
+	private static final int MAX_TRAVEL_SECONDS = 5 * 60;
 
 	private final NamedParameterJdbcTemplate jdbcTemplate;
 
@@ -137,15 +137,15 @@ public class ZoneVisitRateAnalyticsRepository {
 					exited_at,
 					stay_duration_seconds,
 					LEAD(zone_id) OVER (
-						PARTITION BY user_id, store_id
+						PARTITION BY user_id, store_id, entered_at::DATE
 						ORDER BY entered_at, location_log_id
 					) AS next_zone_id,
 					LEAD(zone_name) OVER (
-						PARTITION BY user_id, store_id
+						PARTITION BY user_id, store_id, entered_at::DATE
 						ORDER BY entered_at, location_log_id
 					) AS next_zone_name,
 					LEAD(entered_at) OVER (
-						PARTITION BY user_id, store_id
+						PARTITION BY user_id, store_id, entered_at::DATE
 						ORDER BY entered_at, location_log_id
 					) AS next_entered_at
 				FROM analytics_service.user_location_logs
@@ -208,7 +208,7 @@ public class ZoneVisitRateAnalyticsRepository {
 					to_zone_id,
 					MAX(to_zone_name) AS to_zone_name,
 					COUNT(*) AS movement_count,
-					ROUND(AVG(travel_seconds))::BIGINT AS average_travel_time_seconds
+					COALESCE(ROUND(AVG(travel_seconds))::BIGINT, 0) AS average_travel_time_seconds
 				FROM valid_movements
 				GROUP BY from_zone_id, to_zone_id
 			)
