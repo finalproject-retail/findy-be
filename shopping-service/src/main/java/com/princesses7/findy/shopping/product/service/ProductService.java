@@ -84,14 +84,10 @@ public class ProductService {
 	public List<ProductResponse> getNewProducts(int size, long storeId) {
 		validateSectionSize(size);
 
-		Pageable pageable = PageRequest.of(
-			0,
-			size,
-			Sort.by(Sort.Direction.DESC, "createdAt")
-		);
+		Pageable pageable = PageRequest.of(0, size);
 
 		return toProductResponses(
-			productRepository.findByDeletedAtIsNullAndOriginalPriceGreaterThan(
+			productRepository.findNewDisplayableProducts(
 				MIN_VISIBLE_PRICE,
 				pageable
 			).getContent(),

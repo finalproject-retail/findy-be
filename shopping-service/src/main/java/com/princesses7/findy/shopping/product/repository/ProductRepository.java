@@ -171,4 +171,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		ORDER BY p.productId ASC
 		""")
 	List<Product> findPriceMissingProducts(Pageable pageable);
+
+	@Query("""
+		SELECT p
+		FROM Product p
+		WHERE p.deletedAt IS NULL
+			AND p.originalPrice > :minPrice
+			AND p.imageUrl IS NOT NULL
+			AND TRIM(p.imageUrl) <> ''
+			AND LOWER(p.imageUrl) NOT LIKE '%findy%'
+			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
+		ORDER BY p.createdAt DESC, p.productId DESC
+		""")
+	Page<Product> findNewDisplayableProducts(
+		@Param("minPrice") Integer minPrice,
+		Pageable pageable
+	);
 }
