@@ -14,7 +14,28 @@ public interface ProductSnapshotRepository extends JpaRepository<ProductSnapshot
 
 	List<ProductSnapshot> findByDeletedAtIsNull(Pageable pageable);
 
-	List<ProductSnapshot> findByProductIdIn(Collection<Long> productIds);
+	@Query(value = """
+		SELECT
+			p.product_id,
+			p.category_id,
+			p.brand_name,
+			p.product_name,
+			p.original_price,
+			COALESCE(p.sale_price, p.original_price) AS sale_price,
+			COALESCE(p.discount_rate, 0) AS discount_rate,
+			p.description,
+			p.image_url,
+			NULL AS packaging_type,
+			p.sales_unit,
+			p.volume,
+			p.allergy_info,
+			p.badge_text,
+			p.sale_status,
+			(p.deleted_at IS NOT NULL) AS is_deleted
+		FROM shopping_service.products p
+		WHERE p.product_id IN (:productIds)
+		""", nativeQuery = true)
+	List<ProductSnapshot> findByProductIdIn(@Param("productIds") Collection<Long> productIds);
 
 	List<ProductSnapshot> findByProductIdInAndDeletedAtIsNull(Collection<Long> productIds);
 
