@@ -65,36 +65,38 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	);
 
 	@Query("""
-		SELECT p
-		FROM Product p
-		WHERE p.deletedAt IS NULL
-		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
-		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
-		  AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
-		""")
+    SELECT p
+    FROM Product p
+    WHERE p.deletedAt IS NULL
+      AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
+      AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+      AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
+    """)
 	Page<Product> findAdminProductsWithoutKeyword(
-		@Param("categoryId") Long categoryId,
+		@Param("categoryIds") Collection<Long> categoryIds,
+		@Param("filterByCategoryIds") boolean filterByCategoryIds,
 		@Param("saleStatus") SaleStatus saleStatus,
 		@Param("categoryReviewRequired") Boolean categoryReviewRequired,
 		Pageable pageable
 	);
 
 	@Query("""
-		SELECT p
-		FROM Product p
-		WHERE p.deletedAt IS NULL
-		  AND (
-		       LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		       OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		       OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		  )
-		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
-		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
-		  AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
-		""")
+    SELECT p
+    FROM Product p
+    WHERE p.deletedAt IS NULL
+      AND (
+           LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+           OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+      )
+      AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
+      AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
+      AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
+    """)
 	Page<Product> findAdminProductsWithKeyword(
 		@Param("keyword") String keyword,
-		@Param("categoryId") Long categoryId,
+		@Param("categoryIds") Collection<Long> categoryIds,
+		@Param("filterByCategoryIds") boolean filterByCategoryIds,
 		@Param("saleStatus") SaleStatus saleStatus,
 		@Param("categoryReviewRequired") Boolean categoryReviewRequired,
 		Pageable pageable

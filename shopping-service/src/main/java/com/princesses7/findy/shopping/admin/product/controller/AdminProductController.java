@@ -25,6 +25,7 @@ public class AdminProductController {
 	public ApiResponse<AdminProductPageResponse> getProducts(
 		@RequestParam(required = false) String keyword,
 		@RequestParam(required = false) Long categoryId,
+		@RequestParam(required = false) List<Long> categoryIds,
 		@RequestParam(required = false) SaleStatus saleStatus,
 		@RequestParam(required = false) Boolean categoryReviewRequired,
 		@RequestParam(defaultValue = "0") int page,
@@ -37,6 +38,7 @@ public class AdminProductController {
 			adminProductService.getProducts(
 				keyword,
 				categoryId,
+				categoryIds,
 				saleStatus,
 				categoryReviewRequired,
 				page,
