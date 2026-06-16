@@ -17,7 +17,8 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 	@Query(value = """
 		SELECT
 			COUNT(*) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount"
+			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount",
+			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM analytics_service.recommendation_logs
 		WHERE created_at >= :startDateTime
 			AND created_at < :endDateTime
@@ -47,7 +48,8 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 		SELECT
 			CAST(created_at AS DATE) AS "analysisDate",
 			COUNT(*) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount"
+			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount",
+			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM analytics_service.recommendation_logs
 		WHERE created_at >= :startDateTime
 			AND created_at < :endDateTime
@@ -82,7 +84,8 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 			product_id AS "productId",
 			MAX(product_name) AS "productName",
 			COUNT(*) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount"
+			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "selectionCount",
+			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM analytics_service.recommendation_logs
 		WHERE created_at >= :startDateTime
 			AND created_at < :endDateTime
@@ -102,6 +105,7 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 		GROUP BY recommendation_type, source_product_id, product_id
 		ORDER BY
 			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) DESC,
+			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) DESC,
 			COUNT(*) DESC,
 			product_id ASC
 		LIMIT :limit

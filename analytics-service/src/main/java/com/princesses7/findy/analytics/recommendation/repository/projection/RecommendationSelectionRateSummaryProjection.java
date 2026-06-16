@@ -5,4 +5,6 @@ public interface RecommendationSelectionRateSummaryProjection {
 	Long getImpressionCount();
 
 	Long getSelectionCount();
+
+	Long getPurchaseCount();
 }

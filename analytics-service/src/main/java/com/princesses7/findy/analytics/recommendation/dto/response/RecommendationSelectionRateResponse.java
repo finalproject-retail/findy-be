@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.princesses7.findy.analytics.analytics.dto.response.PeriodResponse;
 
 public record RecommendationSelectionRateResponse(
@@ -14,6 +15,8 @@ public record RecommendationSelectionRateResponse(
 	long impressionCount,
 	long selectionCount,
 	BigDecimal selectionRate,
+	long purchaseCount,
+	BigDecimal conversionRate,
 	List<RecommendationSelectionRateDailyResponse> dailyTrends,
 	List<RecommendationSelectionRateProductResponse> products
 ) {
@@ -25,6 +28,7 @@ public record RecommendationSelectionRateResponse(
 		Long sourceProductId,
 		long impressionCount,
 		long selectionCount,
+		long purchaseCount,
 		List<RecommendationSelectionRateDailyResponse> dailyTrends,
 		List<RecommendationSelectionRateProductResponse> products
 	) {
@@ -36,9 +40,48 @@ public record RecommendationSelectionRateResponse(
 			impressionCount,
 			selectionCount,
 			calculateRate(selectionCount, impressionCount),
+			purchaseCount,
+			calculateRate(purchaseCount, impressionCount),
 			dailyTrends,
 			products
 		);
+	}
+
+	@JsonProperty("selectedCount")
+	public long selectedCount() {
+		return selectionCount;
+	}
+
+	@JsonProperty("selectRate")
+	public BigDecimal selectRate() {
+		return selectionRate;
+	}
+
+	@JsonProperty("promotionSelectRates")
+	public List<RecommendationSelectionRateProductResponse> promotionSelectRates() {
+		if ("PROMOTION".equalsIgnoreCase(recommendationType)) {
+			return products;
+		}
+
+		return List.of();
+	}
+
+	@JsonProperty("alternativeSelectRates")
+	public List<RecommendationSelectionRateProductResponse> alternativeSelectRates() {
+		if ("SUBSTITUTE".equalsIgnoreCase(recommendationType)) {
+			return products;
+		}
+
+		return List.of();
+	}
+
+	@JsonProperty("substituteSelectRates")
+	public List<RecommendationSelectionRateProductResponse> substituteSelectRates() {
+		if ("SUBSTITUTE".equalsIgnoreCase(recommendationType)) {
+			return products;
+		}
+
+		return List.of();
 	}
 
 	private static BigDecimal calculateRate(long numerator, long denominator) {
