@@ -166,6 +166,11 @@ class RecommendationSelectionRateAnalyticsServiceTest {
 			public Long getSelectionCount() {
 				return selectionCount;
 			}
+
+				@Override
+				public Long getPurchaseCount() {
+					return 0L;
+				}
 		};
 	}
 
@@ -189,6 +194,11 @@ class RecommendationSelectionRateAnalyticsServiceTest {
 			public Long getSelectionCount() {
 				return selectionCount;
 			}
+
+				@Override
+				public Long getPurchaseCount() {
+					return 0L;
+				}
 		};
 	}
 
@@ -230,6 +240,11 @@ class RecommendationSelectionRateAnalyticsServiceTest {
 			public Long getSelectionCount() {
 				return selectionCount;
 			}
+
+				@Override
+				public Long getPurchaseCount() {
+					return 0L;
+				}
 		};
 	}
 }
