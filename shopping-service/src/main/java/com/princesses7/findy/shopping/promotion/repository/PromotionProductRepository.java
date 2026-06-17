@@ -50,4 +50,19 @@ public interface PromotionProductRepository extends JpaRepository<PromotionProdu
 		@Param("endedStatus") PromotionStatus endedStatus,
 		@Param("now") LocalDateTime now
 	);
+
+	@Query("""
+		select pp
+		from PromotionProduct pp
+		join fetch pp.promotion p
+		where pp.productId in :productIds
+			and p.status <> :endedStatus
+			and p.startAt <= :now
+			and p.endAt >= :now
+		""")
+	List<PromotionProduct> findApplicablePromotionProductsByProductIds(
+		@Param("productIds") List<Long> productIds,
+		@Param("endedStatus") PromotionStatus endedStatus,
+		@Param("now") LocalDateTime now
+	);
 }
