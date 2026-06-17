@@ -2,6 +2,7 @@ package com.princesses7.findy.shopping.admin.product.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -56,6 +57,7 @@ public class AdminProductService {
 	public AdminProductPageResponse getProducts(
 		String keyword,
 		Long categoryId,
+		List<Long> categoryIds,
 		SaleStatus saleStatus,
 		Boolean categoryReviewRequired,
 		int page,
@@ -72,10 +74,11 @@ public class AdminProductService {
 		);
 
 		String normalizedKeyword = normalizeKeyword(keyword);
+		List<Long> normalizedCategoryIds = normalizeCategoryIds(categoryId, categoryIds);
 
 		Page<Product> products = findAdminProducts(
 			normalizedKeyword,
-			categoryId,
+			normalizedCategoryIds,
 			saleStatus,
 			categoryReviewRequired,
 			pageable
@@ -86,14 +89,18 @@ public class AdminProductService {
 
 	private Page<Product> findAdminProducts(
 		String keyword,
-		Long categoryId,
+		List<Long> categoryIds,
 		SaleStatus saleStatus,
 		Boolean categoryReviewRequired,
 		Pageable pageable
 	) {
+		boolean filterByCategoryIds = categoryIds != null && !categoryIds.isEmpty();
+		Collection<Long> queryCategoryIds = filterByCategoryIds ? categoryIds : List.of(-1L);
+
 		if (keyword == null) {
 			return productRepository.findAdminProductsWithoutKeyword(
-				categoryId,
+				queryCategoryIds,
+				filterByCategoryIds,
 				saleStatus,
 				categoryReviewRequired,
 				pageable
@@ -102,7 +109,8 @@ public class AdminProductService {
 
 		return productRepository.findAdminProductsWithKeyword(
 			keyword,
-			categoryId,
+			queryCategoryIds,
+			filterByCategoryIds,
 			saleStatus,
 			categoryReviewRequired,
 			pageable
@@ -200,5 +208,17 @@ public class AdminProductService {
 		}
 
 		return keyword.trim();
+	}
+
+	private List<Long> normalizeCategoryIds(Long categoryId, List<Long> categoryIds) {
+		if (categoryIds != null && !categoryIds.isEmpty()) {
+			return categoryIds;
+		}
+
+		if (categoryId != null) {
+			return List.of(categoryId);
+		}
+
+		return null;
 	}
 }

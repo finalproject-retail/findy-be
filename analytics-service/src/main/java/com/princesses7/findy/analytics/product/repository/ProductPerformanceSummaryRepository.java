@@ -32,12 +32,17 @@ public class ProductPerformanceSummaryRepository {
 		this.userSourceSchema = normalizeSourceSchema(userSourceSchema);
 	}
 
-	public ProductPerformanceSummaryQueryResult findSummary(PeriodRange periodRange, Long storeId) {
+	public ProductPerformanceSummaryQueryResult findSummary(
+		PeriodRange periodRange,
+		Long storeId,
+		List<Long> categoryIds
+	) {
 		String sql = """
 			WITH target_products AS (
 				SELECT p.product_id
 				FROM %s p
 				WHERE p.deleted_at IS NULL
+					AND (:categoryIdsEmpty = TRUE OR p.category_id IN (:categoryIds))
 					AND (:storeId IS NULL OR EXISTS (
 						SELECT 1
 						FROM %s i
@@ -52,7 +57,7 @@ public class ProductPerformanceSummaryRepository {
 				FROM %s rvp
 				JOIN target_products tp ON tp.product_id = rvp.product_id
 				WHERE rvp.viewed_at >= :fromAt
-			       AND rvp.viewed_at < :toAt
+					AND rvp.viewed_at < :toAt
 				GROUP BY rvp.product_id
 			),
 			order_summary AS (
@@ -98,6 +103,8 @@ public class ProductPerformanceSummaryRepository {
 
 		MapSqlParameterSource params = new MapSqlParameterSource()
 			.addValue("storeId", storeId, Types.BIGINT)
+			.addValue("categoryIdsEmpty", isCategoryIdsEmpty(categoryIds), Types.BOOLEAN)
+			.addValue("categoryIds", getSafeCategoryIds(categoryIds))
 			.addValue("fromAt", periodRange.fromAt(), Types.TIMESTAMP)
 			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP);
 
@@ -119,6 +126,7 @@ public class ProductPerformanceSummaryRepository {
 	public List<ProductPerformanceProductQueryResult> findTopProducts(
 		PeriodRange periodRange,
 		Long storeId,
+		List<Long> categoryIds,
 		int limit
 	) {
 		String sql = """
@@ -126,6 +134,7 @@ public class ProductPerformanceSummaryRepository {
 				SELECT p.product_id
 				FROM %s p
 				WHERE p.deleted_at IS NULL
+					AND (:categoryIdsEmpty = TRUE OR p.category_id IN (:categoryIds))
 					AND (:storeId IS NULL OR EXISTS (
 						SELECT 1
 						FROM %s i
@@ -140,7 +149,7 @@ public class ProductPerformanceSummaryRepository {
 				FROM %s rvp
 				JOIN target_products tp ON tp.product_id = rvp.product_id
 				WHERE rvp.viewed_at >= :fromAt
-			       AND rvp.viewed_at < :toAt
+					AND rvp.viewed_at < :toAt
 				GROUP BY rvp.product_id
 			),
 			order_summary AS (
@@ -192,6 +201,8 @@ public class ProductPerformanceSummaryRepository {
 
 		MapSqlParameterSource params = new MapSqlParameterSource()
 			.addValue("storeId", storeId, Types.BIGINT)
+			.addValue("categoryIdsEmpty", isCategoryIdsEmpty(categoryIds), Types.BOOLEAN)
+			.addValue("categoryIds", getSafeCategoryIds(categoryIds))
 			.addValue("fromAt", periodRange.fromAt(), Types.TIMESTAMP)
 			.addValue("toAt", periodRange.toExclusiveAt(), Types.TIMESTAMP)
 			.addValue("limit", limit, Types.INTEGER);
@@ -211,6 +222,21 @@ public class ProductPerformanceSummaryRepository {
 				rs.getLong("sales_amount")
 			)
 		);
+	}
+
+	private boolean isCategoryIdsEmpty(List<Long> categoryIds) {
+		return categoryIds == null || categoryIds.isEmpty();
+	}
+
+	private List<Long> getSafeCategoryIds(List<Long> categoryIds) {
+		if (categoryIds == null || categoryIds.isEmpty()) {
+			return List.of(-1L);
+		}
+
+		return categoryIds.stream()
+			.filter(categoryId -> categoryId != null && categoryId > 0)
+			.distinct()
+			.toList();
 	}
 
 	private String table(String tableName) {

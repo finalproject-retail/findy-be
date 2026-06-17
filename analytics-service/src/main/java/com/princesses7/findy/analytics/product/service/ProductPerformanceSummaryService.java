@@ -34,19 +34,23 @@ public class ProductPerformanceSummaryService {
 		LocalDate fromDate,
 		LocalDate toDate,
 		Long storeId,
+		List<Long> categoryIds,
 		Integer limit
 	) {
 		PeriodRange periodRange = analyticsPeriodResolver.resolve(fromDate, toDate);
 		int resolvedLimit = analyticsPeriodResolver.resolveLimit(limit);
+		List<Long> resolvedCategoryIds = normalizeCategoryIds(categoryIds);
 
 		ProductPerformanceSummaryQueryResult summary = productPerformanceSummaryRepository.findSummary(
 			periodRange,
-			storeId
+			storeId,
+			resolvedCategoryIds
 		);
 
 		List<ProductPerformanceProductQueryResult> topProducts = productPerformanceSummaryRepository.findTopProducts(
 			periodRange,
 			storeId,
+			resolvedCategoryIds,
 			resolvedLimit
 		);
 
@@ -65,7 +69,7 @@ public class ProductPerformanceSummaryService {
 			getTotalOrderCount(summary),
 			getTotalOrderQuantity(summary),
 			getTotalSalesAmount(summary),
-			calculateRate(getTotalOrderQuantity(summary), getTotalViewCount(summary)),
+			calculateRate(getTotalOrderCount(summary), getTotalViewCount(summary)),
 			calculateAverageSalesAmount(getTotalSalesAmount(summary), getTotalOrderCount(summary)),
 			resolvedLimit,
 			productResponses
@@ -80,7 +84,7 @@ public class ProductPerformanceSummaryService {
 			.mapToObj(index -> ProductPerformanceItemResponse.of(
 				index + 1,
 				topProducts.get(index),
-				calculateRate(topProducts.get(index).orderQuantity(), topProducts.get(index).viewCount()),
+				calculateRate(topProducts.get(index).orderCount(), topProducts.get(index).viewCount()),
 				calculateRate(topProducts.get(index).salesAmount(), totalSalesAmount)
 			))
 			.toList();
@@ -131,5 +135,16 @@ public class ProductPerformanceSummaryService {
 
 	private Long getTotalSalesAmount(ProductPerformanceSummaryQueryResult summary) {
 		return summary == null || summary.totalSalesAmount() == null ? 0L : summary.totalSalesAmount();
+	}
+
+	private List<Long> normalizeCategoryIds(List<Long> categoryIds) {
+		if (categoryIds == null || categoryIds.isEmpty()) {
+			return List.of();
+		}
+
+		return categoryIds.stream()
+			.filter(categoryId -> categoryId != null && categoryId > 0)
+			.distinct()
+			.toList();
 	}
 }

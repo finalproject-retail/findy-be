@@ -1,5 +1,7 @@
 package com.princesses7.findy.shopping.admin.product.controller;
 
+import java.util.List;
+
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +27,7 @@ public class AdminProductController {
 	public ApiResponse<AdminProductPageResponse> getProducts(
 		@RequestParam(required = false) String keyword,
 		@RequestParam(required = false) Long categoryId,
+		@RequestParam(required = false) List<Long> categoryIds,
 		@RequestParam(required = false) SaleStatus saleStatus,
 		@RequestParam(required = false) Boolean categoryReviewRequired,
 		@RequestParam(defaultValue = "0") int page,
@@ -37,6 +40,7 @@ public class AdminProductController {
 			adminProductService.getProducts(
 				keyword,
 				categoryId,
+				categoryIds,
 				saleStatus,
 				categoryReviewRequired,
 				page,

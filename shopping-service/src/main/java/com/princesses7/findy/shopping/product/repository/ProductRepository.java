@@ -68,12 +68,13 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
-		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
+		  AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
 		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
 		  AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
 		""")
 	Page<Product> findAdminProductsWithoutKeyword(
-		@Param("categoryId") Long categoryId,
+		@Param("categoryIds") Collection<Long> categoryIds,
+		@Param("filterByCategoryIds") boolean filterByCategoryIds,
 		@Param("saleStatus") SaleStatus saleStatus,
 		@Param("categoryReviewRequired") Boolean categoryReviewRequired,
 		Pageable pageable
@@ -84,27 +85,43 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		FROM Product p
 		WHERE p.deletedAt IS NULL
 		  AND (
-		       LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		       OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
-		       OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			   LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			   OR LOWER(COALESCE(p.brandName, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			   OR LOWER(COALESCE(p.barcode, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
 		  )
-		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
+		  AND (:filterByCategoryIds = false OR p.categoryId IN :categoryIds)
 		  AND (:saleStatus IS NULL OR p.saleStatus = :saleStatus)
 		  AND (:categoryReviewRequired IS NULL OR p.categoryReviewRequired = :categoryReviewRequired)
 		""")
 	Page<Product> findAdminProductsWithKeyword(
 		@Param("keyword") String keyword,
-		@Param("categoryId") Long categoryId,
+		@Param("categoryIds") Collection<Long> categoryIds,
+		@Param("filterByCategoryIds") boolean filterByCategoryIds,
 		@Param("saleStatus") SaleStatus saleStatus,
 		@Param("categoryReviewRequired") Boolean categoryReviewRequired,
 		Pageable pageable
 	);
 
+	default List<Product> findPopularProductsByRedisIds(
+		Collection<Long> productIds,
+		Long categoryId,
+		String keyword,
+		Long storeId
+	) {
+		return findPopularProductsByRedisIds(
+			productIds,
+			categoryId,
+			keyword,
+			storeId,
+			SaleStatus.ON_SALE
+		);
+	}
+
 	@Query("""
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
-		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
+		  AND p.saleStatus = :saleStatus
 		  AND p.productId IN :productIds
 		  AND (:categoryId IS NULL OR p.categoryId = :categoryId)
 		  AND (:keyword IS NULL OR LOWER(p.productName) LIKE LOWER(CONCAT('%', :keyword, '%')))
@@ -120,14 +137,26 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		@Param("productIds") Collection<Long> productIds,
 		@Param("categoryId") Long categoryId,
 		@Param("keyword") String keyword,
-		@Param("storeId") Long storeId
+		@Param("storeId") Long storeId,
+		@Param("saleStatus") SaleStatus saleStatus
 	);
+
+	default List<Product> findMartRecommendedProducts(
+		Long storeId,
+		Pageable pageable
+	) {
+		return findMartRecommendedProducts(
+			storeId,
+			SaleStatus.ON_SALE,
+			pageable
+		);
+	}
 
 	@Query("""
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
-		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
+		  AND p.saleStatus = :saleStatus
 		  AND EXISTS (
 			SELECT 1
 			FROM Inventory i
@@ -139,6 +168,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		""")
 	List<Product> findMartRecommendedProducts(
 		@Param("storeId") Long storeId,
+		@Param("saleStatus") SaleStatus saleStatus,
 		Pageable pageable
 	);
 
@@ -178,19 +208,31 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		""")
 	List<Product> findPriceMissingProducts(Pageable pageable);
 
+	default Page<Product> findNewDisplayableProducts(
+		Integer minPrice,
+		Pageable pageable
+	) {
+		return findNewDisplayableProducts(
+			minPrice,
+			SaleStatus.ON_SALE,
+			pageable
+		);
+	}
+
 	@Query("""
 		SELECT p
 		FROM Product p
 		WHERE p.deletedAt IS NULL
-			AND p.originalPrice > :minPrice
-			AND p.imageUrl IS NOT NULL
-			AND TRIM(p.imageUrl) <> ''
-			AND LOWER(p.imageUrl) NOT LIKE '%findy%'
-			AND p.saleStatus NOT IN ('SOLD_OUT', 'DISCONTINUED')
+		  AND p.originalPrice > :minPrice
+		  AND p.imageUrl IS NOT NULL
+		  AND TRIM(p.imageUrl) <> ''
+		  AND LOWER(p.imageUrl) NOT LIKE '%findy%'
+		  AND p.saleStatus = :saleStatus
 		ORDER BY p.createdAt DESC, p.productId DESC
 		""")
 	Page<Product> findNewDisplayableProducts(
 		@Param("minPrice") Integer minPrice,
+		@Param("saleStatus") SaleStatus saleStatus,
 		Pageable pageable
 	);
 

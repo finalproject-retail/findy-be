@@ -33,11 +33,12 @@ class ProductPerformanceSummaryServiceTest {
 	private ProductPerformanceSummaryService productPerformanceSummaryService;
 
 	@Test
-	@DisplayName("상품 성과 요약과 상위 상품 성과를 조회한다")
+	@DisplayName("카테고리 필터를 적용해 상품 성과 요약과 상위 상품 성과를 조회한다")
 	void getProductPerformanceSummary() {
 		LocalDate fromDate = LocalDate.of(2026, 5, 1);
 		LocalDate toDate = LocalDate.of(2026, 5, 31);
 		Long storeId = 1L;
+		List<Long> categoryIds = List.of(17L, 18L);
 		Integer limit = 10;
 		PeriodRange periodRange = PeriodRange.of(fromDate, toDate);
 
@@ -45,7 +46,7 @@ class ProductPerformanceSummaryServiceTest {
 			.willReturn(periodRange);
 		given(analyticsPeriodResolver.resolveLimit(limit))
 			.willReturn(limit);
-		given(productPerformanceSummaryRepository.findSummary(periodRange, storeId))
+		given(productPerformanceSummaryRepository.findSummary(periodRange, storeId, categoryIds))
 			.willReturn(new ProductPerformanceSummaryQueryResult(
 				20L,
 				2L,
@@ -55,28 +56,28 @@ class ProductPerformanceSummaryServiceTest {
 				4L,
 				27000L
 			));
-		given(productPerformanceSummaryRepository.findTopProducts(periodRange, storeId, limit))
+		given(productPerformanceSummaryRepository.findTopProducts(periodRange, storeId, categoryIds, limit))
 			.willReturn(List.of(
 				new ProductPerformanceProductQueryResult(
 					10001L,
-					"시드_신라면",
+					"신라면",
 					"농심",
 					17L,
 					"라면",
-					6L,
+					12L,
 					2L,
-					3L,
+					6L,
 					18000L
 				),
 				new ProductPerformanceProductQueryResult(
 					10003L,
-					"시드_백미밥",
+					"백미밥",
 					"햇반",
 					18L,
 					"즉석밥",
-					4L,
+					10L,
 					1L,
-					1L,
+					3L,
 					9000L
 				)
 			));
@@ -85,6 +86,7 @@ class ProductPerformanceSummaryServiceTest {
 			fromDate,
 			toDate,
 			storeId,
+			categoryIds,
 			limit
 		);
 
@@ -98,11 +100,12 @@ class ProductPerformanceSummaryServiceTest {
 		assertThat(response.totalOrderCount()).isEqualTo(3L);
 		assertThat(response.totalOrderQuantity()).isEqualTo(4L);
 		assertThat(response.totalSalesAmount()).isEqualTo(27000L);
-		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("40.00");
+		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("30.00");
 		assertThat(response.averageSalesAmountPerOrder()).isEqualByComparingTo("9000.00");
+		assertThat(response.limit()).isEqualTo(limit);
 		assertThat(response.products()).hasSize(2);
 		assertThat(response.products().get(0).rankNo()).isEqualTo(1);
-		assertThat(response.products().get(0).viewToPurchaseRate()).isEqualByComparingTo("50.00");
+		assertThat(response.products().get(0).viewToPurchaseRate()).isEqualByComparingTo("16.67");
 		assertThat(response.products().get(0).salesShareRate()).isEqualByComparingTo("66.67");
 	}
 
@@ -111,6 +114,9 @@ class ProductPerformanceSummaryServiceTest {
 	void getEmptyProductPerformanceSummary() {
 		LocalDate fromDate = LocalDate.of(2026, 5, 1);
 		LocalDate toDate = LocalDate.of(2026, 5, 1);
+		Long storeId = null;
+		List<Long> categoryIds = null;
+		List<Long> resolvedCategoryIds = List.of();
 		Integer limit = null;
 		int defaultLimit = 100;
 		PeriodRange periodRange = PeriodRange.of(fromDate, toDate);
@@ -119,7 +125,7 @@ class ProductPerformanceSummaryServiceTest {
 			.willReturn(periodRange);
 		given(analyticsPeriodResolver.resolveLimit(limit))
 			.willReturn(defaultLimit);
-		given(productPerformanceSummaryRepository.findSummary(periodRange, null))
+		given(productPerformanceSummaryRepository.findSummary(periodRange, storeId, resolvedCategoryIds))
 			.willReturn(new ProductPerformanceSummaryQueryResult(
 				0L,
 				0L,
@@ -129,18 +135,25 @@ class ProductPerformanceSummaryServiceTest {
 				0L,
 				0L
 			));
-		given(productPerformanceSummaryRepository.findTopProducts(periodRange, null, defaultLimit))
+		given(productPerformanceSummaryRepository.findTopProducts(periodRange, storeId, resolvedCategoryIds, defaultLimit))
 			.willReturn(List.of());
 
 		ProductPerformanceSummaryResponse response = productPerformanceSummaryService.getProductPerformanceSummary(
 			fromDate,
 			toDate,
-			null,
+			storeId,
+			categoryIds,
 			limit
 		);
 
+		assertThat(response.period().fromDate()).isEqualTo(fromDate);
+		assertThat(response.period().toDate()).isEqualTo(toDate);
+		assertThat(response.storeId()).isNull();
 		assertThat(response.totalProductCount()).isZero();
+		assertThat(response.viewedProductCount()).isZero();
+		assertThat(response.orderedProductCount()).isZero();
 		assertThat(response.totalViewCount()).isZero();
+		assertThat(response.totalOrderCount()).isZero();
 		assertThat(response.totalOrderQuantity()).isZero();
 		assertThat(response.totalSalesAmount()).isZero();
 		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("0.00");

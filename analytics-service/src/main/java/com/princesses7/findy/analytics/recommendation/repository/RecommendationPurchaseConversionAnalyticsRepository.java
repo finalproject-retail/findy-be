@@ -16,19 +16,19 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 
 	@Query(value = """
 		SELECT
-			COUNT(*) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
-			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
-		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :startDateTime
-			AND created_at < :endDateTime
+			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "clickCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) AS "purchaseCount"
+		FROM recommendation_service.recommendation_logs rl
+		WHERE rl.created_at >= :startDateTime
+			AND rl.created_at < :endDateTime
 			AND (
 				CAST(:recommendationType AS VARCHAR) IS NULL
-				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+				OR rl.recommendation_type = CAST(:recommendationType AS VARCHAR)
 			)
 			AND (
 				CAST(:productId AS BIGINT) IS NULL
-				OR product_id = CAST(:productId AS BIGINT)
+				OR rl.product_id = CAST(:productId AS BIGINT)
 			)
 		""", nativeQuery = true)
 	RecommendationPurchaseConversionSummaryProjection findSummary(
@@ -40,23 +40,23 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 
 	@Query(value = """
 		SELECT
-			CAST(created_at AS DATE) AS "analysisDate",
-			COUNT(*) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
-			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
-		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :startDateTime
-			AND created_at < :endDateTime
+			CAST(rl.created_at AS DATE) AS "analysisDate",
+			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "clickCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) AS "purchaseCount"
+		FROM recommendation_service.recommendation_logs rl
+		WHERE rl.created_at >= :startDateTime
+			AND rl.created_at < :endDateTime
 			AND (
 				CAST(:recommendationType AS VARCHAR) IS NULL
-				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+				OR rl.recommendation_type = CAST(:recommendationType AS VARCHAR)
 			)
 			AND (
 				CAST(:productId AS BIGINT) IS NULL
-				OR product_id = CAST(:productId AS BIGINT)
+				OR rl.product_id = CAST(:productId AS BIGINT)
 			)
-		GROUP BY CAST(created_at AS DATE)
-		ORDER BY CAST(created_at AS DATE) ASC
+		GROUP BY CAST(rl.created_at AS DATE)
+		ORDER BY CAST(rl.created_at AS DATE) ASC
 		""", nativeQuery = true)
 	List<RecommendationPurchaseConversionDailyProjection> findDailyTrends(
 		@Param("recommendationType") String recommendationType,
@@ -67,28 +67,88 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 
 	@Query(value = """
 		SELECT
-			recommendation_type AS "recommendationType",
-			product_id AS "productId",
-			MAX(product_name) AS "productName",
-			COUNT(*) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN is_clicked = TRUE THEN 1 ELSE 0 END), 0) AS "clickCount",
-			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) AS "purchaseCount"
-		FROM analytics_service.recommendation_logs
-		WHERE created_at >= :startDateTime
-			AND created_at < :endDateTime
+			rl.recommendation_type AS "recommendationType",
+			rl.product_id AS "productId",
+			COALESCE(
+				NULLIF(
+					TRIM(
+						MAX(
+							CONCAT_WS(
+								' ',
+								NULLIF(TRIM(sp.brand_name), ''),
+								NULLIF(TRIM(sp.product_name), '')
+							)
+						)
+					),
+					''
+				),
+				NULLIF(
+					TRIM(
+						MAX(
+							CONCAT_WS(
+								' ',
+								NULLIF(TRIM(rp.brand_name), ''),
+								NULLIF(TRIM(rp.product_name), '')
+							)
+						)
+					),
+					''
+				)
+			) AS "productName",
+			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "clickCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) AS "purchaseCount"
+		FROM recommendation_service.recommendation_logs rl
+		LEFT JOIN shopping_service.products sp
+			ON sp.product_id = rl.product_id
+		LEFT JOIN recommendation_service.products rp
+			ON rp.product_id = rl.product_id
+		WHERE rl.created_at >= :startDateTime
+			AND rl.created_at < :endDateTime
 			AND (
 				CAST(:recommendationType AS VARCHAR) IS NULL
-				OR recommendation_type = CAST(:recommendationType AS VARCHAR)
+				OR rl.recommendation_type = CAST(:recommendationType AS VARCHAR)
 			)
 			AND (
 				CAST(:productId AS BIGINT) IS NULL
-				OR product_id = CAST(:productId AS BIGINT)
+				OR rl.product_id = CAST(:productId AS BIGINT)
 			)
-		GROUP BY recommendation_type, product_id
+			AND (
+				NULLIF(
+					TRIM(
+						CONCAT_WS(
+							' ',
+							NULLIF(TRIM(sp.brand_name), ''),
+							NULLIF(TRIM(sp.product_name), '')
+						)
+					),
+					''
+				) IS NOT NULL
+				OR NULLIF(
+					TRIM(
+						CONCAT_WS(
+							' ',
+							NULLIF(TRIM(rp.brand_name), ''),
+							NULLIF(TRIM(rp.product_name), '')
+						)
+					),
+					''
+				) IS NOT NULL
+			)
+		GROUP BY rl.recommendation_type, rl.product_id
+		HAVING
+			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) >= 10
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) > 0
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) > 0
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0)
+				< COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0)
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0)
+				<= COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0)
 		ORDER BY
-			COALESCE(SUM(CASE WHEN is_purchased = TRUE THEN 1 ELSE 0 END), 0) DESC,
-			COUNT(*) DESC,
-			product_id ASC
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) DESC,
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) DESC,
+			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) DESC,
+			rl.product_id ASC
 		LIMIT :limit
 		""", nativeQuery = true)
 	List<RecommendationPurchaseConversionProductProjection> findTopProducts(

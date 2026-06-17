@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.DisplayName;
@@ -44,7 +45,8 @@ class AdminProductServiceTest {
 	void getProductsWithFilters() {
 		when(productRepository.findAdminProductsWithKeyword(
 			eq("우유"),
-			eq(10L),
+			eq(List.of(10L)),
+			eq(true),
 			eq(SaleStatus.ON_SALE),
 			isNull(),
 			any(Pageable.class)
@@ -53,6 +55,7 @@ class AdminProductServiceTest {
 		AdminProductPageResponse response = adminProductService.getProducts(
 			" 우유 ",
 			10L,
+			null,
 			SaleStatus.ON_SALE,
 			null,
 			0,
@@ -66,8 +69,46 @@ class AdminProductServiceTest {
 
 		verify(productRepository).findAdminProductsWithKeyword(
 			eq("우유"),
-			eq(10L),
+			eq(List.of(10L)),
+			eq(true),
 			eq(SaleStatus.ON_SALE),
+			isNull(),
+			any(Pageable.class)
+		);
+	}
+
+	@Test
+	@DisplayName("관리자 상품 목록 조회 시 여러 카테고리 조건을 적용한다")
+	void getProductsWithCategoryIds() {
+		List<Long> categoryIds = List.of(10L, 20L, 30L);
+
+		when(productRepository.findAdminProductsWithoutKeyword(
+			eq(categoryIds),
+			eq(true),
+			isNull(),
+			isNull(),
+			any(Pageable.class)
+		)).thenReturn(Page.empty());
+
+		AdminProductPageResponse response = adminProductService.getProducts(
+			null,
+			null,
+			categoryIds,
+			null,
+			null,
+			0,
+			20,
+			"createdAt",
+			"desc"
+		);
+
+		assertThat(response).isNotNull();
+		assertThat(response.products()).isEmpty();
+
+		verify(productRepository).findAdminProductsWithoutKeyword(
+			eq(categoryIds),
+			eq(true),
+			isNull(),
 			isNull(),
 			any(Pageable.class)
 		);
@@ -77,7 +118,8 @@ class AdminProductServiceTest {
 	@DisplayName("관리자 상품 목록 조회 시 검색어가 공백이면 null 조건으로 조회한다")
 	void getProductsWithBlankKeyword() {
 		when(productRepository.findAdminProductsWithoutKeyword(
-			isNull(),
+			eq(List.of(-1L)),
+			eq(false),
 			isNull(),
 			isNull(),
 			any(Pageable.class)
@@ -85,6 +127,7 @@ class AdminProductServiceTest {
 
 		AdminProductPageResponse response = adminProductService.getProducts(
 			" ",
+			null,
 			null,
 			null,
 			null,
@@ -97,7 +140,8 @@ class AdminProductServiceTest {
 		assertThat(response).isNotNull();
 
 		verify(productRepository).findAdminProductsWithoutKeyword(
-			isNull(),
+			eq(List.of(-1L)),
+			eq(false),
 			isNull(),
 			isNull(),
 			any(Pageable.class)
@@ -108,13 +152,15 @@ class AdminProductServiceTest {
 	@DisplayName("관리자 상품 목록 조회 시 AI 카테고리 검토 대상 필터를 적용한다")
 	void getProductsWithCategoryReviewRequiredFilter() {
 		when(productRepository.findAdminProductsWithoutKeyword(
-			isNull(),
+			eq(List.of(-1L)),
+			eq(false),
 			isNull(),
 			eq(true),
 			any(Pageable.class)
 		)).thenReturn(Page.empty());
 
 		AdminProductPageResponse response = adminProductService.getProducts(
+			null,
 			null,
 			null,
 			null,
@@ -129,7 +175,8 @@ class AdminProductServiceTest {
 		assertThat(response.products()).isEmpty();
 
 		verify(productRepository).findAdminProductsWithoutKeyword(
-			isNull(),
+			eq(List.of(-1L)),
+			eq(false),
 			isNull(),
 			eq(true),
 			any(Pageable.class)
@@ -141,7 +188,8 @@ class AdminProductServiceTest {
 	void getProductsWithKeywordAndCategoryReviewRequiredFilter() {
 		when(productRepository.findAdminProductsWithKeyword(
 			eq("카레"),
-			isNull(),
+			eq(List.of(-1L)),
+			eq(false),
 			isNull(),
 			eq(true),
 			any(Pageable.class)
@@ -149,6 +197,7 @@ class AdminProductServiceTest {
 
 		AdminProductPageResponse response = adminProductService.getProducts(
 			" 카레 ",
+			null,
 			null,
 			null,
 			true,
@@ -163,7 +212,8 @@ class AdminProductServiceTest {
 
 		verify(productRepository).findAdminProductsWithKeyword(
 			eq("카레"),
-			isNull(),
+			eq(List.of(-1L)),
+			eq(false),
 			isNull(),
 			eq(true),
 			any(Pageable.class)
@@ -206,6 +256,7 @@ class AdminProductServiceTest {
 			null,
 			null,
 			null,
+			null,
 			0,
 			101,
 			"createdAt",
@@ -219,6 +270,7 @@ class AdminProductServiceTest {
 	@DisplayName("관리자 상품 목록 조회 시 지원하지 않는 정렬 기준이면 예외가 발생한다")
 	void throwExceptionWhenInvalidSortType() {
 		assertThatThrownBy(() -> adminProductService.getProducts(
+			null,
 			null,
 			null,
 			null,
