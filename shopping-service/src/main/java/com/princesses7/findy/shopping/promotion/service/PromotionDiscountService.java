@@ -68,7 +68,7 @@ public class PromotionDiscountService {
 			);
 		}
 
-		if (promotion.getPromotionType() == PromotionType.BOGO) {
+		if (promotion.getPromotionType().isBogoLike()) {
 			return calculateBogoPromotion(
 				promotionProduct,
 				quantity,

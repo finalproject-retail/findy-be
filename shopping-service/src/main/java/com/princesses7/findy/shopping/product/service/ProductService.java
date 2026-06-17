@@ -2,9 +2,9 @@ package com.princesses7.findy.shopping.product.service;
 
 import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -29,6 +29,9 @@ import com.princesses7.findy.shopping.product.dto.response.ProductStockResponse;
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.exception.ProductException;
 import com.princesses7.findy.shopping.product.repository.ProductRepository;
+import com.princesses7.findy.shopping.promotion.entity.PromotionProduct;
+import com.princesses7.findy.shopping.promotion.entity.PromotionStatus;
+import com.princesses7.findy.shopping.promotion.repository.PromotionProductRepository;
 import com.princesses7.findy.shopping.search.service.SearchKeywordRankingService;
 import com.princesses7.findy.shopping.store.StoreIdSupport;
 
@@ -56,6 +59,7 @@ public class ProductService {
 	private final SearchKeywordRankingService searchKeywordRankingService;
 	private final ProductRankingService productRankingService;
 	private final ShoppingAnalyticsEventService shoppingAnalyticsEventService;
+	private final PromotionProductRepository promotionProductRepository;
 
 	public ProductPageResponse getProducts(
 		Long categoryId,
@@ -153,10 +157,12 @@ public class ProductService {
 			)
 			.orElse(null);
 
+		PromotionProduct promotionProduct = findBestPromotionProduct(productId);
+
 		productRankingService.recordView(productId);
 		publishProductViewed(userId, productId, viewSource, promotionId, pinGridId);
 
-		return ProductDetailResponse.from(product, inventory);
+		return ProductDetailResponse.from(product, inventory, promotionProduct);
 	}
 
 	@Transactional(readOnly = true)
@@ -164,7 +170,9 @@ public class ProductService {
 		int size,
 		long storeId
 	) {
-		int resolvedSize = Math.max(1, Math.min(size, 20));
+		validateSectionSize(size);
+
+		int resolvedSize = Math.min(size, MAX_SECTION_SIZE);
 		long resolvedStoreId = StoreIdSupport.resolve(storeId);
 
 		List<Long> productIds = productRankingService.getFindyMartRecommendedProductIds(
@@ -172,19 +180,18 @@ public class ProductService {
 		);
 
 		if (!productIds.isEmpty()) {
-			List<Product> products = productRepository.findAllById(productIds);
-
-			Map<Long, Product> productMap = products.stream()
-				.collect(Collectors.toMap(Product::getProductId, product -> product));
-
-			List<Product> orderedProducts = productIds.stream()
-				.map(productMap::get)
-				.filter(Objects::nonNull)
+			List<Product> recommendedProducts = findProductsByRanking(
+				productIds,
+				null,
+				null,
+				resolvedStoreId
+			)
+				.stream()
 				.limit(resolvedSize)
 				.toList();
 
-			if (!orderedProducts.isEmpty()) {
-				return toProductResponses(orderedProducts, resolvedStoreId);
+			if (!recommendedProducts.isEmpty()) {
+				return toProductResponses(recommendedProducts, resolvedStoreId);
 			}
 		}
 
@@ -355,12 +362,56 @@ public class ProductService {
 				(existingInventory, replacementInventory) -> existingInventory
 			));
 
+		Map<Long, PromotionProduct> promotionProductMap = promotionProductRepository
+			.findApplicablePromotionProductsByProductIds(
+				productIds,
+				PromotionStatus.ENDED,
+				LocalDateTime.now()
+			)
+			.stream()
+			.collect(Collectors.toMap(
+				PromotionProduct::getProductId,
+				Function.identity(),
+				this::selectBetterPromotionProduct
+			));
+
 		return products.stream()
 			.map(product -> ProductResponse.from(
 				product,
-				inventoryMap.get(product.getProductId())
+				inventoryMap.get(product.getProductId()),
+				promotionProductMap.get(product.getProductId())
 			))
 			.toList();
+	}
+
+	private PromotionProduct findBestPromotionProduct(Long productId) {
+		return promotionProductRepository
+			.findApplicablePromotionProductsByProductIds(
+				List.of(productId),
+				PromotionStatus.ENDED,
+				LocalDateTime.now()
+			)
+			.stream()
+			.reduce(this::selectBetterPromotionProduct)
+			.orElse(null);
+	}
+
+	private PromotionProduct selectBetterPromotionProduct(
+		PromotionProduct current,
+		PromotionProduct candidate
+	) {
+		Integer currentPrice = current.getPromotionPrice();
+		Integer candidatePrice = candidate.getPromotionPrice();
+
+		if (currentPrice == null) {
+			return candidate;
+		}
+
+		if (candidatePrice == null) {
+			return current;
+		}
+
+		return candidatePrice < currentPrice ? candidate : current;
 	}
 
 	private void validatePageRequest(int page, int size) {
@@ -376,7 +427,6 @@ public class ProductService {
 	}
 
 	private Sort createSort(String sortBy, String direction) {
-		// TODO: 인기순 정렬은 Redis 랭킹 데이터 또는 상품 조회 로그 연동 시 별도 구현
 		String sortProperty = sortBy == null || sortBy.isBlank()
 			? "createdAt"
 			: sortBy;

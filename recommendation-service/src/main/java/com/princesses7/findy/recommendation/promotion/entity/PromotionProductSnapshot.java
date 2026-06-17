@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "promotion_products")
+@Table(schema = "shopping_service", name = "promotion_products")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PromotionProductSnapshot {
 

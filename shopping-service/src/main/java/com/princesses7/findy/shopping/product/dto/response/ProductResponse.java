@@ -1,9 +1,12 @@
 package com.princesses7.findy.shopping.product.dto.response;
 
+import java.math.BigDecimal;
+
 import com.princesses7.findy.shopping.inventory.entity.Inventory;
 import com.princesses7.findy.shopping.inventory.entity.StockStatus;
 import com.princesses7.findy.shopping.product.entity.Product;
 import com.princesses7.findy.shopping.product.entity.SaleStatus;
+import com.princesses7.findy.shopping.promotion.entity.PromotionProduct;
 
 public record ProductResponse(
 	Long productId,
@@ -12,6 +15,10 @@ public record ProductResponse(
 	String productName,
 	String barcode,
 	Integer originalPrice,
+	Integer salePrice,
+	BigDecimal discountRate,
+	Long promotionId,
+	String promotionName,
 	String description,
 	String imageUrl,
 	String salesUnit,
@@ -26,13 +33,28 @@ public record ProductResponse(
 ) {
 
 	public static ProductResponse from(Product product, Inventory inventory) {
+		return from(product, inventory, null);
+	}
+
+	public static ProductResponse from(
+		Product product,
+		Inventory inventory,
+		PromotionProduct promotionProduct
+	) {
+		Integer originalPrice = product.getOriginalPrice();
+		Integer salePrice = resolveSalePrice(product, promotionProduct);
+
 		return new ProductResponse(
 			product.getProductId(),
 			product.getCategoryId(),
 			product.getBrandName(),
 			product.getProductName(),
 			product.getBarcode(),
-			product.getOriginalPrice(),
+			originalPrice,
+			salePrice,
+			promotionProduct == null ? null : promotionProduct.getPromotion().getDiscountRate(),
+			promotionProduct == null ? null : promotionProduct.getPromotion().getPromotionId(),
+			promotionProduct == null ? null : promotionProduct.getPromotion().getPromotionName(),
 			product.getDescription(),
 			product.getImageUrl(),
 			product.getSalesUnit(),
@@ -45,6 +67,17 @@ public record ProductResponse(
 			inventory == null ? null : inventory.getStockStatus().name(),
 			createStockBadgeText(inventory)
 		);
+	}
+
+	private static Integer resolveSalePrice(
+		Product product,
+		PromotionProduct promotionProduct
+	) {
+		if (promotionProduct != null && promotionProduct.getPromotionPrice() != null) {
+			return promotionProduct.getPromotionPrice();
+		}
+
+		return product.getOriginalPrice();
 	}
 
 	private static String createStockBadgeText(Inventory inventory) {

@@ -16,6 +16,8 @@ public record ProductRecommendationResponse(
 	Integer originalPrice,
 	Integer salePrice,
 	BigDecimal discountRate,
+	Long promotionId,
+	String promotionName,
 	double score,
 	RecommendationType recommendationType,
 	String reason
@@ -46,6 +48,12 @@ public record ProductRecommendationResponse(
 		Integer originalPrice = product.getOriginalPrice();
 		Integer salePrice = calculateSalePrice(originalPrice, promotionProduct);
 		BigDecimal discountRate = calculateDiscountRate(originalPrice, salePrice);
+		Long promotionId = promotionProduct == null || promotionProduct.getPromotion() == null
+			? null
+			: promotionProduct.getPromotion().getPromotionId();
+		String promotionName = promotionProduct == null || promotionProduct.getPromotion() == null
+			? null
+			: promotionProduct.getPromotion().getPromotionName();
 
 		return new ProductRecommendationResponse(
 			null,
@@ -56,6 +64,8 @@ public record ProductRecommendationResponse(
 			originalPrice,
 			salePrice,
 			discountRate,
+			promotionId,
+			promotionName,
 			round(score),
 			recommendationType,
 			reason
@@ -72,6 +82,8 @@ public record ProductRecommendationResponse(
 			originalPrice,
 			salePrice,
 			discountRate,
+			promotionId,
+			promotionName,
 			score,
 			recommendationType,
 			reason
@@ -87,7 +99,7 @@ public record ProductRecommendationResponse(
 		}
 
 		if (promotionProduct == null || promotionProduct.getPromotionPrice() == null) {
-			return originalPrice;
+			return calculateRateDiscountSalePrice(originalPrice, promotionProduct);
 		}
 
 		Integer promotionPrice = promotionProduct.getPromotionPrice();
@@ -97,6 +109,30 @@ public record ProductRecommendationResponse(
 		}
 
 		return promotionPrice;
+	}
+
+	private static Integer calculateRateDiscountSalePrice(
+		Integer originalPrice,
+		PromotionProductSnapshot promotionProduct
+	) {
+		if (promotionProduct == null || promotionProduct.getPromotion() == null) {
+			return originalPrice;
+		}
+
+		BigDecimal promotionDiscountRate = promotionProduct.getPromotion().getDiscountRate();
+
+		if (promotionDiscountRate == null || promotionDiscountRate.compareTo(BigDecimal.ZERO) <= 0) {
+			return originalPrice;
+		}
+
+		if (promotionDiscountRate.compareTo(BigDecimal.valueOf(100)) >= 0) {
+			return originalPrice;
+		}
+
+		return BigDecimal.valueOf(originalPrice)
+			.multiply(BigDecimal.valueOf(100).subtract(promotionDiscountRate))
+			.divide(BigDecimal.valueOf(100), 0, RoundingMode.DOWN)
+			.intValue();
 	}
 
 	private static BigDecimal calculateDiscountRate(

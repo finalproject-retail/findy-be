@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "promotions")
+@Table(schema = "shopping_service", name = "promotions")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PromotionSnapshot {
 
@@ -66,7 +66,7 @@ public class PromotionSnapshot {
 			return createDiscountText();
 		}
 
-		if (promotionType == PromotionType.BOGO) {
+		if (promotionType.isBogoLike()) {
 			return createBogoText();
 		}
 
