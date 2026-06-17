@@ -4,9 +4,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.PageRequest;
@@ -50,6 +52,9 @@ public class PersonalizedRecommendationService {
 	private static final int DEFAULT_SIZE = 10;
 	private static final int MAX_SIZE = 30;
 	private static final int FALLBACK_MULTIPLIER = 3;
+	private static final double PREFERRED_CATEGORY_SIMILARITY = 0.90;
+	private static final double DEFAULT_PREFERENCE_SIMILARITY = 0.50;
+	private static final double MAX_ONBOARDING_MATCH_BOOST = 0.25;
 	private static final int POPULAR_LOOKBACK_DAYS = 14;
 	private static final int MIN_CANDIDATE_SIZE = 500;
 	private static final int CANDIDATE_MULTIPLIER = 100;
@@ -149,9 +154,10 @@ public class PersonalizedRecommendationService {
 			return List.of();
 		}
 
+		Set<Long> preferredCategoryIds = findPreferredCategoryAndDescendantIds(userPreference);
 		List<ProductSnapshot> products = productRepository.findByCategoryIdInAndDeletedAtIsNull(
-			userPreference.preferredCategoryIds(),
-			PageRequest.of(0, size * FALLBACK_MULTIPLIER)
+			preferredCategoryIds,
+			PageRequest.of(0, calculateCandidateSize(size))
 		);
 
 		if (products.isEmpty()) {
@@ -175,9 +181,9 @@ public class PersonalizedRecommendationService {
 			.map(product -> {
 				String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
 
-				double preferenceSimilarityScore = userPreference.hasPreferredCategory(product.getCategoryId())
-					? 0.72
-					: 0.50;
+				double preferenceSimilarityScore = preferredCategoryIds.contains(product.getCategoryId())
+					? PREFERRED_CATEGORY_SIMILARITY
+					: DEFAULT_PREFERENCE_SIMILARITY;
 
 				double score = scorer.calculate(
 					userPreference,
@@ -186,6 +192,7 @@ public class PersonalizedRecommendationService {
 					preferenceSimilarityScore,
 					purchaseHistory
 				);
+				score = applyOnboardingMatchBoost(score, userPreference, preferredCategoryIds, product, categoryName);
 
 				return ProductRecommendationResponse.from(
 					product,
@@ -236,10 +243,12 @@ public class PersonalizedRecommendationService {
 				.map(ProductSnapshot::getCategoryId)
 				.toList()
 		);
+		Set<Long> preferredCategoryIds = findPreferredCategoryAndDescendantIds(userPreference);
 
 		return candidateEmbeddings.stream()
 			.map(productEmbedding -> toRecommendationResponse(
 				userPreference,
+				preferredCategoryIds,
 				productEmbedding,
 				productMap,
 				promotionProductMap,
@@ -275,6 +284,7 @@ public class PersonalizedRecommendationService {
 
 	private ProductRecommendationResponse toRecommendationResponse(
 		UserPreferenceResponse userPreference,
+		Set<Long> preferredCategoryIds,
 		ProductEmbedding productEmbedding,
 		Map<Long, ProductSnapshot> productMap,
 		Map<Long, PromotionProductSnapshot> promotionProductMap,
@@ -302,6 +312,7 @@ public class PersonalizedRecommendationService {
 			similarityScore,
 			purchaseHistory
 		);
+		score = applyOnboardingMatchBoost(score, userPreference, preferredCategoryIds, product, categoryName);
 
 		return ProductRecommendationResponse.from(
 			product,
@@ -605,6 +616,95 @@ public class PersonalizedRecommendationService {
 				CategorySnapshot::getCategoryName,
 				(left, right) -> left
 			));
+	}
+
+	private double applyOnboardingMatchBoost(
+		double score,
+		UserPreferenceResponse userPreference,
+		Set<Long> preferredCategoryIds,
+		ProductSnapshot product,
+		String categoryName
+	) {
+		double boost = 0.0;
+
+		if (preferredCategoryIds.contains(product.getCategoryId())) {
+			boost += 0.18;
+		}
+
+		if (containsAnyOnboardingKeyword(categoryName, userPreference.preferredCategories())
+			|| containsAnyOnboardingKeyword(productText(product), userPreference.preferredCategories())) {
+			boost += 0.04;
+		}
+
+		if (containsAnyOnboardingKeyword(productText(product, categoryName), userPreference.shoppingStyles())) {
+			boost += 0.08;
+		}
+
+		return Math.min(score + Math.min(boost, MAX_ONBOARDING_MATCH_BOOST), 1.0);
+	}
+
+	private Set<Long> findPreferredCategoryAndDescendantIds(UserPreferenceResponse userPreference) {
+		if (userPreference.preferredCategoryIds().isEmpty()) {
+			return Set.of();
+		}
+
+		Map<Long, List<Long>> childCategoryIdsByParentId = categoryRepository.findAll()
+			.stream()
+			.filter(CategorySnapshot::isActive)
+			.filter(category -> category.getParentCategoryId() != null)
+			.collect(Collectors.groupingBy(
+				CategorySnapshot::getParentCategoryId,
+				Collectors.mapping(CategorySnapshot::getCategoryId, Collectors.toList())
+			));
+
+		Set<Long> categoryIds = new HashSet<>(userPreference.preferredCategoryIds());
+		List<Long> cursor = new ArrayList<>(userPreference.preferredCategoryIds());
+
+		for (int index = 0; index < cursor.size(); index++) {
+			Long categoryId = cursor.get(index);
+
+			for (Long childCategoryId : childCategoryIdsByParentId.getOrDefault(categoryId, List.of())) {
+				if (categoryIds.add(childCategoryId)) {
+					cursor.add(childCategoryId);
+				}
+			}
+		}
+
+		return categoryIds;
+	}
+
+	private boolean containsAnyOnboardingKeyword(
+		String target,
+		List<String> keywords
+	) {
+		if (target == null || target.isBlank() || keywords == null || keywords.isEmpty()) {
+			return false;
+		}
+
+		String normalizedTarget = target.toLowerCase();
+
+		return keywords.stream()
+			.filter(keyword -> keyword != null && !keyword.isBlank())
+			.map(String::toLowerCase)
+			.anyMatch(normalizedTarget::contains);
+	}
+
+	private String productText(ProductSnapshot product) {
+		return productText(product, "");
+	}
+
+	private String productText(ProductSnapshot product, String categoryName) {
+		return String.join(" ",
+			nullToEmpty(product.getProductName()),
+			nullToEmpty(product.getBrandName()),
+			nullToEmpty(product.getDescription()),
+			nullToEmpty(product.getBadgeText()),
+			nullToEmpty(categoryName)
+		);
+	}
+
+	private String nullToEmpty(String value) {
+		return value == null ? "" : value;
 	}
 
 	private int calculateCandidateSize(int size) {
