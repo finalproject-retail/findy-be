@@ -141,16 +141,32 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		@Param("saleStatus") SaleStatus saleStatus
 	);
 
-	default List<Product> findMartRecommendedProducts(
-		Long storeId,
+	@Query("""
+		SELECT p
+		FROM Product p
+		JOIN Inventory i
+		  ON i.product = p
+		 AND i.storeId = :storeId
+		WHERE p.deletedAt IS NULL
+		  AND p.saleStatus = com.princesses7.findy.shopping.product.entity.SaleStatus.ON_SALE
+		  AND i.stockQuantity > 0
+		ORDER BY
+		  CASE
+		    WHEN p.externalSource = 'NAVER_OFFICIAL' THEN 0
+		    WHEN p.externalSource = 'NAVER' THEN 1
+		    ELSE 2
+		  END ASC,
+		  CASE
+		    WHEN i.stockQuantity BETWEEN 5 AND 80 THEN 0
+		    ELSE 1
+		  END ASC,
+		  p.createdAt DESC,
+		  p.productId DESC
+		""")
+	List<Product> findMartRecommendedProducts(
+		@Param("storeId") Long storeId,
 		Pageable pageable
-	) {
-		return findMartRecommendedProducts(
-			storeId,
-			SaleStatus.ON_SALE,
-			pageable
-		);
-	}
+	);
 
 	@Query("""
 		SELECT p
