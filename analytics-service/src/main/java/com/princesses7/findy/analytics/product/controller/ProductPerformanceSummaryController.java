@@ -1,6 +1,7 @@
 package com.princesses7.findy.analytics.product.controller;
 
 import java.time.LocalDate;
+import java.util.List;
 
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
@@ -39,6 +40,9 @@ public class ProductPerformanceSummaryController {
 		Long storeId,
 
 		@RequestParam(required = false)
+		List<Long> categoryIds,
+
+		@RequestParam(required = false)
 		@Min(1)
 		@Max(100)
 		Integer limit
@@ -47,6 +51,7 @@ public class ProductPerformanceSummaryController {
 			fromDate,
 			toDate,
 			storeId,
+			categoryIds,
 			limit
 		);
 
