@@ -69,7 +69,7 @@ public class ProductPerformanceSummaryService {
 			getTotalOrderCount(summary),
 			getTotalOrderQuantity(summary),
 			getTotalSalesAmount(summary),
-			calculateRate(getTotalOrderQuantity(summary), getTotalViewCount(summary)),
+			calculateRate(getTotalOrderCount(summary), getTotalViewCount(summary)),
 			calculateAverageSalesAmount(getTotalSalesAmount(summary), getTotalOrderCount(summary)),
 			resolvedLimit,
 			productResponses
@@ -84,7 +84,7 @@ public class ProductPerformanceSummaryService {
 			.mapToObj(index -> ProductPerformanceItemResponse.of(
 				index + 1,
 				topProducts.get(index),
-				calculateRate(topProducts.get(index).orderQuantity(), topProducts.get(index).viewCount()),
+				calculateRate(topProducts.get(index).orderCount(), topProducts.get(index).viewCount()),
 				calculateRate(topProducts.get(index).salesAmount(), totalSalesAmount)
 			))
 			.toList();
