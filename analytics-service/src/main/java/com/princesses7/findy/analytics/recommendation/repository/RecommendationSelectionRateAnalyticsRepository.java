@@ -332,11 +332,21 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 					)
 				) AS product_name,
 				COALESCE(pls.impression_count, 0) AS impression_count,
-				COALESCE(pls.selection_count, 0) AS selection_count,
-				LEAST(
-					COALESCE(pls.purchase_count, 0),
-					COALESCE(pls.selection_count, 0)
-				) AS purchase_count
+		                     CASE
+		                     	WHEN COALESCE(pls.impression_count, 0) <= 1 THEN COALESCE(pls.selection_count, 0)
+		                     	WHEN COALESCE(pls.selection_count, 0) >= COALESCE(pls.impression_count, 0)
+		                     		THEN COALESCE(pls.impression_count, 0) - 1
+		                     	ELSE COALESCE(pls.selection_count, 0)
+		                     END AS selection_count,
+		                     LEAST(
+		                     	COALESCE(pls.purchase_count, 0),
+		                     	CASE
+		                     		WHEN COALESCE(pls.impression_count, 0) <= 1 THEN COALESCE(pls.selection_count, 0)
+		                     		WHEN COALESCE(pls.selection_count, 0) >= COALESCE(pls.impression_count, 0)
+		                     			THEN COALESCE(pls.impression_count, 0) - 1
+		                     		ELSE COALESCE(pls.selection_count, 0)
+		                     	END
+		                     ) AS purchase_count
 			FROM active_promotion_products app
 			LEFT JOIN promotion_log_stats pls
 				ON pls.product_id = app.product_id
@@ -364,9 +374,8 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 		WHERE product_name IS NOT NULL
 		GROUP BY product_id
 		HAVING
-			MAX(impression_count) >= 10
+			MAX(impression_count) > 0
 			AND MAX(selection_count) > 0
-			AND MAX(selection_count) < MAX(impression_count)
 			AND MAX(purchase_count) <= MAX(selection_count)
 		ORDER BY
 			MAX(purchase_count) DESC,
