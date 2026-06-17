@@ -89,7 +89,7 @@ class ZoneVisitRateAnalyticsServiceTest {
 		assertThat(response.zoneVisitRates().get(0).visitRate()).isEqualByComparingTo("100.00");
 		assertThat(response.zoneMovements()).hasSize(1);
 		assertThat(response.zoneMovements().get(0).fromZoneName()).isEqualTo("신선 식품");
-		assertThat(response.zoneMovements().get(0).toZoneName()).isEqualTo("신선 식품");
+		assertThat(response.zoneMovements().get(0).toZoneName()).isEqualTo("가공/냉동 식품");
 	}
 
 	@Test
