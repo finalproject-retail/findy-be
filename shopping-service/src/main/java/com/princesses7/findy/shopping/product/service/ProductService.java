@@ -78,7 +78,7 @@ public class ProductService {
 			searchKeywordRankingService.record(normalizedKeyword);
 		}
 
-		if (isPopularSort(sortBy)) {
+		if (isPopularSort(sortBy) && categoryId == null && normalizedKeyword == null) {
 			return getProductsByPopularRanking(
 				categoryId,
 				normalizedKeyword,
@@ -88,7 +88,9 @@ public class ProductService {
 			);
 		}
 
-		Sort sort = createSort(sortBy, direction);
+		String resolvedSortBy = isPopularSort(sortBy) ? "createdAt" : sortBy;
+
+		Sort sort = createSort(resolvedSortBy, direction);
 		Pageable pageable = PageRequest.of(page, size, sort);
 
 		Page<Product> products = findProducts(categoryId, normalizedKeyword, pageable);
