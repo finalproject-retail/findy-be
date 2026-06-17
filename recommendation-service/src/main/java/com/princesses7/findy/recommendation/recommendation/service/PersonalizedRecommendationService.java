@@ -174,10 +174,16 @@ public class PersonalizedRecommendationService {
 				.map(ProductSnapshot::getProductId)
 				.toList()
 		);
+		Map<Long, InventorySnapshot> availableInventoryMap = findAvailableInventoryMap(
+			storeId,
+			products.stream()
+				.map(ProductSnapshot::getProductId)
+				.toList()
+		);
 
 		return products.stream()
 			.filter(RecommendationResultPolicy::isDisplayableProduct)
-			.filter(product -> hasAvailableStock(product, storeId))
+			.filter(product -> availableInventoryMap.containsKey(product.getProductId()))
 			.map(product -> {
 				String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
 
