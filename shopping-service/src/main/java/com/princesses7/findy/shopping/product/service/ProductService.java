@@ -4,6 +4,7 @@ import static com.princesses7.findy.shopping.global.exception.ErrorCode.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -134,20 +135,6 @@ public class ProductService {
 		return toProductResponses(popularProducts, resolvedStoreId);
 	}
 
-	public List<ProductResponse> getMartRecommendedProducts(int size, long storeId) {
-		validateSectionSize(size);
-
-		long resolvedStoreId = StoreIdSupport.resolve(storeId);
-
-		return toProductResponses(
-			productRepository.findMartRecommendedProducts(
-				resolvedStoreId,
-				PageRequest.of(0, size)
-			),
-			resolvedStoreId
-		);
-	}
-
 	public ProductDetailResponse getProductDetail(
 		Long productId,
 		long storeId,
@@ -170,6 +157,43 @@ public class ProductService {
 		publishProductViewed(userId, productId, viewSource, promotionId, pinGridId);
 
 		return ProductDetailResponse.from(product, inventory);
+	}
+
+	@Transactional(readOnly = true)
+	public List<ProductResponse> getMartRecommendedProducts(
+		int size,
+		long storeId
+	) {
+		int resolvedSize = Math.max(1, Math.min(size, 20));
+		long resolvedStoreId = StoreIdSupport.resolve(storeId);
+
+		List<Long> productIds = productRankingService.getFindyMartRecommendedProductIds(
+			resolvedSize * SECTION_CANDIDATE_MULTIPLIER
+		);
+
+		if (!productIds.isEmpty()) {
+			List<Product> products = productRepository.findAllById(productIds);
+
+			Map<Long, Product> productMap = products.stream()
+				.collect(Collectors.toMap(Product::getProductId, product -> product));
+
+			List<Product> orderedProducts = productIds.stream()
+				.map(productMap::get)
+				.filter(Objects::nonNull)
+				.limit(resolvedSize)
+				.toList();
+
+			if (!orderedProducts.isEmpty()) {
+				return toProductResponses(orderedProducts, resolvedStoreId);
+			}
+		}
+
+		List<Product> fallbackProducts = productRepository.findMartRecommendedProducts(
+			resolvedStoreId,
+			PageRequest.of(0, resolvedSize)
+		);
+
+		return toProductResponses(fallbackProducts, resolvedStoreId);
 	}
 
 	private void publishProductViewed(
