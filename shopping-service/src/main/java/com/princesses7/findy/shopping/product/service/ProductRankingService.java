@@ -2,7 +2,10 @@ package com.princesses7.findy.shopping.product.service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -18,8 +21,11 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class ProductRankingService {
 
-	private static final String KEY_PREFIX = "ranking:product-view:daily:";
-	private static final int EXPIRE_DAYS = 2;
+	private static final String PRODUCT_VIEW_KEY_PREFIX = "ranking:product-view:daily:";
+	private static final String FINDY_MART_RECOMMEND_KEY_PREFIX = "ranking:findy-mart-recommend:daily:";
+
+	private static final int LOOKBACK_DAYS = 7;
+	private static final int RETENTION_DAYS = 14;
 
 	private final StringRedisTemplate redisTemplate;
 
@@ -29,33 +35,18 @@ public class ProductRankingService {
 		}
 
 		try {
-			String key = createTodayKey();
+			String key = createKey(PRODUCT_VIEW_KEY_PREFIX, LocalDate.now());
 			String value = String.valueOf(productId);
 
 			redisTemplate.opsForZSet().incrementScore(key, value, 1);
-			redisTemplate.expire(key, Duration.ofDays(EXPIRE_DAYS));
+			redisTemplate.expire(key, Duration.ofDays(RETENTION_DAYS));
 		} catch (RuntimeException exception) {
 			log.warn("상품 조회 랭킹 기록에 실패했습니다. productId={}", productId, exception);
 		}
 	}
 
 	public List<Long> getAllPopularProductIds() {
-		try {
-			Set<String> values = redisTemplate.opsForZSet()
-				.reverseRange(createTodayKey(), 0, -1);
-
-			if (values == null || values.isEmpty()) {
-				return List.of();
-			}
-
-			return values.stream()
-				.map(this::parseProductId)
-				.flatMap(Optional::stream)
-				.toList();
-		} catch (RuntimeException exception) {
-			log.warn("전체 인기 상품 랭킹 조회에 실패했습니다.", exception);
-			return List.of();
-		}
+		return getRankedProductIds(PRODUCT_VIEW_KEY_PREFIX, null);
 	}
 
 	public List<Long> getPopularProductIds(int limit) {
@@ -63,27 +54,70 @@ public class ProductRankingService {
 			return List.of();
 		}
 
-		try {
-			Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
-				.reverseRangeWithScores(createTodayKey(), 0, limit - 1);
+		return getRankedProductIds(PRODUCT_VIEW_KEY_PREFIX, limit);
+	}
 
-			if (tuples == null || tuples.isEmpty()) {
+	public List<Long> getFindyMartRecommendedProductIds(int limit) {
+		if (limit < 1) {
+			return List.of();
+		}
+
+		return getRankedProductIds(FINDY_MART_RECOMMEND_KEY_PREFIX, limit);
+	}
+
+	private List<Long> getRankedProductIds(String keyPrefix, Integer limit) {
+		try {
+			Map<String, Double> scoreMap = new HashMap<>();
+
+			for (int i = 0; i < LOOKBACK_DAYS; i++) {
+				String key = createKey(keyPrefix, LocalDate.now().minusDays(i));
+
+				Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
+					.reverseRangeWithScores(key, 0, -1);
+
+				if (tuples == null || tuples.isEmpty()) {
+					continue;
+				}
+
+				for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+					String productId = tuple.getValue();
+					Double score = tuple.getScore();
+
+					if (productId == null || score == null) {
+						continue;
+					}
+
+					scoreMap.merge(productId, score, Double::sum);
+				}
+			}
+
+			if (scoreMap.isEmpty()) {
 				return List.of();
 			}
 
-			return tuples.stream()
-				.map(ZSetOperations.TypedTuple::getValue)
+			var stream = scoreMap.entrySet().stream()
+				.sorted(
+					Map.Entry.<String, Double>comparingByValue(Comparator.reverseOrder())
+						.thenComparing(Map.Entry.comparingByKey())
+				);
+
+			if (limit != null) {
+				stream = stream.limit(limit);
+			}
+
+			return stream
+				.map(Map.Entry::getKey)
 				.map(this::parseProductId)
 				.flatMap(Optional::stream)
 				.toList();
 		} catch (RuntimeException exception) {
-			log.warn("인기 상품 랭킹 조회에 실패했습니다.", exception);
+			log.warn("Redis 상품 랭킹 조회에 실패했습니다. keyPrefix={}", keyPrefix, exception);
 			return List.of();
 		}
 	}
 
-	private String createTodayKey() {
-		return KEY_PREFIX + LocalDate.now();
+	private String createKey(String keyPrefix, LocalDate date) {
+		return keyPrefix + date;
 	}
 
 	private Optional<Long> parseProductId(String value) {

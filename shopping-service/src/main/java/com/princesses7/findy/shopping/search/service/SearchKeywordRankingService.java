@@ -2,7 +2,10 @@ package com.princesses7.findy.shopping.search.service;
 
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -23,7 +26,10 @@ public class SearchKeywordRankingService {
 	private static final String KEY_PREFIX = "ranking:search:daily:";
 	private static final int DEFAULT_LIMIT = 10;
 	private static final int MAX_LIMIT = 20;
-	private static final int EXPIRE_DAYS = 2;
+
+	private static final int LOOKBACK_DAYS = 7;
+
+	private static final int RETENTION_DAYS = 14;
 
 	private final StringRedisTemplate redisTemplate;
 
@@ -35,10 +41,10 @@ public class SearchKeywordRankingService {
 		}
 
 		try {
-			String key = createTodayKey();
+			String key = createKey(LocalDate.now());
 
 			redisTemplate.opsForZSet().incrementScore(key, normalizedKeyword, 1);
-			redisTemplate.expire(key, Duration.ofDays(EXPIRE_DAYS));
+			redisTemplate.expire(key, Duration.ofDays(RETENTION_DAYS));
 		} catch (RuntimeException exception) {
 			log.warn("검색어 랭킹 기록에 실패했습니다. keyword={}", normalizedKeyword, exception);
 		}
@@ -48,31 +54,56 @@ public class SearchKeywordRankingService {
 		int resolvedLimit = resolveLimit(limit);
 
 		try {
-			Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
-				.reverseRangeWithScores(createTodayKey(), 0, resolvedLimit - 1);
+			Map<String, Double> scoreMap = new HashMap<>();
 
-			if (tuples == null || tuples.isEmpty()) {
+			for (int i = 0; i < LOOKBACK_DAYS; i++) {
+				String key = createKey(LocalDate.now().minusDays(i));
+
+				Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet()
+					.reverseRangeWithScores(key, 0, -1);
+
+				if (tuples == null || tuples.isEmpty()) {
+					continue;
+				}
+
+				for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+					String keyword = tuple.getValue();
+					Double score = tuple.getScore();
+
+					if (keyword == null || score == null) {
+						continue;
+					}
+
+					scoreMap.merge(keyword, score, Double::sum);
+				}
+			}
+
+			if (scoreMap.isEmpty()) {
 				return List.of();
 			}
 
 			AtomicInteger rank = new AtomicInteger(1);
 
-			return tuples.stream()
-				.filter(tuple -> tuple.getValue() != null)
-				.map(tuple -> new TrendingSearchKeywordResponse(
+			return scoreMap.entrySet().stream()
+				.sorted(
+					Map.Entry.<String, Double>comparingByValue(Comparator.reverseOrder())
+						.thenComparing(Map.Entry.comparingByKey())
+				)
+				.limit(resolvedLimit)
+				.map(entry -> new TrendingSearchKeywordResponse(
 					rank.getAndIncrement(),
-					tuple.getValue(),
-					tuple.getScore() == null ? 0L : tuple.getScore().longValue()
+					entry.getKey(),
+					entry.getValue().longValue()
 				))
 				.toList();
 		} catch (RuntimeException exception) {
-			log.warn("실시간 검색어 랭킹 조회에 실패했습니다.", exception);
+			log.warn("최근 7일 검색어 랭킹 조회에 실패했습니다.", exception);
 			return List.of();
 		}
 	}
 
-	private String createTodayKey() {
-		return KEY_PREFIX + LocalDate.now();
+	private String createKey(LocalDate date) {
+		return KEY_PREFIX + date;
 	}
 
 	private int resolveLimit(Integer limit) {
@@ -88,6 +119,6 @@ public class SearchKeywordRankingService {
 			return null;
 		}
 
-		return keyword.trim();
+		return keyword.trim().replaceAll("\\s+", " ");
 	}
 }

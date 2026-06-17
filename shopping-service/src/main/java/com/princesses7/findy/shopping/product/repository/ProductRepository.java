@@ -155,16 +155,41 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 	@Query("""
 		SELECT p
 		FROM Product p
+		JOIN Inventory i ON i.product = p
 		WHERE p.deletedAt IS NULL
 		  AND p.saleStatus = :saleStatus
-		  AND EXISTS (
-			SELECT 1
-			FROM Inventory i
-			WHERE i.product = p
-			  AND i.storeId = :storeId
-			  AND i.stockQuantity > 0
-		  )
-		ORDER BY p.createdAt DESC, p.productId ASC
+		  AND i.storeId = :storeId
+		  AND i.stockQuantity > 0
+		  AND p.originalPrice IS NOT NULL
+		  AND p.originalPrice > 0
+		  AND p.imageUrl IS NOT NULL
+		  AND p.imageUrl <> ''
+		  AND p.gridId IS NOT NULL
+		  AND (p.categoryReviewRequired IS NULL OR p.categoryReviewRequired = false)
+		ORDER BY
+		  CASE WHEN EXISTS (
+			  SELECT 1
+			  FROM PromotionProduct pp
+			  JOIN pp.promotion pr
+			  WHERE pp.productId = p.productId
+			    AND pr.status = com.princesses7.findy.shopping.promotion.entity.PromotionStatus.ACTIVE
+			    AND pr.startAt <= CURRENT_TIMESTAMP
+			    AND pr.endAt >= CURRENT_TIMESTAMP
+		  ) THEN 1 ELSE 0 END DESC,
+		  CASE WHEN p.badgeText IS NOT NULL AND p.badgeText <> '' THEN 1 ELSE 0 END DESC,
+		  CASE
+			  WHEN i.stockQuantity BETWEEN 6 AND 80 THEN 3
+			  WHEN i.stockQuantity BETWEEN 2 AND 5 THEN 2
+			  WHEN i.stockQuantity > 80 THEN 1
+			  ELSE 0
+		  END DESC,
+		  CASE
+			  WHEN p.originalPrice BETWEEN 1000 AND 30000 THEN 2
+			  WHEN p.originalPrice BETWEEN 30001 AND 100000 THEN 1
+			  ELSE 0
+		  END DESC,
+		  p.createdAt DESC,
+		  p.productId DESC
 		""")
 	List<Product> findMartRecommendedProducts(
 		@Param("storeId") Long storeId,
