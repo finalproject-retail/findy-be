@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.DefaultTypedTuple;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 
@@ -104,6 +105,14 @@ class SearchKeywordRankingServiceTest {
 				createTuple("라면", 5.0)
 			));
 
+		when(zSetOperations.reverseRangeWithScores(
+			argThat(key -> !key.equals(todayKey)
+				&& !key.equals(yesterdayKey)
+				&& !key.equals(twoDaysAgoKey)),
+			eq(0L),
+			eq(-1L)
+		)).thenReturn(Set.of());
+
 		List<TrendingSearchKeywordResponse> responses =
 			searchKeywordRankingService.getTrendingKeywords(10);
 
@@ -121,14 +130,14 @@ class SearchKeywordRankingServiceTest {
 		assertThat(responses.get(2).keyword()).isEqualTo("생수");
 		assertThat(responses.get(2).score()).isEqualTo(4);
 
-		verify(zSetOperations, times(7)).reverseRangeWithScores(anyString(), eq(0L), eq(-1L));
+		verify(zSetOperations, times(7))
+			.reverseRangeWithScores(anyString(), eq(0L), eq(-1L));
 	}
 
 	@Test
 	@DisplayName("limit이 null이면 기본 10개까지만 반환한다")
 	void getTrendingKeywordsWithDefaultLimit() {
 		when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-
 		when(zSetOperations.reverseRangeWithScores(anyString(), eq(0L), eq(-1L)))
 			.thenReturn(tupleSet(
 				createTuple("키워드1", 20.0),
@@ -154,7 +163,6 @@ class SearchKeywordRankingServiceTest {
 	@DisplayName("limit이 1보다 작으면 기본 10개까지만 반환한다")
 	void getTrendingKeywordsWithInvalidLimit() {
 		when(redisTemplate.opsForZSet()).thenReturn(zSetOperations);
-
 		when(zSetOperations.reverseRangeWithScores(anyString(), eq(0L), eq(-1L)))
 			.thenReturn(tupleSet(
 				createTuple("키워드1", 20.0),
@@ -238,22 +246,16 @@ class SearchKeywordRankingServiceTest {
 	}
 
 	@SafeVarargs
-	private final Set<ZSetOperations.TypedTuple<String>> tupleSet(
+	private Set<ZSetOperations.TypedTuple<String>> tupleSet(
 		ZSetOperations.TypedTuple<String>... tuples
 	) {
 		return new LinkedHashSet<>(List.of(tuples));
 	}
 
-	@SuppressWarnings("unchecked")
 	private ZSetOperations.TypedTuple<String> createTuple(
 		String keyword,
 		Double score
 	) {
-		ZSetOperations.TypedTuple<String> tuple = mock(ZSetOperations.TypedTuple.class);
-
-		when(tuple.getValue()).thenReturn(keyword);
-		when(tuple.getScore()).thenReturn(score);
-
-		return tuple;
+		return new DefaultTypedTuple<>(keyword, score);
 	}
 }
