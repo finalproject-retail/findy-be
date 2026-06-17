@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "promotions")
+@Table(schema = "shopping_service", name = "promotions")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PromotionSnapshot {
 

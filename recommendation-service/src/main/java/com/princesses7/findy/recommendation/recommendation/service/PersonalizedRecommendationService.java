@@ -1,6 +1,7 @@
 package com.princesses7.findy.recommendation.recommendation.service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
@@ -69,44 +70,147 @@ public class PersonalizedRecommendationService {
 	public PersonalizedRecommendationResponse getPersonalizedRecommendations(
 		Long userId,
 		Long storeId,
-		int size
-	) {
+		int size) {
 		requestValidator.validatePositiveId(userId, "userId");
 		requestValidator.validatePositiveId(storeId, "storeId");
 		int normalizedSize = normalizeSize(size);
 
 		UserPreferenceResponse userPreference = userPreferenceQueryService.getUserPreference(userId);
 		PurchaseHistoryContext purchaseHistory = PurchaseHistoryContext.from(
-			purchaseHistoryClient.findFrequentPurchaseProducts(userId)
-		);
+			purchaseHistoryClient.findFrequentPurchaseProducts(userId));
 		RecommendationBaseType baseType = resolveBaseType(userPreference, purchaseHistory);
 
-		if (baseType == RecommendationBaseType.POPULAR_FALLBACK) {
-			return fallback(
-				userId,
-				normalizedSize,
+		List<ProductRecommendationResponse> recommendationCandidates = new ArrayList<>();
+
+		recommendationCandidates.addAll(
+			findPreferenceBasedRecommendations(
+				normalizedSize * FALLBACK_MULTIPLIER,
 				userPreference,
 				purchaseHistory,
-				storeId,
-				RecommendationBaseType.POPULAR_FALLBACK
+				storeId
+			)
+		);
+
+		if (recommendationCandidates.size() < normalizedSize) {
+			recommendationCandidates.addAll(
+				findPurchaseHistoryRecommendations(
+					normalizedSize * FALLBACK_MULTIPLIER,
+					purchaseHistory,
+					storeId
+				)
 			);
 		}
 
-		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findRecommendableCandidates(
-			productEmbeddingClient.model(),
-			productEmbeddingClient.dimensions(),
-			storeId,
-			PageRequest.of(0, calculateCandidateSize(normalizedSize)));
+		if (recommendationCandidates.size() < normalizedSize) {
+			try {
+				recommendationCandidates.addAll(
+					findEmbeddingBasedRecommendations(
+						normalizedSize * FALLBACK_MULTIPLIER,
+						userPreference,
+						purchaseHistory,
+						storeId
+					)
+				);
+			} catch (Exception ignored) {
+				// 임베딩 생성/API 실패 시에도 선호 카테고리 기반 추천은 노출되도록 fallback 처리
+			}
+		}
 
-		if (candidateEmbeddings.isEmpty()) {
+		List<ProductRecommendationResponse> recommendations =
+			RecommendationResultPolicy.finalizeProductRecommendations(
+				recommendationCandidates,
+				normalizedSize
+			);
+
+		if (recommendations.isEmpty()) {
 			return fallback(
 				userId,
 				normalizedSize,
 				userPreference,
 				purchaseHistory,
 				storeId,
-				RecommendationBaseType.NO_PRODUCT_EMBEDDING_FALLBACK
-			);
+				baseType);
+		}
+
+		return new PersonalizedRecommendationResponse(
+			userId,
+			baseType,
+			userPreference.preferredCategories(),
+			userPreference.shoppingStyles(),
+			recommendations);
+	}
+
+	private List<ProductRecommendationResponse> findPreferenceBasedRecommendations(
+		int size,
+		UserPreferenceResponse userPreference,
+		PurchaseHistoryContext purchaseHistory,
+		Long storeId) {
+		if (userPreference.preferredCategoryIds().isEmpty()) {
+			return List.of();
+		}
+
+		List<ProductSnapshot> products = productRepository.findByCategoryIdInAndDeletedAtIsNull(
+			userPreference.preferredCategoryIds(),
+			PageRequest.of(0, size * FALLBACK_MULTIPLIER)
+		);
+
+		if (products.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, String> categoryNameMap = findCategoryNameMap(
+			products.stream()
+				.map(ProductSnapshot::getCategoryId)
+				.toList()
+		);
+		Map<Long, PromotionProductSnapshot> promotionProductMap = findActivePromotionProductMap(
+			products.stream()
+				.map(ProductSnapshot::getProductId)
+				.toList()
+		);
+
+		return products.stream()
+			.filter(RecommendationResultPolicy::isDisplayableProduct)
+			.filter(product -> hasAvailableStock(product, storeId))
+			.map(product -> {
+				String categoryName = categoryNameMap.getOrDefault(product.getCategoryId(), "");
+
+				double preferenceSimilarityScore = userPreference.hasPreferredCategory(product.getCategoryId())
+					? 0.72
+					: 0.50;
+
+				double score = scorer.calculate(
+					userPreference,
+					product,
+					categoryName,
+					preferenceSimilarityScore,
+					purchaseHistory
+				);
+
+				return ProductRecommendationResponse.from(
+					product,
+					promotionProductMap.get(product.getProductId()),
+					score,
+					RecommendationType.PERSONALIZED,
+					scorer.createReason(userPreference, product, categoryName, purchaseHistory)
+				);
+			})
+			.toList();
+	}
+
+	private List<ProductRecommendationResponse> findEmbeddingBasedRecommendations(
+		int size,
+		UserPreferenceResponse userPreference,
+		PurchaseHistoryContext purchaseHistory,
+		Long storeId
+	) {
+		List<ProductEmbedding> candidateEmbeddings = productEmbeddingRepository.findByModelAndDimensions(
+			productEmbeddingClient.model(),
+			productEmbeddingClient.dimensions()
+		);
+
+		if (candidateEmbeddings.isEmpty()) {
+			return List.of();
 		}
 
 		List<Double> userPreferenceEmbedding = productEmbeddingClient.createEmbedding(
@@ -118,7 +222,14 @@ public class PersonalizedRecommendationService {
 			.toList();
 
 		Map<Long, ProductSnapshot> productMap = findRecommendableProductMap(productIds, storeId);
-		Map<Long, PromotionProductSnapshot> promotionProductMap = findActivePromotionProductMap(productMap.keySet());
+
+		if (productMap.isEmpty()) {
+			return List.of();
+		}
+
+		Map<Long, PromotionProductSnapshot> promotionProductMap = findActivePromotionProductMap(
+			productMap.keySet()
+		);
 
 		Map<Long, String> categoryNameMap = findCategoryNameMap(
 			productMap.values().stream()
@@ -126,81 +237,18 @@ public class PersonalizedRecommendationService {
 				.toList()
 		);
 
-		List<ProductRecommendationResponse> recommendations = RecommendationResultPolicy.finalizeProductRecommendations(
-			candidateEmbeddings.stream()
-				.map(productEmbedding -> toRecommendationResponse(
-					userPreference,
-					productEmbedding,
-					productMap,
-					promotionProductMap,
-					categoryNameMap,
-					userPreferenceEmbedding,
-					purchaseHistory
-				))
-				.filter(Objects::nonNull)
-				.toList(),
-			normalizedSize
-		);
-
-		if (recommendations.isEmpty()) {
-			return fallback(
-				userId,
-				normalizedSize,
+		return candidateEmbeddings.stream()
+			.map(productEmbedding -> toRecommendationResponse(
 				userPreference,
-				purchaseHistory,
-				storeId,
-				RecommendationBaseType.POPULAR_FALLBACK
-			);
-		}
-
-		log.info(
-			"Personalized recommendation request. userId={}, storeId={}, requestedSize={}, normalizedSize={}",
-			userId, storeId, size, normalizedSize
-		);
-
-		log.info(
-			"User preference loaded. userId={}, preferredCategoryIds={}, preferredCategories={}, shoppingStyleIds={}, shoppingStyles={}",
-			userId,
-			userPreference.preferredCategoryIds(),
-			userPreference.preferredCategories(),
-			userPreference.shoppingStyleIds(),
-			userPreference.shoppingStyles()
-		);
-
-		log.info(
-			"Purchase history loaded. userId={}, hasHistory={}, baseType={}",
-			userId,
-			purchaseHistory.hasHistory(),
-			baseType
-		);
-
-		log.info(
-			"Product embeddings loaded. model={}, dimensions={}, count={}",
-			productEmbeddingClient.model(),
-			productEmbeddingClient.dimensions(),
-			candidateEmbeddings.size()
-		);
-
-		log.info(
-			"Recommendable product map loaded. storeId={}, productIdCount={}, recommendableCount={}",
-			storeId,
-			productIds.size(),
-			productMap.size()
-		);
-
-		log.info(
-			"Personalized recommendations created. userId={}, resultCount={}",
-			userId,
-			recommendations.size()
-		);
-
-		return new PersonalizedRecommendationResponse(
-			userId,
-			baseType,
-			userPreference.preferredCategories(),
-			userPreference.shoppingStyles(),
-			recommendations
-		);
+				productEmbedding,
+				productMap,
+				promotionProductMap,
+				categoryNameMap,
+				userPreferenceEmbedding,
+				purchaseHistory
+			))
+			.filter(Objects::nonNull)
+			.toList();
 	}
 
 	private RecommendationBaseType resolveBaseType(
@@ -334,7 +382,7 @@ public class PersonalizedRecommendationService {
 	) {
 		return """
 			%s
-			
+						
 			%s
 			""".formatted(
 			userPreference.preferenceText(),

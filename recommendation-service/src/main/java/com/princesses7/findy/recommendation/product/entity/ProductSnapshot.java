@@ -25,6 +25,9 @@ public class ProductSnapshot {
 	@Column(name = "category_id", nullable = false)
 	private Long categoryId;
 
+	@Column(name = "external_source")
+	private String externalSource;
+
 	@Column(name = "brand_name")
 	private String brandName;
 
@@ -72,7 +75,7 @@ public class ProductSnapshot {
 	public String toEmbeddingText(String categoryName) {
 		return """
 			마트 상품 정보입니다.
-			
+						
 			상품명: %s
 			브랜드: %s
 			카테고리: %s
@@ -81,7 +84,7 @@ public class ProductSnapshot {
 			중량/용량: %s
 			알레르기 정보: %s
 			상품 배지: %s
-			
+						
 			이 텍스트는 상품의 의미 기반 추천과 검색을 위한 임베딩 생성에 사용됩니다.
 			상품명, 카테고리, 설명, 판매 단위, 용량 정보를 종합해 상품의 용도와 성격을 표현합니다.
 			""".formatted(
@@ -99,7 +102,7 @@ public class ProductSnapshot {
 	public String toRelatedRecommendationText(String categoryName) {
 		return """
 			오프라인 대형마트의 연관 상품 추천 요청입니다.
-			
+						
 			사용자가 현재 보고 있거나 구매하려는 기준 상품:
 			상품명: %s
 			브랜드: %s
@@ -109,7 +112,7 @@ public class ProductSnapshot {
 			중량/용량: %s
 			알레르기 정보: %s
 			상품 배지: %s
-			
+						
 			추천 목표:
 			이 기준 상품을 대체하는 비슷한 상품이 아니라,
 			함께 구매하면 좋은 보완 상품, 곁들임 상품, 함께 소비되는 상품,
