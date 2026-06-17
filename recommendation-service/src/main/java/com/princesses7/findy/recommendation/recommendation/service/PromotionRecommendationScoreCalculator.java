@@ -143,7 +143,7 @@ public class PromotionRecommendationScoreCalculator {
 			return 0.0;
 		}
 
-		if (promotion.getPromotionType() == PromotionType.BOGO) {
+		if (promotion.getPromotionType().isBogoLike()) {
 			return 1.0;
 		}
 

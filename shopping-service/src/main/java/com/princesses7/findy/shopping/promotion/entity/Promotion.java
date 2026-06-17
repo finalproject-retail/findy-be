@@ -166,7 +166,7 @@ public class Promotion extends BaseTimeEntity {
 			return createDiscountText();
 		}
 
-		if (promotionType == PromotionType.BOGO) {
+		if (promotionType.isBogoLike()) {
 			return createBogoText();
 		}
 
@@ -248,7 +248,7 @@ public class Promotion extends BaseTimeEntity {
 			throw new PromotionException(INVALID_PROMOTION_BENEFIT);
 		}
 
-		if (promotionType == PromotionType.BOGO) {
+		if (promotionType.isBogoLike()) {
 			validateBogoBenefit(buyQuantity, getQuantity);
 		}
 

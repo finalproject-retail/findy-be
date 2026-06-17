@@ -66,7 +66,7 @@ public class PromotionSnapshot {
 			return createDiscountText();
 		}
 
-		if (promotionType == PromotionType.BOGO) {
+		if (promotionType.isBogoLike()) {
 			return createBogoText();
 		}
 

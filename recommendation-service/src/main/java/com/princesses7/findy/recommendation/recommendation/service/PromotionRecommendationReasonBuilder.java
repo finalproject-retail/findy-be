@@ -28,7 +28,7 @@ public class PromotionRecommendationReasonBuilder {
 			return "사용자 선호 정보와 유사한 상품이며 행사 가격 혜택이 적용되어 추천했습니다.";
 		}
 
-		if (promotion != null && promotion.getPromotionType() == PromotionType.BOGO) {
+		if (promotion != null && promotion.getPromotionType().isBogoLike()) {
 			return "사용자 선호 정보와 유사한 묶음 행사 상품이라 추천했습니다.";
 		}
 
@@ -62,7 +62,7 @@ public class PromotionRecommendationReasonBuilder {
 			return "AI 추천 데이터가 부족하여 행사 가격과 재고를 기준으로 추천한 상품입니다.";
 		}
 
-		if (promotion != null && promotion.getPromotionType() == PromotionType.BOGO) {
+		if (promotion != null && promotion.getPromotionType().isBogoLike()) {
 			return "AI 추천 데이터가 부족하여 현재 진행 중인 묶음 행사 상품을 우선 추천했습니다.";
 		}
 
