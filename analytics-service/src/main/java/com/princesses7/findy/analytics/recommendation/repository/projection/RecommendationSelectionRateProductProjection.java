@@ -10,6 +10,12 @@ public interface RecommendationSelectionRateProductProjection {
 
 	String getProductName();
 
+	String getPromotionName();
+
+	String getPromotionType();
+
+	String getPromotionLabel();
+
 	Long getImpressionCount();
 
 	Long getSelectionCount();

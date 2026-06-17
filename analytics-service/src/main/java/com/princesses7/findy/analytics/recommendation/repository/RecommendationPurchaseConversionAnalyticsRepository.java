@@ -93,8 +93,7 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 						)
 					),
 					''
-				),
-				'상품명 미등록'
+				)
 			) AS "productName",
 			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "clickCount",
@@ -114,7 +113,37 @@ public interface RecommendationPurchaseConversionAnalyticsRepository extends Jpa
 				CAST(:productId AS BIGINT) IS NULL
 				OR rl.product_id = CAST(:productId AS BIGINT)
 			)
+			AND (
+				NULLIF(
+					TRIM(
+						CONCAT_WS(
+							' ',
+							NULLIF(TRIM(sp.brand_name), ''),
+							NULLIF(TRIM(sp.product_name), '')
+						)
+					),
+					''
+				) IS NOT NULL
+				OR NULLIF(
+					TRIM(
+						CONCAT_WS(
+							' ',
+							NULLIF(TRIM(rp.brand_name), ''),
+							NULLIF(TRIM(rp.product_name), '')
+						)
+					),
+					''
+				) IS NOT NULL
+			)
 		GROUP BY rl.recommendation_type, rl.product_id
+		HAVING
+			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) >= 10
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) > 0
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) > 0
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0)
+				< COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0)
+			AND COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0)
+				<= COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0)
 		ORDER BY
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) DESC,
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) DESC,

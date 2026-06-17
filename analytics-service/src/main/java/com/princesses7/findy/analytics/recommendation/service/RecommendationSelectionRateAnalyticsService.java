@@ -65,17 +65,14 @@ public class RecommendationSelectionRateAnalyticsService {
 				.toList();
 
 		List<RecommendationSelectionRateProductResponse> products =
-			recommendationSelectionRateAnalyticsRepository.findTopProducts(
-					normalizedRecommendationType,
-					productId,
-					sourceProductId,
-					startDateTime,
-					endDateTime,
-					resolvedLimit
-				)
-				.stream()
-				.map(RecommendationSelectionRateProductResponse::from)
-				.toList();
+			findTopProducts(
+				normalizedRecommendationType,
+				productId,
+				sourceProductId,
+				startDateTime,
+				endDateTime,
+				resolvedLimit
+			);
 
 		return RecommendationSelectionRateResponse.of(
 			PeriodResponse.from(periodRange),
@@ -120,5 +117,39 @@ public class RecommendationSelectionRateAnalyticsService {
 		}
 
 		return summary.getPurchaseCount();
+	}
+
+	private List<RecommendationSelectionRateProductResponse> findTopProducts(
+		String recommendationType,
+		Long productId,
+		Long sourceProductId,
+		LocalDateTime startDateTime,
+		LocalDateTime endDateTime,
+		int limit
+	) {
+		if ("PROMOTION".equalsIgnoreCase(recommendationType)) {
+			return recommendationSelectionRateAnalyticsRepository.findTopPromotionProducts(
+					productId,
+					sourceProductId,
+					startDateTime,
+					endDateTime,
+					limit
+				)
+				.stream()
+				.map(RecommendationSelectionRateProductResponse::from)
+				.toList();
+		}
+
+		return recommendationSelectionRateAnalyticsRepository.findTopProducts(
+				recommendationType,
+				productId,
+				sourceProductId,
+				startDateTime,
+				endDateTime,
+				limit
+			)
+			.stream()
+			.map(RecommendationSelectionRateProductResponse::from)
+			.toList();
 	}
 }
