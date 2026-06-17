@@ -60,24 +60,24 @@ class ProductPerformanceSummaryServiceTest {
 			.willReturn(List.of(
 				new ProductPerformanceProductQueryResult(
 					10001L,
-					"시드_신라면",
+					"신라면",
 					"농심",
 					17L,
 					"라면",
-					6L,
+					12L,
 					2L,
-					3L,
+					6L,
 					18000L
 				),
 				new ProductPerformanceProductQueryResult(
 					10003L,
-					"시드_백미밥",
+					"백미밥",
 					"햇반",
 					18L,
 					"즉석밥",
-					4L,
+					10L,
 					1L,
-					1L,
+					3L,
 					9000L
 				)
 			));
