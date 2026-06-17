@@ -212,11 +212,11 @@ public class ZoneVisitRateAnalyticsService {
 	}
 
 	private enum AdminZoneGroup {
-		FRESH(1, 1L, "신선 식품", 1L, 4L),
-		PROCESSED_FROZEN(2, 5L, "가공/냉동 식품", 5L, 8L),
-		BAKERY_DELI(3, 9L, "베이커리/델리", 9L, 11L),
-		BEVERAGE_ALCOHOL(4, 12L, "음료/주류", 12L, 14L),
-		LIFESTYLE(5, 15L, "라이프 스타일", 15L, 18L);
+		FRESH(1, 1L, "신선 식품", 1L, 1L),
+		PROCESSED_FROZEN(2, 2L, "가공/냉동 식품", 2L, 2L),
+		BAKERY_DELI(3, 3L, "베이커리/델리", 3L, 3L),
+		BEVERAGE_ALCOHOL(4, 4L, "음료/주류", 4L, 4L),
+		LIFESTYLE(5, 5L, "라이프 스타일", 5L, 5L);
 
 		private final int sortNo;
 		private final Long representativeZoneId;
