@@ -309,4 +309,80 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 		@Param("fromAt") LocalDateTime fromAt,
 		Pageable pageable
 	);
+
+	@Query(
+		value = """
+			WITH best_promotion AS (
+			    SELECT
+			        pp.product_id,
+			        MIN(pp.promotion_price) AS promotion_price
+			    FROM shopping_service.promotion_products pp
+			    JOIN shopping_service.promotions pr
+			        ON pr.promotion_id = pp.promotion_id
+			    WHERE pr.status = 'ACTIVE'
+			      AND CURRENT_TIMESTAMP BETWEEN pr.start_at AND pr.end_at
+			      AND pp.promotion_price IS NOT NULL
+			      AND pp.promotion_price > 0
+			    GROUP BY pp.product_id
+			)
+			SELECT p.*
+			FROM shopping_service.products p
+			JOIN shopping_service.inventories i
+			    ON i.product_id = p.product_id
+			   AND i.store_id = :storeId
+			LEFT JOIN best_promotion bp
+			    ON bp.product_id = p.product_id
+			WHERE p.deleted_at IS NULL
+			  AND p.sale_status = 'ON_SALE'
+			  AND p.original_price > :minVisiblePrice
+			  AND i.stock_quantity > 0
+			  AND (:categoryId IS NULL OR p.category_id = :categoryId)
+			  AND (
+			        :keyword IS NULL
+			        OR LOWER(p.product_name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			  )
+			ORDER BY
+			    CASE
+			        WHEN :direction = 'desc' THEN
+			            COALESCE(
+			                ((p.original_price - bp.promotion_price) * 100.0 / NULLIF(p.original_price, 0)),
+			                0
+			            )
+			    END DESC,
+			    CASE
+			        WHEN :direction = 'asc' THEN
+			            COALESCE(
+			                ((p.original_price - bp.promotion_price) * 100.0 / NULLIF(p.original_price, 0)),
+			                0
+			            )
+			    END ASC,
+			    p.created_at DESC,
+			    p.product_id DESC
+			""",
+		countQuery = """
+			SELECT COUNT(DISTINCT p.product_id)
+			FROM shopping_service.products p
+			JOIN shopping_service.inventories i
+			    ON i.product_id = p.product_id
+			   AND i.store_id = :storeId
+			WHERE p.deleted_at IS NULL
+			  AND p.sale_status = 'ON_SALE'
+			  AND p.original_price > :minVisiblePrice
+			  AND i.stock_quantity > 0
+			  AND (:categoryId IS NULL OR p.category_id = :categoryId)
+			  AND (
+			        :keyword IS NULL
+			        OR LOWER(p.product_name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+			  )
+			""",
+		nativeQuery = true
+	)
+	Page<Product> findDisplayableProductsOrderByDiscountRate(
+		@Param("categoryId") Long categoryId,
+		@Param("keyword") String keyword,
+		@Param("minVisiblePrice") Integer minVisiblePrice,
+		@Param("storeId") Long storeId,
+		@Param("direction") String direction,
+		Pageable pageable
+	);
 }

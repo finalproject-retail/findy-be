@@ -78,7 +78,7 @@ public class ProductService {
 			searchKeywordRankingService.record(normalizedKeyword);
 		}
 
-		if (isPopularSort(sortBy) && categoryId == null && normalizedKeyword == null) {
+		if (isPopularSort(sortBy)) {
 			return getProductsByPopularRanking(
 				categoryId,
 				normalizedKeyword,
@@ -88,9 +88,7 @@ public class ProductService {
 			);
 		}
 
-		String resolvedSortBy = isPopularSort(sortBy) ? "createdAt" : sortBy;
-
-		Sort sort = createSort(resolvedSortBy, direction);
+		Sort sort = createSort(sortBy, direction);
 		Pageable pageable = PageRequest.of(page, size, sort);
 
 		Page<Product> products = findProducts(categoryId, normalizedKeyword, pageable);
@@ -159,10 +157,12 @@ public class ProductService {
 			)
 			.orElse(null);
 
+		PromotionProduct promotionProduct = findBestPromotionProduct(productId);
+
 		productRankingService.recordView(productId);
 		publishProductViewed(userId, productId, viewSource, promotionId, pinGridId);
 
-		return ProductDetailResponse.from(product, inventory);
+		return ProductDetailResponse.from(product, inventory, promotionProduct);
 	}
 
 	@Transactional(readOnly = true)
@@ -384,6 +384,18 @@ public class ProductService {
 			.toList();
 	}
 
+	private PromotionProduct findBestPromotionProduct(Long productId) {
+		return promotionProductRepository
+			.findApplicablePromotionProductsByProductIds(
+				List.of(productId),
+				PromotionStatus.ENDED,
+				LocalDateTime.now()
+			)
+			.stream()
+			.reduce(this::selectBetterPromotionProduct)
+			.orElse(null);
+	}
+
 	private PromotionProduct selectBetterPromotionProduct(
 		PromotionProduct current,
 		PromotionProduct candidate
@@ -415,7 +427,6 @@ public class ProductService {
 	}
 
 	private Sort createSort(String sortBy, String direction) {
-		// TODO: 인기순 정렬은 Redis 랭킹 데이터 또는 상품 조회 로그 연동 시 별도 구현
 		String sortProperty = sortBy == null || sortBy.isBlank()
 			? "createdAt"
 			: sortBy;
