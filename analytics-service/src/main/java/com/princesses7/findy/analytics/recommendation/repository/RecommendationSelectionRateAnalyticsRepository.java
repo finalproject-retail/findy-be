@@ -17,7 +17,7 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 	@Query(value = """
 		SELECT
 			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN rl.log_type IN ('SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "selectionCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "selectionCount",
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM recommendation_service.recommendation_logs rl
 		WHERE rl.created_at >= :startDateTime
@@ -48,7 +48,7 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 		SELECT
 			CAST(rl.created_at AS DATE) AS "analysisDate",
 			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN rl.log_type IN ('SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "selectionCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "selectionCount",
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM recommendation_service.recommendation_logs rl
 		WHERE rl.created_at >= :startDateTime
@@ -110,7 +110,7 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 				'상품명 미등록'
 			) AS "productName",
 			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) AS "impressionCount",
-			COALESCE(SUM(CASE WHEN rl.log_type IN ('SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "selectionCount",
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) AS "selectionCount",
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) AS "purchaseCount"
 		FROM recommendation_service.recommendation_logs rl
 		LEFT JOIN shopping_service.products sp
@@ -134,7 +134,7 @@ public interface RecommendationSelectionRateAnalyticsRepository extends JpaRepos
 			)
 		GROUP BY rl.recommendation_type, rl.product_id
 		ORDER BY
-			COALESCE(SUM(CASE WHEN rl.log_type IN ('SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) DESC,
+			COALESCE(SUM(CASE WHEN rl.log_type IN ('CLICK', 'SELECTION', 'SUBSTITUTE_SELECTION') THEN 1 ELSE 0 END), 0) DESC,
 			COALESCE(SUM(CASE WHEN rl.log_type IN ('PURCHASE', 'PURCHASE_CONVERSION') THEN 1 ELSE 0 END), 0) DESC,
 			COALESCE(SUM(CASE WHEN rl.log_type = 'IMPRESSION' THEN 1 ELSE 0 END), 0) DESC,
 			rl.product_id ASC
