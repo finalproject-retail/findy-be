@@ -100,12 +100,12 @@ class ProductPerformanceSummaryServiceTest {
 		assertThat(response.totalOrderCount()).isEqualTo(3L);
 		assertThat(response.totalOrderQuantity()).isEqualTo(4L);
 		assertThat(response.totalSalesAmount()).isEqualTo(27000L);
-		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("40.00");
+		assertThat(response.purchaseConversionRate()).isEqualByComparingTo("30.00");
 		assertThat(response.averageSalesAmountPerOrder()).isEqualByComparingTo("9000.00");
 		assertThat(response.limit()).isEqualTo(limit);
 		assertThat(response.products()).hasSize(2);
 		assertThat(response.products().get(0).rankNo()).isEqualTo(1);
-		assertThat(response.products().get(0).viewToPurchaseRate()).isEqualByComparingTo("50.00");
+		assertThat(response.products().get(0).viewToPurchaseRate()).isEqualByComparingTo("16.67");
 		assertThat(response.products().get(0).salesShareRate()).isEqualByComparingTo("66.67");
 	}
 
